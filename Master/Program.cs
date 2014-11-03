@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Linq;
-using System.Collections.Generic;
 using Color = System.Drawing.Color;
 
 using LeagueSharp;
@@ -13,6 +12,7 @@ namespace Master
     class Program
     {
         public static Obj_AI_Hero Player = ObjectManager.Player, targetObj = null;
+        private static Obj_AI_Hero focusObj = null;
         private static TargetSelector selectTarget;
         public static Spell SkillQ, SkillW, SkillE, SkillR;
         private static SpellDataInst FData, SData, IData;
@@ -20,6 +20,7 @@ namespace Master
         public static Menu Config;
         public static String Name;
         public static Boolean PacketCast = false;
+        public static InventorySlot Ward = null;
 
         private static void Main(string[] args)
         {
@@ -28,8 +29,6 @@ namespace Master
 
         private static void OnGameLoad(EventArgs args)
         {
-            Game.PrintChat("<font color = \"#00bfff\">Master Series</font> by <font color = \"#9370db\">Brian</font>");
-            Game.PrintChat("<font color = \"#ffa500\">Feel free to donate via Paypal to:</font> <font color = \"#ff4500\">dcbrian01@gmail.com</font>");
             Name = Player.ChampionName;
             Config = new Menu("Master Of " + Name, "Master_" + Name, true);
 
@@ -37,12 +36,11 @@ namespace Master
             Config.SubMenu("TSSettings").AddItem(new MenuItem("tsMode", "Mode").SetValue(new StringList(new[] { "Auto", "Most AD", "Most AP", "Less Attack", "Less Cast", "Low Hp", "Closest", "Near Mouse" })));
             Config.SubMenu("TSSettings").AddItem(new MenuItem("tsFocus", "Forced Target").SetValue(true));
             Config.SubMenu("TSSettings").AddItem(new MenuItem("tsDraw", "Draw Target").SetValue(true));
-            selectTarget = new TargetSelector(2000, TargetSelector.TargetingMode.AutoPriority);
+            selectTarget = new TargetSelector(1500, TargetSelector.TargetingMode.AutoPriority);
 
             var OWMenu = new Menu("Orbwalker", "Orbwalker");
             LXOrbwalker.AddToMenu(OWMenu);
             Config.AddSubMenu(OWMenu);
-
             try
             {
                 if (Activator.CreateInstance(null, "Master." + Name) != null)
@@ -57,6 +55,7 @@ namespace Master
                     IData = Player.SummonerSpellbook.GetSpell(Player.GetSpellSlot("summonerdot"));
                     Game.OnGameUpdate += OnGameUpdate;
                     Drawing.OnDraw += OnDraw;
+                    Game.OnWndProc += OnWndProc;
                     SkinChanger(null, null);
                 }
             }
@@ -71,15 +70,32 @@ namespace Master
         {
             if (Player.IsDead) return;
             targetObj = GetTarget();
-            var newTarget = Hud.SelectedUnit;
-            if (newTarget != null && newTarget.IsValid && newTarget is Obj_AI_Hero && (newTarget as Obj_AI_Hero).IsValidTarget(2000)) targetObj = (Obj_AI_Hero)newTarget;
-            LXOrbwalker.ForcedTarget = Config.Item("tsFocus").GetValue<bool>() ? targetObj : null;
+            if (Config.Item("tsFocus").GetValue<bool>() && focusObj.IsValidTarget())
+            {
+                LXOrbwalker.ForcedTarget = focusObj;
+                targetObj = focusObj;
+            }
+            else LXOrbwalker.ForcedTarget = null;
         }
 
         private static void OnDraw(EventArgs args)
         {
-            if (Player.IsDead || !Config.Item("tsDraw").GetValue<bool>() || targetObj == null) return;
-            Utility.DrawCircle(targetObj.Position, 130, Color.Red);
+            if (Player.IsDead || !Config.Item("tsDraw").GetValue<bool>()) return;
+            if (Config.Item("tsFocus").GetValue<bool>())
+            {
+                if (targetObj != null) Utility.DrawCircle((focusObj != null) ? focusObj.Position : targetObj.Position, 130, (focusObj != null) ? Color.Blue : Color.Red);
+            }
+            else if (targetObj != null) Utility.DrawCircle(targetObj.Position, 130, Color.Red);
+        }
+
+        private static void OnWndProc(WndEventArgs args)
+        {
+            if (MenuGUI.IsChatOpen || Player.IsDead || !Config.Item("tsFocus").GetValue<bool>()) return;
+            if (args.Msg == (uint)WindowsMessages.WM_LBUTTONDOWN)
+            {
+                focusObj = null;
+                foreach (var obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => i.IsValidTarget() && i.Distance(Game.CursorPos) <= 130)) focusObj = obj;
+            }
         }
 
         private static Obj_AI_Hero GetTarget()
@@ -114,42 +130,23 @@ namespace Master
             return selectTarget.Target;
         }
 
-        public static void Orbwalk(Obj_AI_Base target)
-        {
-            LXOrbwalker.Orbwalk(Game.CursorPos, (target != null && LXOrbwalker.InAutoAttackRange(target)) ? target : null);
-        }
-
-        public static bool CanKill(Obj_AI_Base target, Spell Skill, int Stage = 0)
-        {
-            return (Skill.GetHealthPrediction(target) + 20 < Skill.GetDamage(target, Stage)) ? true : false;
-        }
-
         public static void SkinChanger(object sender, OnValueChangeEventArgs e)
         {
             Utility.DelayAction.Add(35, () => Packet.S2C.UpdateModel.Encoded(new Packet.S2C.UpdateModel.Struct(Player.NetworkId, Config.Item(Name + "SkinID").GetValue<Slider>().Value, Name)).Process());
         }
 
-        public static List<Obj_AI_Base> CheckingCollision(Obj_AI_Base from, Obj_AI_Base target, Spell Skill)
+        public static bool CheckingCollision(Obj_AI_Hero target, Spell Skill, bool Smite = true)
         {
-            var ListCol = new List<Obj_AI_Base>();
-            foreach (var Col in ObjectManager.Get<Obj_AI_Base>().Where(i => i.IsValidTarget(Skill.Range) && !(i is Obj_AI_Turret) && Skill.GetPrediction(i).Hitchance >= HitChance.Medium && i != target))
+            foreach (var col in ObjectManager.Get<Obj_AI_Base>().Where(i => i.IsValidTarget(Skill.Range) && !(i is Obj_AI_Turret) && i != target))
             {
-                var Segment = Col.Position.To2D().ProjectOn(from.Position.To2D(), (from.Position + Vector3.Normalize(target.Position - from.Position) * Skill.Range).To2D());
-                if (Segment.IsOnSegment && Col.Position.Distance(new Vector3(Segment.SegmentPoint.X, Col.Position.Y, Segment.SegmentPoint.Y)) <= Col.BoundingRadius + Skill.Width) ListCol.Add(Col);
-            }
-            return ListCol.Distinct().ToList();
-        }
-
-        public static bool SmiteCollision(Obj_AI_Hero target, Spell Skill)
-        {
-            var Col1 = CheckingCollision(Player, target, Skill);
-            if (Col1.Count == 0 || Col1.Count > 1) return false;
-            if (Skill.InRange(target.Position) && Col1.Count == 1 && (Col1.First() is Obj_AI_Minion))
-            {
-                if (CastSmite(Col1.First()))
+                var Segment = Geometry.ProjectOn(Skill.GetPrediction(col).CastPosition.To2D(), Player.Position.To2D(), (Player.Position + Vector3.Normalize(Skill.GetPrediction(target).CastPosition - Player.Position) * Skill.Range).To2D());
+                if (Segment.IsOnSegment && Skill.GetPrediction(col).CastPosition.Distance(new Vector3(Segment.SegmentPoint.X, col.Position.Y, Segment.SegmentPoint.Y)) < col.BoundingRadius + Skill.Width - 30 && Skill.GetPrediction(col).Hitchance >= HitChance.High)
                 {
-                    Skill.Cast(Skill.GetPrediction(target).CastPosition, PacketCast);
-                    return true;
+                    if (Smite)
+                    {
+                        return (col is Obj_AI_Minion && CastSmite(col)) ? true : false;
+                    }
+                    else return true;
                 }
             }
             return false;
@@ -187,7 +184,7 @@ namespace Master
 
         public static bool CastIgnite(Obj_AI_Hero target)
         {
-            if (IgniteReady() && target.IsValidTarget(IData.SData.CastRange[0]) && HealthPrediction.GetHealthPrediction(target, (int)(Player.Distance(target) / 1500 * 1000 + 250)) + 20 < Player.GetSummonerSpellDamage(target, Damage.SummonerSpell.Ignite))
+            if (IgniteReady() && target.IsValidTarget(IData.SData.CastRange[0]) && target.Health <= Player.GetSummonerSpellDamage(target, Damage.SummonerSpell.Ignite))
             {
                 Player.SummonerSpellbook.CastSpell(IData.Slot, target);
                 return true;

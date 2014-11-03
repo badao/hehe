@@ -20,8 +20,6 @@ namespace Master
             SkillW = new Spell(SpellSlot.W, 600);
             SkillE = new Spell(SpellSlot.E, 650);
             SkillR = new Spell(SpellSlot.R, 20);
-            SkillW.SetTargetted(SkillW.Instance.SData.SpellCastTime, SkillW.Instance.SData.MissileSpeed);
-            SkillE.SetSkillshot(SkillE.Instance.SData.SpellCastTime, SkillE.Instance.SData.LineWidth, SkillE.Instance.SData.MissileSpeed, false, SkillshotType.SkillshotCircle);
 
             Config.AddSubMenu(new Menu("Combo/Harass", "csettings"));
             Config.SubMenu("csettings").AddItem(new MenuItem(Name + "qusage", "Use Q").SetValue(true));
@@ -51,7 +49,7 @@ namespace Master
             Game.OnGameUpdate += OnGameUpdate;
             Drawing.OnDraw += OnDraw;
             GameObject.OnCreate += OnCreate;
-            Game.PrintChat("<font color = \"#33CCCC\">Master of {0}</font> <font color = \"#00ff00\">v{1}</font>", Name, Version);
+            Game.PrintChat("<font color = \"#33CCCC\">Master of {0}</font> <font color = \"#fff8e7\">Brian v{1}</font>", Name, Version);
         }
 
         private void OnGameUpdate(EventArgs args)
@@ -95,7 +93,7 @@ namespace Master
                         {
                             if ((Player.Health - (caster as Obj_AI_Hero).GetSummonerSpellDamage(Player, Damage.SummonerSpell.Ignite)) * 100 / Player.MaxHealth <= Config.Item(Name + "autouseR").GetValue<Slider>().Value) SkillR.Cast();
                         }
-                        else if ((Player.Health - (caster as Obj_AI_Hero).GetSpellDamage(Player, (caster as Obj_AI_Hero).GetSpellSlot(missle.SData.Name, false), 1)) * 100 / Player.MaxHealth <= Config.Item(Name + "autouseR").GetValue<Slider>().Value) SkillR.Cast();
+                        else if ((Player.Health - caster.GetDamageSpell(Player, missle.SData.Name).CalculatedDamage) * 100 / Player.MaxHealth <= Config.Item(Name + "autouseR").GetValue<Slider>().Value) SkillR.Cast();
                     }
                 }
             }
@@ -108,10 +106,10 @@ namespace Master
             if (Config.Item(Name + "eusage").GetValue<bool>() && SkillE.IsReady() && SkillE.InRange(targetObj.Position)) SkillE.Cast(targetObj.Position + Vector3.Normalize(targetObj.Position - Player.Position) * 100, PacketCast);
             if (Config.Item(Name + "qusage").GetValue<bool>() && SkillQ.InRange(targetObj.Position))
             {
-                var DmgAA = Player.GetAutoAttackDamage(targetObj) * Math.Floor(SkillQ.Instance.Cooldown / (1 / (Player.PercentMultiplicativeAttackSpeedMod * 0.638)));
-                if ((targetObj.Health <= GetBonusDmg(targetObj) || targetObj.Health > DmgAA + GetBonusDmg(targetObj)) && SkillQ.IsReady()) SkillQ.Cast(PacketCast);
+                var DmgAA = Player.GetAutoAttackDamage(targetObj) * Math.Floor(SkillQ.Instance.Cooldown / (1 / (Player.AttackDelay * 0.638)));
+                if ((targetObj.Health <= GetBonusDmg(targetObj) || targetObj.Health > DmgAA + GetBonusDmg(targetObj)) && SkillQ.IsReady()) SkillQ.Cast();
             }
-            if (Config.Item(Name + "iusage").GetValue<bool>() && Items.CanUseItem(Rand) && Player.CountEnemysInRange(450) >= 1) Items.UseItem(Rand);
+            if (Config.Item(Name + "iusage").GetValue<bool>() && Items.CanUseItem(Rand) && Utility.CountEnemysInRange(450) >= 1) Items.UseItem(Rand);
             if (Config.Item(Name + "ignite").GetValue<bool>()) CastIgnite(targetObj);
         }
 
@@ -122,13 +120,11 @@ namespace Master
             if (minionObj == null) return;
             if (Config.Item(Name + "useClearQ").GetValue<bool>() && SkillQ.InRange(minionObj.Position))
             {
-                var DmgAA = Player.GetAutoAttackDamage(minionObj) * Math.Floor(SkillQ.Instance.Cooldown / (1 / (Player.PercentMultiplicativeAttackSpeedMod * 0.638)));
+                var DmgAA = Player.GetAutoAttackDamage(minionObj) * Math.Floor(SkillQ.Instance.Cooldown / (1 / (Player.AttackDelay * 0.638)));
                 if ((minionObj.Health <= GetBonusDmg(minionObj) || minionObj.Health > DmgAA + GetBonusDmg(minionObj)) && (SkillQ.IsReady() || Player.HasBuff("NasusQ", true)))
                 {
-                    LXOrbwalker.SetAttack(false);
-                    if (!Player.HasBuff("NasusQ", true)) SkillQ.Cast(PacketCast);
+                    if (!Player.HasBuff("NasusQ", true)) SkillQ.Cast();
                     if (Player.HasBuff("NasusQ", true)) Player.IssueOrder(GameObjectOrder.AttackUnit, minionObj);
-                    LXOrbwalker.SetAttack(true);
                 }
             }
             if (Config.Item(Name + "useClearE").GetValue<bool>() && SkillE.IsReady() && minionObj is Obj_AI_Minion) SkillE.Cast(minionObj.Position, PacketCast);
@@ -141,16 +137,14 @@ namespace Master
             if (minionObj == null) return;
             if (SkillQ.IsReady() || Player.HasBuff("NasusQ", true))
             {
-                LXOrbwalker.SetAttack(false);
-                if (!Player.HasBuff("NasusQ", true)) SkillQ.Cast(PacketCast);
+                if (!Player.HasBuff("NasusQ", true)) SkillQ.Cast();
                 if (Player.HasBuff("NasusQ", true)) Player.IssueOrder(GameObjectOrder.AttackUnit, minionObj);
-                LXOrbwalker.SetAttack(true);
             }
         }
 
         private void KillSteal()
         {
-            var target = ObjectManager.Get<Obj_AI_Hero>().FirstOrDefault(i => i.IsValidTarget(SkillE.Range) && CanKill(i, SkillE) && i != targetObj);
+            var target = ObjectManager.Get<Obj_AI_Hero>().FirstOrDefault(i => i.IsValidTarget(SkillE.Range) && SkillE.IsKillable(i) && i != targetObj);
             if (target != null && SkillE.IsReady()) SkillE.Cast(target.Position, PacketCast);
         }
 

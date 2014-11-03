@@ -19,7 +19,6 @@ namespace Master
             SkillW = new Spell(SpellSlot.W, 20);
             SkillE = new Spell(SpellSlot.E, 300);
             SkillR = new Spell(SpellSlot.R, 400);
-            SkillR.SetTargetted(SkillR.Instance.SData.SpellCastTime, SkillR.Instance.SData.MissileSpeed);
 
             Config.AddSubMenu(new Menu("Combo/Harass", "csettings"));
             Config.SubMenu("csettings").AddItem(new MenuItem(Name + "qusage", "Use Q").SetValue(true));
@@ -51,7 +50,7 @@ namespace Master
             Game.OnGameUpdate += OnGameUpdate;
             Drawing.OnDraw += OnDraw;
             LXOrbwalker.AfterAttack += AfterAttack;
-            Game.PrintChat("<font color = \"#33CCCC\">Master of {0}</font> <font color = \"#00ff00\">v{1}</font>", Name, Version);
+            Game.PrintChat("<font color = \"#33CCCC\">Master of {0}</font> <font color = \"#fff8e7\">Brian v{1}</font>", Name, Version);
         }
 
         private void OnGameUpdate(EventArgs args)
@@ -78,17 +77,17 @@ namespace Master
 
         private void AfterAttack(Obj_AI_Base unit, Obj_AI_Base target)
         {
-            if (unit.IsMe && Config.Item(Name + "qusage").GetValue<bool>() && SkillQ.IsReady() && target.IsValidTarget(LXOrbwalker.GetAutoAttackRange(Player, target)) && (LXOrbwalker.CurrentMode == LXOrbwalker.Mode.Combo || LXOrbwalker.CurrentMode == LXOrbwalker.Mode.Harass)) SkillQ.Cast(PacketCast);
+            if (unit.IsMe && Config.Item(Name + "qusage").GetValue<bool>() && SkillQ.IsReady() && target.IsValidTarget(LXOrbwalker.GetAutoAttackRange(Player, target)) && (LXOrbwalker.CurrentMode == LXOrbwalker.Mode.Combo || LXOrbwalker.CurrentMode == LXOrbwalker.Mode.Harass)) SkillQ.Cast();
         }
 
         private void NormalCombo()
         {
             if (targetObj == null) return;
-            if (Config.Item(Name + "qusage").GetValue<bool>() && SkillQ.IsReady() && targetObj.IsValidTarget(1000) && !LXOrbwalker.InAutoAttackRange(targetObj)) SkillQ.Cast(PacketCast);
-            if (Config.Item(Name + "eusage").GetValue<bool>() && SkillE.IsReady() && !Player.HasBuff("GarenE", true) && !Player.HasBuff("GarenQ", true) && SkillE.InRange(targetObj.Position)) SkillE.Cast(PacketCast);
-            if (Config.Item(Name + "wusage").GetValue<bool>() && SkillW.IsReady() && SkillE.InRange(targetObj.Position) && Player.Health * 100 / Player.MaxHealth <= Config.Item(Name + "autowusage").GetValue<Slider>().Value) SkillW.Cast(PacketCast);
-            if (Config.Item(Name + "rusage").GetValue<bool>() && Config.Item(Name + "ult" + targetObj.ChampionName).GetValue<bool>() && SkillR.IsReady() && SkillR.InRange(targetObj.Position) && CanKill(targetObj, SkillR)) SkillR.CastOnUnit(targetObj, PacketCast);
-            if (Config.Item(Name + "iusage").GetValue<bool>() && Items.CanUseItem(Rand) && Player.CountEnemysInRange(450) >= 1) Items.UseItem(Rand);
+            if (Config.Item(Name + "qusage").GetValue<bool>() && SkillQ.IsReady() && targetObj.IsValidTarget(1000) && !LXOrbwalker.InAutoAttackRange(targetObj)) SkillQ.Cast();
+            if (Config.Item(Name + "eusage").GetValue<bool>() && SkillE.IsReady() && !Player.HasBuff("GarenE", true) && !Player.HasBuff("GarenQ", true) && SkillE.InRange(targetObj.Position)) SkillE.Cast();
+            if (Config.Item(Name + "wusage").GetValue<bool>() && SkillW.IsReady() && SkillE.InRange(targetObj.Position) && Player.Health * 100 / Player.MaxHealth <= Config.Item(Name + "autowusage").GetValue<Slider>().Value) SkillW.Cast();
+            if (Config.Item(Name + "rusage").GetValue<bool>() && Config.Item(Name + "ult" + targetObj.ChampionName).GetValue<bool>() && SkillR.IsReady() && SkillR.InRange(targetObj.Position) && SkillR.IsKillable(targetObj)) SkillR.CastOnUnit(targetObj, PacketCast);
+            if (Config.Item(Name + "iusage").GetValue<bool>() && Items.CanUseItem(Rand) && Utility.CountEnemysInRange(450) >= 1) Items.UseItem(Rand);
             if (Config.Item(Name + "ignite").GetValue<bool>()) CastIgnite(targetObj);
         }
 
@@ -96,8 +95,8 @@ namespace Master
         {
             var minionObj = MinionManager.GetMinions(Player.Position, 800, MinionTypes.All, MinionTeam.NotAlly).FirstOrDefault();
             if (minionObj == null) return;
-            if (Config.Item(Name + "useClearQ").GetValue<bool>() && SkillQ.IsReady()) SkillQ.Cast(PacketCast);
-            if (Config.Item(Name + "useClearE").GetValue<bool>() && SkillE.IsReady() && !Player.HasBuff("GarenE", true) && !Player.HasBuff("GarenQ", true) && SkillE.InRange(minionObj.Position)) SkillE.Cast(PacketCast);
+            if (Config.Item(Name + "useClearQ").GetValue<bool>() && SkillQ.IsReady()) SkillQ.Cast();
+            if (Config.Item(Name + "useClearE").GetValue<bool>() && SkillE.IsReady() && !Player.HasBuff("GarenE", true) && !Player.HasBuff("GarenQ", true) && SkillE.InRange(minionObj.Position)) SkillE.Cast();
         }
     }
 }

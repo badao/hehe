@@ -72,7 +72,6 @@
     <Reference Include="System.Drawing" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Champions\Amumu.cs" />
     <Compile Include="Champions\DrMundo.cs" />
     <Compile Include="Champions\Garen.cs" />
     <Compile Include="Champions\JarvanIV.cs" />

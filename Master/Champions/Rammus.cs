@@ -19,8 +19,6 @@ namespace Master
             SkillW = new Spell(SpellSlot.W, 325);
             SkillE = new Spell(SpellSlot.E, 300);
             SkillR = new Spell(SpellSlot.R, 300);
-            SkillE.SetTargetted(SkillE.Instance.SData.SpellCastTime, SkillE.Instance.SData.MissileSpeed);
-            SkillR.SetSkillshot(SkillR.Instance.SData.SpellCastTime, SkillR.Instance.SData.LineWidth, SkillR.Instance.SData.MissileSpeed, false, SkillshotType.SkillshotCircle);
 
             Config.AddSubMenu(new Menu("Combo/Harass", "csettings"));
             Config.SubMenu("csettings").AddItem(new MenuItem(Name + "qusage", "Use Q").SetValue(true));
@@ -54,7 +52,7 @@ namespace Master
             Drawing.OnDraw += OnDraw;
             AntiGapcloser.OnEnemyGapcloser += OnEnemyGapcloser;
             Interrupter.OnPossibleToInterrupt += OnPossibleToInterrupt;
-            Game.PrintChat("<font color = \"#33CCCC\">Master of {0}</font> <font color = \"#00ff00\">v{1}</font>", Name, Version);
+            Game.PrintChat("<font color = \"#33CCCC\">Master of {0}</font> <font color = \"#fff8e7\">Brian v{1}</font>", Name, Version);
         }
 
         private void OnGameUpdate(EventArgs args)
@@ -82,7 +80,7 @@ namespace Master
         private void OnEnemyGapcloser(ActiveGapcloser gapcloser)
         {
             if (!Config.Item(Name + "useAntiQ").GetValue<bool>()) return;
-            if (gapcloser.Sender.IsValidTarget(SkillE.Range) && SkillQ.IsReady() && !Player.HasBuff("PowerBall", true)) SkillQ.Cast(PacketCast);
+            if (gapcloser.Sender.IsValidTarget(SkillE.Range) && SkillQ.IsReady() && !Player.HasBuff("PowerBall", true)) SkillQ.Cast();
         }
 
         private void OnPossibleToInterrupt(Obj_AI_Base unit, InterruptableSpell spell)
@@ -98,9 +96,9 @@ namespace Master
             {
                 if (!SkillE.InRange(targetObj.Position))
                 {
-                    SkillQ.Cast(PacketCast);
+                    SkillQ.Cast();
                 }
-                else if (!Player.HasBuff("DefensiveBallCurl", true)) SkillQ.Cast(PacketCast);
+                else if (!Player.HasBuff("DefensiveBallCurl", true)) SkillQ.Cast();
             }
             if (Config.Item(Name + "eusage").GetValue<bool>() && SkillE.IsReady() && SkillE.InRange(targetObj.Position) && Player.Health * 100 / Player.MaxHealth >= Config.Item(Name + "autoeusage").GetValue<Slider>().Value)
             {
@@ -120,14 +118,14 @@ namespace Master
                 switch (Config.Item(Name + "ruseMode").GetValue<StringList>().SelectedIndex)
                 {
                     case 0:
-                        if (SkillR.InRange(targetObj.Position)) SkillR.Cast(PacketCast);
+                        if (SkillR.InRange(targetObj.Position)) SkillR.Cast();
                         break;
                     case 1:
-                        if (Player.CountEnemysInRange((int)SkillR.Range) >= Config.Item(Name + "rmulti").GetValue<Slider>().Value) SkillR.Cast(PacketCast);
+                        if (Utility.CountEnemysInRange((int)SkillR.Range) >= Config.Item(Name + "rmulti").GetValue<Slider>().Value) SkillR.Cast();
                         break;
                 }
             }
-            if (Config.Item(Name + "iusage").GetValue<bool>() && Items.CanUseItem(Rand) && Player.CountEnemysInRange(450) >= 1) Items.UseItem(Rand);
+            if (Config.Item(Name + "iusage").GetValue<bool>() && Items.CanUseItem(Rand) && Utility.CountEnemysInRange(450) >= 1) Items.UseItem(Rand);
             if (Config.Item(Name + "ignite").GetValue<bool>()) CastIgnite(targetObj);
         }
 
@@ -139,9 +137,9 @@ namespace Master
             {
                 if (!SkillE.InRange(minionObj.Position))
                 {
-                    SkillQ.Cast(PacketCast);
+                    SkillQ.Cast();
                 }
-                else if (!Player.HasBuff("DefensiveBallCurl", true)) SkillQ.Cast(PacketCast);
+                else if (!Player.HasBuff("DefensiveBallCurl", true)) SkillQ.Cast();
             }
             if (Config.Item(Name + "useClearE").GetValue<bool>() && SkillE.IsReady() && SkillE.InRange(minionObj.Position))
             {
@@ -155,7 +153,7 @@ namespace Master
                         break;
                 }
             }
-            if (Config.Item(Name + "useClearW").GetValue<bool>() && SkillW.IsReady() && SkillE.InRange(minionObj.Position) && !Player.HasBuff("PowerBall", true)) SkillW.Cast(PacketCast);
+            if (Config.Item(Name + "useClearW").GetValue<bool>() && SkillW.IsReady() && SkillE.InRange(minionObj.Position) && !Player.HasBuff("PowerBall", true)) SkillW.Cast();
         }
     }
 }

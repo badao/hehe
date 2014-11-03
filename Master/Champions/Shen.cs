@@ -23,7 +23,6 @@ namespace Master
             SkillE = new Spell(SpellSlot.E, 600);
             SkillR = new Spell(SpellSlot.R, 25000);
             SkillP = new Spell(Player.GetSpellSlot("ShenKiAttack", false), LXOrbwalker.GetAutoAttackRange());
-            SkillQ.SetTargetted(SkillQ.Instance.SData.SpellCastTime, SkillQ.Instance.SData.MissileSpeed);
             SkillE.SetSkillshot(SkillE.Instance.SData.SpellCastTime, SkillE.Instance.SData.LineWidth, SkillE.Instance.SData.MissileSpeed, false, SkillshotType.SkillshotLine);
 
             Config.AddSubMenu(new Menu("Combo", "csettings"));
@@ -67,7 +66,7 @@ namespace Master
             AntiGapcloser.OnEnemyGapcloser += OnEnemyGapcloser;
             Interrupter.OnPossibleToInterrupt += OnPossibleToInterrupt;
             Obj_AI_Base.OnCreate += OnCreate;
-            Game.PrintChat("<font color = \"#33CCCC\">Master of {0}</font> <font color = \"#00ff00\">v{1}</font>", Name, Version);
+            Game.PrintChat("<font color = \"#33CCCC\">Master of {0}</font> <font color = \"#fff8e7\">Brian v{1}</font>", Name, Version);
         }
 
         private void OnGameUpdate(EventArgs args)
@@ -137,7 +136,7 @@ namespace Master
                         {
                             if (Player.Health <= (caster as Obj_AI_Hero).GetSummonerSpellDamage(Player, Damage.SummonerSpell.Ignite) && Player.Health + ShieldBuff > (caster as Obj_AI_Hero).GetSummonerSpellDamage(Player, Damage.SummonerSpell.Ignite)) SkillW.Cast();
                         }
-                        else if (Player.Health <= (caster as Obj_AI_Hero).GetSpellDamage(Player, (caster as Obj_AI_Hero).GetSpellSlot(missle.SData.Name, false), 1) && Player.Health + ShieldBuff > (caster as Obj_AI_Hero).GetSpellDamage(Player, (caster as Obj_AI_Hero).GetSpellSlot(missle.SData.Name, false), 1)) SkillW.Cast();
+                        else if (Player.Health <= caster.GetDamageSpell(Player, missle.SData.Name).CalculatedDamage && Player.Health + ShieldBuff > caster.GetDamageSpell(Player, missle.SData.Name).CalculatedDamage) SkillW.Cast();
                     }
                 }
             }
@@ -151,7 +150,7 @@ namespace Master
             //Game.PrintChat("{0}/{1}", Player.GetAutoAttackDamage(targetObj), 4 + (4 * Player.Level) + (0.1 * Player.ScriptHealthBonus));
             if (targetObj.Health <= Player.GetComboDamage(targetObj, ComboQE) + AADmg)
             {
-                if (Config.Item(Name + "qusage").GetValue<bool>() && SkillQ.IsReady() && SkillQ.InRange(targetObj.Position) && CanKill(targetObj, SkillQ))
+                if (Config.Item(Name + "qusage").GetValue<bool>() && SkillQ.IsReady() && SkillQ.InRange(targetObj.Position) && SkillQ.IsKillable(targetObj))
                 {
                     SkillQ.CastOnUnit(targetObj, PacketCast);
                 }
@@ -172,14 +171,18 @@ namespace Master
                 {
                     if (Config.Item(Name + "multieusage").GetValue<bool>())
                     {
-                        SkillE.Cast(targetObj.Position + Vector3.Normalize(targetObj.Position - Player.Position) * ((CheckingCollision(Player, targetObj, SkillE).Count >= 2) ? SkillE.Range : 200), PacketCast);
+                        if (CheckingCollision(targetObj, SkillE, false))
+                        {
+                            SkillE.Cast(targetObj.Position + Vector3.Normalize(targetObj.Position - Player.Position) * SkillE.Range, PacketCast);
+                        }
+                        else SkillE.Cast(targetObj.Position + Vector3.Normalize(targetObj.Position - Player.Position) * 200, PacketCast);
                     }
                     else SkillE.Cast(targetObj.Position + Vector3.Normalize(targetObj.Position - Player.Position) * 200, PacketCast);
                 }
                 if (Config.Item(Name + "qusage").GetValue<bool>() && SkillQ.IsReady() && SkillQ.InRange(targetObj.Position)) SkillQ.CastOnUnit(targetObj, PacketCast);
             }
-            if (Config.Item(Name + "wusage").GetValue<bool>() && SkillW.IsReady() && SkillE.InRange(targetObj.Position) && Player.Health * 100 / Player.MaxHealth <= Config.Item(Name + "autowusage").GetValue<Slider>().Value) SkillW.Cast(PacketCast);
-            if (Config.Item(Name + "iusage").GetValue<bool>() && Items.CanUseItem(Rand) && Player.CountEnemysInRange(450) >= 1) Items.UseItem(Rand);
+            if (Config.Item(Name + "wusage").GetValue<bool>() && SkillW.IsReady() && SkillE.InRange(targetObj.Position) && Player.Health * 100 / Player.MaxHealth <= Config.Item(Name + "autowusage").GetValue<Slider>().Value) SkillW.Cast();
+            if (Config.Item(Name + "iusage").GetValue<bool>() && Items.CanUseItem(Rand) && Utility.CountEnemysInRange(450) >= 1) Items.UseItem(Rand);
             if (Config.Item(Name + "ignite").GetValue<bool>()) CastIgnite(targetObj);
         }
 
@@ -203,14 +206,14 @@ namespace Master
 
         private void LastHit()
         {
-            var minionObj = MinionManager.GetMinions(Player.Position, SkillQ.Range, MinionTypes.All, MinionTeam.NotAlly).FirstOrDefault(i => CanKill(i, SkillQ));
+            var minionObj = MinionManager.GetMinions(Player.Position, SkillQ.Range, MinionTypes.All, MinionTeam.NotAlly).FirstOrDefault(i => SkillQ.IsKillable(i));
             if (minionObj != null && SkillQ.IsReady()) SkillQ.CastOnUnit(minionObj, PacketCast);
         }
 
         private void UltimateAlert()
         {
             if (!SkillR.IsReady()) return;
-            foreach (var allyObj in ObjectManager.Get<Obj_AI_Hero>().Where(i => i.IsAlly && !i.IsMe && !i.IsDead && i.CountEnemysInRange(800) >= 1 && (i.Health * 100 / i.MaxHealth) <= Config.Item(Name + "autoalert").GetValue<Slider>().Value))
+            foreach (var allyObj in ObjectManager.Get<Obj_AI_Hero>().Where(i => i.IsAlly && !i.IsMe && !i.IsDead && Utility.CountEnemysInRange(i.Position, 800) >= 1 && (i.Health * 100 / i.MaxHealth) <= Config.Item(Name + "autoalert").GetValue<Slider>().Value))
             {
                 if (!PingCasted)
                 {
@@ -235,8 +238,9 @@ namespace Master
 
         private void AutoEInTower()
         {
-            if (Utility.UnderTurret() || !SkillE.IsReady()) return;
-            var target = ObjectManager.Get<Obj_AI_Hero>().FirstOrDefault(i => Utility.UnderTurret(i) && SkillE.InRange(i.Position));
+            var nearTower = ObjectManager.Get<Obj_AI_Turret>().FirstOrDefault(i => i.IsAlly && !i.IsDead && Player.Distance(i) <= 800);
+            if (nearTower == null || !SkillE.IsReady()) return;
+            var target = ObjectManager.Get<Obj_AI_Hero>().FirstOrDefault(i => i.IsValidTarget(800, true, nearTower.Position) && SkillE.InRange(i.Position));
             if (target != null) SkillE.Cast(target.Position + Vector3.Normalize(target.Position - Player.Position) * 200, PacketCast);
         }
     }
