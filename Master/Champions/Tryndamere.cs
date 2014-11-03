@@ -47,7 +47,7 @@ namespace Master
             Game.OnGameUpdate += OnGameUpdate;
             Drawing.OnDraw += OnDraw;
             GameObject.OnCreate += OnCreate;
-            Game.PrintChat("<font color = \"#33CCCC\">Master of {0}</font> <font color = \"#fff8e7\">Brian v{1}</font>", Name, Version);
+            Game.PrintChat("<font color = \"#33CCCC\">Master of {0}</font> <font color = \"#00ff00\">v{1}</font>", Name, Version);
         }
 
         private void OnGameUpdate(EventArgs args)
@@ -102,7 +102,7 @@ namespace Master
                         {
                             if (Player.Health <= (caster as Obj_AI_Hero).GetSummonerSpellDamage(Player, Damage.SummonerSpell.Ignite) && Player.Health + HealthBuff > (caster as Obj_AI_Hero).GetSummonerSpellDamage(Player, Damage.SummonerSpell.Ignite)) SkillQ.Cast();
                         }
-                        else if (Player.Health <= caster.GetDamageSpell(Player, missle.SData.Name).CalculatedDamage && Player.Health + HealthBuff > caster.GetDamageSpell(Player, missle.SData.Name).CalculatedDamage) SkillQ.Cast();
+                        else if (Player.Health <= (caster as Obj_AI_Hero).GetSpellDamage(Player, (caster as Obj_AI_Hero).GetSpellSlot(missle.SData.Name, false), 1) && Player.Health + HealthBuff > (caster as Obj_AI_Hero).GetSpellDamage(Player, (caster as Obj_AI_Hero).GetSpellSlot(missle.SData.Name, false), 1)) SkillQ.Cast();
                     }
                 }
                 if (Config.Item(Name + "surviveR").GetValue<bool>() && SkillR.IsReady())
@@ -117,7 +117,7 @@ namespace Master
                         {
                             if (Player.Health <= (caster as Obj_AI_Hero).GetSummonerSpellDamage(Player, Damage.SummonerSpell.Ignite)) SkillR.Cast();
                         }
-                        else if (Player.Health <= caster.GetDamageSpell(Player, missle.SData.Name).CalculatedDamage) SkillR.Cast();
+                        else if (Player.Health <= (caster as Obj_AI_Hero).GetSpellDamage(Player, (caster as Obj_AI_Hero).GetSpellSlot(missle.SData.Name, false), 1)) SkillR.Cast();
                     }
                 }
             }
@@ -126,14 +126,14 @@ namespace Master
         private void NormalCombo(bool IsHarass)
         {
             if (targetObj == null) return;
-            if (Config.Item(Name + "qusage").GetValue<bool>() && SkillQ.IsReady() && Player.Health * 100 / Player.MaxHealth <= Config.Item(Name + "autoqusage").GetValue<Slider>().Value && Utility.CountEnemysInRange(800) >= 1) SkillQ.Cast();
+            if (Config.Item(Name + "qusage").GetValue<bool>() && SkillQ.IsReady() && Player.Health * 100 / Player.MaxHealth <= Config.Item(Name + "autoqusage").GetValue<Slider>().Value && Player.CountEnemysInRange(800) >= 1) SkillQ.Cast(PacketCast);
             if (Config.Item(Name + "wusage").GetValue<bool>() && SkillW.IsReady() && SkillW.InRange(targetObj.Position))
             {
                 if (Utility.IsBothFacing(Player, targetObj, 300))
                 {
-                    if (Player.GetAutoAttackDamage(targetObj) < targetObj.GetAutoAttackDamage(Player) || Player.Health < targetObj.Health) SkillW.Cast();
+                    if (Player.GetAutoAttackDamage(targetObj) < targetObj.GetAutoAttackDamage(Player) || Player.Health < targetObj.Health) SkillW.Cast(PacketCast);
                 }
-                else if (Player.IsFacing(targetObj) && !targetObj.IsFacing(Player) && !LXOrbwalker.InAutoAttackRange(targetObj)) SkillW.Cast();
+                else if (Player.IsFacing(targetObj) && !targetObj.IsFacing(Player) && !LXOrbwalker.InAutoAttackRange(targetObj)) SkillW.Cast(PacketCast);
             }
             if (!IsHarass && Config.Item(Name + "eusage").GetValue<bool>() && SkillE.IsReady() && SkillE.InRange(targetObj.Position) && !LXOrbwalker.InAutoAttackRange(targetObj))
             {
@@ -156,7 +156,7 @@ namespace Master
 
         private void KillSteal()
         {
-            var target = ObjectManager.Get<Obj_AI_Hero>().FirstOrDefault(i => i.IsValidTarget(SkillE.Range) && SkillE.IsKillable(i) && i != targetObj);
+            var target = ObjectManager.Get<Obj_AI_Hero>().FirstOrDefault(i => i.IsValidTarget(SkillE.Range) && CanKill(i, SkillE) && i != targetObj);
             if (target != null && SkillE.IsReady()) SkillE.Cast(targetObj.Position + Vector3.Normalize(targetObj.Position - Player.Position) * 200, PacketCast);
         }
 
@@ -164,10 +164,10 @@ namespace Master
         {
             if (Items.CanUseItem(Bilge) && Player.Distance(target) <= 450) Items.UseItem(Bilge, target);
             if (Items.CanUseItem(Blade) && Player.Distance(target) <= 450) Items.UseItem(Blade, target);
-            if (Items.CanUseItem(Tiamat) && Utility.CountEnemysInRange(350) >= 1) Items.UseItem(Tiamat);
-            if (Items.CanUseItem(Hydra) && (Utility.CountEnemysInRange(350) >= 2 || (Player.GetAutoAttackDamage(target) < target.Health && Utility.CountEnemysInRange(350) == 1))) Items.UseItem(Hydra);
-            if (Items.CanUseItem(Rand) && Utility.CountEnemysInRange(450) >= 1) Items.UseItem(Rand);
-            if (Items.CanUseItem(Youmuu) && Utility.CountEnemysInRange(350) >= 1) Items.UseItem(Youmuu);
+            if (Items.CanUseItem(Tiamat) && Player.CountEnemysInRange(350) >= 1) Items.UseItem(Tiamat);
+            if (Items.CanUseItem(Hydra) && (Player.CountEnemysInRange(350) >= 2 || (Player.GetAutoAttackDamage(target) < target.Health && Player.CountEnemysInRange(350) == 1))) Items.UseItem(Hydra);
+            if (Items.CanUseItem(Rand) && Player.CountEnemysInRange(450) >= 1) Items.UseItem(Rand);
+            if (Items.CanUseItem(Youmuu) && Player.CountEnemysInRange(350) >= 1) Items.UseItem(Youmuu);
         }
     }
 }

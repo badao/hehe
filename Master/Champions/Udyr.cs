@@ -56,7 +56,7 @@ namespace Master
             Obj_AI_Base.OnProcessSpellCast += OnProcessSpellCast;
             Obj_AI_Base.OnCreate += OnCreate;
             Obj_AI_Base.OnDelete += OnDelete;
-            Game.PrintChat("<font color = \"#33CCCC\">Master of {0}</font> <font color = \"#fff8e7\">Brian v{1}</font>", Name, Version);
+            Game.PrintChat("<font color = \"#33CCCC\">Master of {0}</font> <font color = \"#00ff00\">v{1}</font>", Name, Version);
         }
 
         private void OnGameUpdate(EventArgs args)
@@ -84,8 +84,8 @@ namespace Master
             if (!Config.Item(Name + "useAntiE").GetValue<bool>()) return;
             if (gapcloser.Sender.IsValidTarget(SkillE.Range) && !gapcloser.Sender.HasBuff("udyrbearstuncheck", true) && (SkillE.IsReady() || CurStance == Stance.Bear))
             {
-                if (CurStance != Stance.Bear) SkillE.Cast();
-                Player.IssueOrder(GameObjectOrder.AttackUnit, gapcloser.Sender);
+                if (CurStance != Stance.Bear) SkillE.Cast(PacketCast);
+                if (CurStance == Stance.Bear) Player.IssueOrder(GameObjectOrder.AttackUnit, gapcloser.Sender);
             }
         }
 
@@ -94,8 +94,8 @@ namespace Master
             if (!Config.Item(Name + "useInterE").GetValue<bool>()) return;
             if (unit.IsValidTarget(SkillE.Range) && !unit.HasBuff("udyrbearstuncheck", true) && (SkillE.IsReady() || CurStance == Stance.Bear))
             {
-                if (CurStance != Stance.Bear) SkillE.Cast();
-                Player.IssueOrder(GameObjectOrder.AttackUnit, unit);
+                if (CurStance != Stance.Bear) SkillE.Cast(PacketCast);
+                if (CurStance == Stance.Bear) Player.IssueOrder(GameObjectOrder.AttackUnit, unit);
             }
         }
 
@@ -149,7 +149,7 @@ namespace Master
                         {
                             if (Player.Health <= (caster as Obj_AI_Hero).GetSummonerSpellDamage(Player, Damage.SummonerSpell.Ignite) && Player.Health + ShieldBuff > (caster as Obj_AI_Hero).GetSummonerSpellDamage(Player, Damage.SummonerSpell.Ignite)) SkillW.Cast();
                         }
-                        else if (Player.Health <= caster.GetDamageSpell(Player, missle.SData.Name).CalculatedDamage && Player.Health + ShieldBuff > caster.GetDamageSpell(Player, missle.SData.Name).CalculatedDamage) SkillW.Cast();
+                        else if (Player.Health <= (caster as Obj_AI_Hero).GetSpellDamage(Player, (caster as Obj_AI_Hero).GetSpellSlot(missle.SData.Name, false), 1) && Player.Health + ShieldBuff > (caster as Obj_AI_Hero).GetSpellDamage(Player, (caster as Obj_AI_Hero).GetSpellSlot(missle.SData.Name, false), 1)) SkillW.Cast();
                     }
                 }
             }
@@ -164,26 +164,26 @@ namespace Master
         private void NormalCombo()
         {
             if (targetObj == null) return;
-            if (Config.Item(Name + "eusage").GetValue<bool>() && SkillE.IsReady() && !targetObj.HasBuff("udyrbearstuncheck", true)) SkillE.Cast();
+            if (Config.Item(Name + "eusage").GetValue<bool>() && SkillE.IsReady() && !targetObj.HasBuff("udyrbearstuncheck", true)) SkillE.Cast(PacketCast);
             if (targetObj.IsValidTarget(400) && (!Config.Item(Name + "eusage").GetValue<bool>() || (Config.Item(Name + "eusage").GetValue<bool>() && (SkillE.Level == 0 || (SkillE.Level >= 1 && targetObj.HasBuff("udyrbearstuncheck", true))))))
             {
-                if (Config.Item(Name + "qusage").GetValue<bool>() && SkillQ.IsReady()) SkillQ.Cast();
+                if (Config.Item(Name + "qusage").GetValue<bool>() && SkillQ.IsReady()) SkillQ.Cast(PacketCast);
                 if (Config.Item(Name + "rusage").GetValue<bool>() && SkillR.IsReady() && SkillQ.Level >= 1 && CurStance == Stance.Tiger && (AACount >= 2 || TigerActive))
                 {
-                    SkillR.Cast();
+                    SkillR.Cast(PacketCast);
                 }
-                else if (SkillQ.Level == 0 && SkillR.IsReady()) SkillR.Cast();
+                else if (SkillQ.Level == 0 && SkillR.IsReady()) SkillR.Cast(PacketCast);
                 if (Config.Item(Name + "wusage").GetValue<bool>() && SkillW.IsReady())
                 {
                     if (CurStance == Stance.Phoenix && (AACount >= 3 || PhoenixActive))
                     {
-                        SkillW.Cast();
+                        SkillW.Cast(PacketCast);
                     }
                     else if (CurStance == Stance.Tiger && (AACount >= 2 || TigerActive))
                     {
-                        SkillW.Cast();
+                        SkillW.Cast(PacketCast);
                     }
-                    else if (SkillQ.Level == 0 && SkillR.Level == 0) SkillW.Cast();
+                    else if (SkillQ.Level == 0 && SkillR.Level == 0) SkillW.Cast(PacketCast);
                 }
             }
             if (Config.Item(Name + "iusage").GetValue<bool>()) UseItem(targetObj);
@@ -195,26 +195,26 @@ namespace Master
             minionObj = MinionManager.GetMinions(Player.Position, SkillE.Range, MinionTypes.All, MinionTeam.NotAlly).FirstOrDefault();
             LXOrbwalker.ForcedTarget = minionObj;
             if (minionObj == null) return;
-            if (Config.Item(Name + "useClearE").GetValue<bool>() && SkillE.IsReady() && !minionObj.HasBuff("udyrbearstuncheck", true)) SkillE.Cast();
+            if (Config.Item(Name + "useClearE").GetValue<bool>() && SkillE.IsReady() && !minionObj.HasBuff("udyrbearstuncheck", true)) SkillE.Cast(PacketCast);
             if (minionObj.IsValidTarget(400) && (!Config.Item(Name + "useClearE").GetValue<bool>() || (Config.Item(Name + "useClearE").GetValue<bool>() && (SkillE.Level == 0 || (SkillE.Level >= 1 && minionObj.HasBuff("udyrbearstuncheck", true))))))
             {
-                if (Config.Item(Name + "useClearQ").GetValue<bool>() && SkillQ.IsReady()) SkillQ.Cast();
+                if (Config.Item(Name + "useClearQ").GetValue<bool>() && SkillQ.IsReady()) SkillQ.Cast(PacketCast);
                 if (Config.Item(Name + "useClearR").GetValue<bool>() && SkillR.IsReady() && SkillQ.Level >= 1 && CurStance == Stance.Tiger && (AACount >= 2 || TigerActive))
                 {
-                    SkillR.Cast();
+                    SkillR.Cast(PacketCast);
                 }
-                else if (SkillQ.Level == 0 && SkillR.IsReady()) SkillR.Cast();
+                else if (SkillQ.Level == 0 && SkillR.IsReady()) SkillR.Cast(PacketCast);
                 if (Config.Item(Name + "useClearW").GetValue<bool>() && SkillW.IsReady())
                 {
                     if (CurStance == Stance.Phoenix && (AACount >= 3 || PhoenixActive))
                     {
-                        SkillW.Cast();
+                        SkillW.Cast(PacketCast);
                     }
                     else if (CurStance == Stance.Tiger && (AACount >= 2 || TigerActive))
                     {
-                        SkillW.Cast();
+                        SkillW.Cast(PacketCast);
                     }
-                    else if (SkillQ.Level == 0 && SkillR.Level == 0) SkillW.Cast();
+                    else if (SkillQ.Level == 0 && SkillR.Level == 0) SkillW.Cast(PacketCast);
                 }
             }
         }
@@ -225,34 +225,34 @@ namespace Master
             var manaW = SkillW.Instance.ManaCost;
             var manaR = SkillR.Instance.ManaCost;
             var PData = Player.Buffs.FirstOrDefault(i => i.Name == "udyrmonkeyagilitybuff");
-            if (SkillE.IsReady()) SkillE.Cast();
+            if (SkillE.IsReady()) SkillE.Cast(PacketCast);
             if (PData != null && PData.Count < 3)
             {
                 if ((manaQ < manaW || manaQ < manaR || (manaQ == manaW && manaQ < manaR) || (manaQ == manaR && manaQ < manaW)) && SkillQ.IsReady())
                 {
-                    SkillQ.Cast();
+                    SkillQ.Cast(PacketCast);
                 }
                 else if ((manaW < manaQ || manaW < manaR || (manaW == manaQ && manaW < manaR) || (manaW == manaR && manaW < manaQ)) && SkillW.IsReady())
                 {
-                    SkillW.Cast();
+                    SkillW.Cast(PacketCast);
                 }
-                else if ((manaR < manaQ || manaR < manaW || (manaR == manaQ && manaR < manaW) || (manaR == manaW && manaR < manaQ)) && SkillR.IsReady()) SkillR.Cast();
+                else if ((manaR < manaQ || manaR < manaW || (manaR == manaQ && manaR < manaW) || (manaR == manaW && manaR < manaQ)) && SkillR.IsReady()) SkillR.Cast(PacketCast);
             }
         }
 
         private void StunCycle()
         {
             var targetClosest = ObjectManager.Get<Obj_AI_Hero>().Where(i => i.IsValidTarget(SkillE.Range) && !i.HasBuff("udyrbearstuncheck", true)).OrderBy(i => i.Distance(Player)).FirstOrDefault();
-            LXOrbwalker.Orbwalk(Game.CursorPos, targetClosest);
+            Orbwalk(targetClosest);
             if (targetClosest == null) return;
-            if (SkillE.IsReady()) SkillE.Cast();
+            if (SkillE.IsReady()) SkillE.Cast(PacketCast);
         }
 
         private void UseItem(Obj_AI_Hero target)
         {
             if (Items.CanUseItem(Bilge) && Player.Distance(target) <= 450) Items.UseItem(Bilge, target);
             if (Items.CanUseItem(Blade) && Player.Distance(target) <= 450) Items.UseItem(Blade, target);
-            if (Items.CanUseItem(Rand) && Utility.CountEnemysInRange(450) >= 1) Items.UseItem(Rand);
+            if (Items.CanUseItem(Rand) && Player.CountEnemysInRange(450) >= 1) Items.UseItem(Rand);
         }
     }
 }
