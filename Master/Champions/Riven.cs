@@ -74,7 +74,7 @@ namespace Master
             Interrupter.OnPossibleToInterrupt += OnPossibleToInterrupt;
             Game.OnGameProcessPacket += OnGameProcessPacket;
             Game.OnGameSendPacket += OnGameSendPacket;
-            Game.PrintChat("<font color = \"#33CCCC\">Master of {0}</font> <font color = \"#fff8e7\">Brian v{1}</font>", Name, Version);
+            Game.PrintChat("<font color = \"#33CCCC\">Master of {0}</font> <font color = \"#00ff00\">v{1}</font>", Name, Version);
         }
 
         private void OnGameProcessPacket(GamePacketEventArgs args)
