@@ -72,7 +72,7 @@ namespace Master
             if (Player.IsDead) return;
             targetObj = GetTarget();
             var newTarget = Hud.SelectedUnit;
-            if (newTarget != null && newTarget.IsValid && newTarget is Obj_AI_Hero && (newTarget as Obj_AI_Hero).IsValidTarget(2000)) targetObj = (Obj_AI_Hero)newTarget;
+            if (newTarget is Obj_AI_Hero && (newTarget as Obj_AI_Hero).IsValidTarget(2000) && (newTarget as Obj_AI_Hero).Health > 0) targetObj = (Obj_AI_Hero)newTarget;
             LXOrbwalker.ForcedTarget = Config.Item("tsFocus").GetValue<bool>() ? targetObj : null;
         }
 
@@ -121,7 +121,7 @@ namespace Master
 
         public static bool CanKill(Obj_AI_Base target, Spell Skill, int Stage = 0)
         {
-            return (Skill.GetHealthPrediction(target) + 20 < Skill.GetDamage(target, Stage)) ? true : false;
+            return (Skill.GetHealthPrediction(target) + 35 < Skill.GetDamage(target, Stage)) ? true : false;
         }
 
         public static void SkinChanger(object sender, OnValueChangeEventArgs e)
@@ -129,22 +129,33 @@ namespace Master
             Utility.DelayAction.Add(35, () => Packet.S2C.UpdateModel.Encoded(new Packet.S2C.UpdateModel.Struct(Player.NetworkId, Config.Item(Name + "SkinID").GetValue<Slider>().Value, Name)).Process());
         }
 
-        public static List<Obj_AI_Base> CheckingCollision(Obj_AI_Base from, Obj_AI_Base target, Spell Skill)
+        public static List<Obj_AI_Base> CheckingCollision(Obj_AI_Base from, Obj_AI_Base target, Spell Skill, bool Mid = true, bool OnlyHero = false)
         {
             var ListCol = new List<Obj_AI_Base>();
-            foreach (var Col in ObjectManager.Get<Obj_AI_Base>().Where(i => i.IsValidTarget(Skill.Range) && !(i is Obj_AI_Turret) && Skill.GetPrediction(i).Hitchance >= HitChance.Medium && i != target))
+            foreach (var Obj in ObjectManager.Get<Obj_AI_Base>().Where(i => i.IsValidTarget(Skill.Range) && (!Mid || (Mid && Skill.GetPrediction(i).Hitchance >= HitChance.Medium)) && ((!OnlyHero && i is Obj_AI_Minion) || (OnlyHero && i is Obj_AI_Hero)) && i != target))
             {
-                var Segment = Col.Position.To2D().ProjectOn(from.Position.To2D(), (from.Position + Vector3.Normalize(target.Position - from.Position) * Skill.Range).To2D());
-                if (Segment.IsOnSegment && Col.Position.Distance(new Vector3(Segment.SegmentPoint.X, Col.Position.Y, Segment.SegmentPoint.Y)) <= Col.BoundingRadius + Skill.Width) ListCol.Add(Col);
+                var Segment = (Mid ? Obj : target).Position.To2D().ProjectOn(from.Position.To2D(), Mid ? target.Position.To2D() : Obj.Position.To2D());
+                if (Segment.IsOnSegment)
+                {
+                    if (Mid)
+                    {
+                        if (Obj.Position.Distance(new Vector3(Segment.SegmentPoint.X, Obj.Position.Y, Segment.SegmentPoint.Y)) <= Obj.BoundingRadius + Skill.Width) ListCol.Add(Obj);
+                    }
+                    else
+                    {
+                        if (Obj.Distance(Segment.LinePoint) <= target.BoundingRadius + Skill.Width) ListCol.Add(Obj);
+                    }
+                }
             }
             return ListCol.Distinct().ToList();
         }
 
         public static bool SmiteCollision(Obj_AI_Hero target, Spell Skill)
         {
+            if (!SmiteReady()) return false;
             var Col1 = CheckingCollision(Player, target, Skill);
             if (Col1.Count == 0 || Col1.Count > 1) return false;
-            if (Skill.InRange(target.Position) && Col1.Count == 1 && (Col1.First() is Obj_AI_Minion))
+            if (Skill.InRange(target.Position) && Col1.First() is Obj_AI_Minion)
             {
                 if (CastSmite(Col1.First()))
                 {
@@ -177,34 +188,19 @@ namespace Master
 
         public static bool CastSmite(Obj_AI_Base target)
         {
-            if (SmiteReady() && target.IsValidTarget(SData.SData.CastRange[0]) && target.Health <= Player.GetSummonerSpellDamage(target, Damage.SummonerSpell.Smite))
-            {
-                Player.SummonerSpellbook.CastSpell(SData.Slot, target);
-                return true;
-            }
-            return false;
+            return (SmiteReady() && target.IsValidTarget(SData.SData.CastRange[0]) && target.Health <= Player.GetSummonerSpellDamage(target, Damage.SummonerSpell.Smite) && Player.SummonerSpellbook.CastSpell(SData.Slot, target));
         }
 
         public static bool CastIgnite(Obj_AI_Hero target)
         {
-            if (IgniteReady() && target.IsValidTarget(IData.SData.CastRange[0]) && HealthPrediction.GetHealthPrediction(target, (int)(Player.Distance(target) / 1500 * 1000 + 250)) + 20 < Player.GetSummonerSpellDamage(target, Damage.SummonerSpell.Ignite))
-            {
-                Player.SummonerSpellbook.CastSpell(IData.Slot, target);
-                return true;
-            }
-            return false;
+            return (IgniteReady() && target.IsValidTarget(IData.SData.CastRange[0]) && HealthPrediction.GetHealthPrediction(target, (int)(Player.Distance(target) / 1500 * 1000 + 250)) + 35 < Player.GetSummonerSpellDamage(target, Damage.SummonerSpell.Ignite) && Player.SummonerSpellbook.CastSpell(IData.Slot, target));
         }
 
         public static InventorySlot GetWardSlot()
         {
-            Int32[] wardIds = { 3340, 3361, 3205, 3207, 3154, 3160, 2049, 2045, 2050, 2044 };
-            InventorySlot warditem = null;
-            foreach (var wardId in wardIds)
-            {
-                warditem = Player.InventoryItems.FirstOrDefault(i => i.Id == (ItemId)wardId);
-                if (warditem != null && Player.Spellbook.Spells.First(i => (Int32)i.Slot == warditem.Slot + 4).State == SpellState.Ready) return warditem;
-            }
-            return warditem;
+            Int32[] wardId = { 3340, 3361, 3205, 3207, 3154, 3160, 2049, 2045, 2050, 2044 };
+            foreach (var Id in wardId.Where(i => Items.CanUseItem(i))) return Player.InventoryItems.First(i => i.Id == (ItemId)Id);
+            return null;
         }
     }
 }
