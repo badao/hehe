@@ -6,20 +6,165 @@ using Color = System.Drawing.Color;
 using LeagueSharp;
 using LeagueSharp.Common;
 using SharpDX;
-using LX_Orbwalker;
+
+using MasterCommon;
+using Orbwalk = MasterCommon.M_Orbwalker;
 
 namespace Master
 {
+    public class HtmlColor
+    {
+        public const string AliceBlue = "#F0F8FF";
+        public const string AntiqueWhite = "#FAEBD7";
+        public const string Aqua = "#00FFFF";
+        public const string Aquamarine = "#7FFFD4";
+        public const string Azure = "#F0FFFF";
+        public const string Beige = "#F5F5DC";
+        public const string Bisque = "#FFE4C4";
+        public const string Black = "#000000";
+        public const string BlanchedAlmond = "#FFEBCD";
+        public const string Blue = "#0000FF";
+        public const string BlueViolet = "#8A2BE2";
+        public const string Brown = "#A52A2A";
+        public const string BurlyWood = "#DEB887";
+        public const string CadetBlue = "#5F9EA0";
+        public const string Chartreuse = "#7FFF00";
+        public const string Chocolate = "#D2691E";
+        public const string Coral = "#FF7F50";
+        public const string CornflowerBlue = "#6495ED";
+        public const string Cornsilk = "#FFF8DC";
+        public const string Crimson = "#DC143C";
+        public const string Cyan = "#00FFFF";
+        public const string DarkBlue = "#00008B";
+        public const string DarkCyan = "#008B8B";
+        public const string DarkGoldenRod = "#B8860B";
+        public const string DarkGray = "#A9A9A9";
+        public const string DarkGreen = "#006400";
+        public const string DarkKhaki = "#BDB76B";
+        public const string DarkMagenta = "#8B008B";
+        public const string DarkOliveGreen = "#556B2F";
+        public const string DarkOrange = "#FF8C00";
+        public const string DarkOrchid = "#9932CC";
+        public const string DarkRed = "#8B0000";
+        public const string DarkSalmon = "#E9967A";
+        public const string DarkSeaGreen = "#8FBC8F";
+        public const string DarkSlateBlue = "#483D8B";
+        public const string DarkSlateGray = "#2F4F4F";
+        public const string DarkTurquoise = "#00CED1";
+        public const string DarkViolet = "#9400D3";
+        public const string DeepPink = "#FF1493";
+        public const string DeepSkyBlue = "#00BFFF";
+        public const string DimGray = "#696969";
+        public const string DodgerBlue = "#1E90FF";
+        public const string FireBrick = "#B22222";
+        public const string FloralWhite = "#FFFAF0";
+        public const string ForestGreen = "#228B22";
+        public const string Fuchsia = "#FF00FF";
+        public const string Gainsboro = "#DCDCDC";
+        public const string GhostWhite = "#F8F8FF";
+        public const string Gold = "#FFD700";
+        public const string GoldenRod = "#DAA520";
+        public const string Gray = "#808080";
+        public const string Green = "#008000";
+        public const string GreenYellow = "#ADFF2F";
+        public const string HoneyDew = "#F0FFF0";
+        public const string HotPink = "#FF69B4";
+        public const string IndianRed = "#CD5C5C";
+        public const string Indigo = "#4B0082";
+        public const string Ivory = "#FFFFF0";
+        public const string Khaki = "#F0E68C";
+        public const string Lavender = "#E6E6FA";
+        public const string LavenderBlush = "#FFF0F5";
+        public const string LawnGreen = "#7CFC00";
+        public const string LemonChiffon = "#FFFACD";
+        public const string LightBlue = "#ADD8E6";
+        public const string LightCoral = "#F08080";
+        public const string LightCyan = "#E0FFFF";
+        public const string LightGoldenRodYellow = "#FAFAD2";
+        public const string LightGray = "#D3D3D3";
+        public const string LightGreen = "#90EE90";
+        public const string LightPink = "#FFB6C1";
+        public const string LightSalmon = "#FFA07A";
+        public const string LightSeaGreen = "#20B2AA";
+        public const string LightSkyBlue = "#87CEFA";
+        public const string LightSlateGray = "#778899";
+        public const string LightSteelBlue = "#B0C4DE";
+        public const string LightYellow = "#FFFFE0";
+        public const string Lime = "#00FF00";
+        public const string LimeGreen = "#32CD32";
+        public const string Linen = "#FAF0E6";
+        public const string Magenta = "#FF00FF";
+        public const string Maroon = "#800000";
+        public const string MediumAquaMarine = "#66CDAA";
+        public const string MediumBlue = "#0000CD";
+        public const string MediumOrchid = "#BA55D3";
+        public const string MediumPurple = "#9370DB";
+        public const string MediumSeaGreen = "#3CB371";
+        public const string MediumSlateBlue = "#7B68EE";
+        public const string MediumSpringGreen = "#00FA9A";
+        public const string MediumTurquoise = "#48D1CC";
+        public const string MediumVioletRed = "#C71585";
+        public const string MidnightBlue = "#191970";
+        public const string MintCream = "#F5FFFA";
+        public const string MistyRose = "#FFE4E1";
+        public const string Moccasin = "#FFE4B5";
+        public const string NavajoWhite = "#FFDEAD";
+        public const string Navy = "#000080";
+        public const string OldLace = "#FDF5E6";
+        public const string Olive = "#808000";
+        public const string OliveDrab = "#6B8E23";
+        public const string Orange = "#FFA500";
+        public const string OrangeRed = "#FF4500";
+        public const string Orchid = "#DA70D6";
+        public const string PaleGoldenRod = "#EEE8AA";
+        public const string PaleGreen = "#98FB98";
+        public const string PaleTurquoise = "#AFEEEE";
+        public const string PaleVioletRed = "#DB7093";
+        public const string PapayaWhip = "#FFEFD5";
+        public const string PeachPuff = "#FFDAB9";
+        public const string Peru = "#CD853F";
+        public const string Pink = "#FFC0CB";
+        public const string Plum = "#DDA0DD";
+        public const string PowderBlue = "#B0E0E6";
+        public const string Purple = "#800080";
+        public const string Red = "#FF0000";
+        public const string RosyBrown = "#BC8F8F";
+        public const string RoyalBlue = "#4169E1";
+        public const string SaddleBrown = "#8B4513";
+        public const string Salmon = "#FA8072";
+        public const string SandyBrown = "#F4A460";
+        public const string SeaGreen = "#2E8B57";
+        public const string SeaShell = "#FFF5EE";
+        public const string Sienna = "#A0522D";
+        public const string Silver = "#C0C0C0";
+        public const string SkyBlue = "#87CEEB";
+        public const string SlateBlue = "#6A5ACD";
+        public const string SlateGray = "#708090";
+        public const string Snow = "#FFFAFA";
+        public const string SpringGreen = "#00FF7F";
+        public const string SteelBlue = "#4682B4";
+        public const string Tan = "#D2B48C";
+        public const string Teal = "#008080";
+        public const string Thistle = "#D8BFD8";
+        public const string Tomato = "#FF6347";
+        public const string Turquoise = "#40E0D0";
+        public const string Violet = "#EE82EE";
+        public const string Wheat = "#F5DEB3";
+        public const string White = "#FFFFFF";
+        public const string WhiteSmoke = "#F5F5F5";
+        public const string Yellow = "#FFFF00";
+        public const string YellowGreen = "#9ACD32";
+    }
+
     class Program
     {
-        public static Obj_AI_Hero Player = ObjectManager.Player, targetObj = null;
-        private static TargetSelector selectTarget;
+        public static Obj_AI_Hero Player = null, targetObj = null;
         public static Spell SkillQ, SkillW, SkillE, SkillR;
         private static SpellDataInst FData, SData, IData;
-        public static Int32 Tiamat = 3077, Hydra = 3074, Blade = 3153, Bilge = 3144, Rand = 3143, Youmuu = 3142;
+        public static Int32 Tiamat = 3077, Hydra = 3074, Bilge = 3144, Blade = 3153, Rand = 3143, Youmuu = 3142;
         public static Menu Config;
         public static String Name;
-        public static Boolean PacketCast = false;
+        private static M_TargetSelector TS;
 
         private static void Main(string[] args)
         {
@@ -28,138 +173,154 @@ namespace Master
 
         private static void OnGameLoad(EventArgs args)
         {
-            Game.PrintChat("<font color = \"#00bfff\">Master Series</font> by <font color = \"#9370db\">Brian</font>");
-            Game.PrintChat("<font color = \"#ffa500\">Feel free to donate via Paypal to:</font> <font color = \"#ff4500\">dcbrian01@gmail.com</font>");
+            Player = ObjectManager.Player;
             Name = Player.ChampionName;
-            Config = new Menu("Master Of " + Name, "Master_" + Name, true);
-
-            Config.AddSubMenu(new Menu("Target Selector", "TSSettings"));
-            Config.SubMenu("TSSettings").AddItem(new MenuItem("tsMode", "Mode").SetValue(new StringList(new[] { "Auto", "Most AD", "Most AP", "Less Attack", "Less Cast", "Low Hp", "Closest", "Near Mouse" })));
-            Config.SubMenu("TSSettings").AddItem(new MenuItem("tsFocus", "Forced Target").SetValue(true));
-            Config.SubMenu("TSSettings").AddItem(new MenuItem("tsDraw", "Draw Target").SetValue(true));
-            selectTarget = new TargetSelector(2000, TargetSelector.TargetingMode.AutoPriority);
-
-            var OWMenu = new Menu("Orbwalker", "Orbwalker");
-            LXOrbwalker.AddToMenu(OWMenu);
-            Config.AddSubMenu(OWMenu);
-
+            Game.PrintChat("<font color = \'{0}'>Master Series</font>", HtmlColor.Lime);
+            Game.PrintChat("<font color = \'{0}'>-></font> <font color = \'{1}'>Feel free to donate via Paypal to</font>: <font color = \'{2}'>dcbrian01@gmail.com</font>", HtmlColor.BlueViolet, HtmlColor.Orange, HtmlColor.LightCoral);
+            Config = new Menu("Master Series", "MasterSeries", true);
+            TS = new M_TargetSelector(Config, 1600);
+            Orbwalk.AddToMenu(Config);
             try
             {
-                if (Activator.CreateInstance(null, "Master." + Name) != null)
+                if (Activator.CreateInstance(null, "MasterPlugin." + Name) != null)
                 {
-                    var QData = Player.Spellbook.GetSpell(SpellSlot.Q);
-                    var WData = Player.Spellbook.GetSpell(SpellSlot.W);
-                    var EData = Player.Spellbook.GetSpell(SpellSlot.E);
-                    var RData = Player.Spellbook.GetSpell(SpellSlot.R);
+                    //var QData = Player.Spellbook.GetSpell(SpellSlot.Q);
+                    //var WData = Player.Spellbook.GetSpell(SpellSlot.W);
+                    //var EData = Player.Spellbook.GetSpell(SpellSlot.E);
+                    //var RData = Player.Spellbook.GetSpell(SpellSlot.R);
                     //Game.PrintChat("{0}/{1}/{2}/{3}", QData.SData.CastRange[0], WData.SData.CastRange[0], EData.SData.CastRange[0], RData.SData.CastRange[0]);
+                    ItemBool(Config.SubMenu(Name + "_Plugin").SubMenu("Misc"), "UsePacket", "Use Packet To Cast");
                     FData = Player.SummonerSpellbook.GetSpell(Player.GetSpellSlot("summonerflash"));
                     SData = Player.SummonerSpellbook.GetSpell(Player.GetSpellSlot("summonersmite"));
                     IData = Player.SummonerSpellbook.GetSpell(Player.GetSpellSlot("summonerdot"));
-                    Game.OnGameUpdate += OnGameUpdate;
-                    Drawing.OnDraw += OnDraw;
                     SkinChanger(null, null);
+                    Game.PrintChat("<font color = \'{0}'>-></font> <font color = \'{1}'>Master Of {2}</font>: <font color = \'{3}'>Loaded !</font>", HtmlColor.BlueViolet, HtmlColor.Gold, Name, HtmlColor.Cyan);
+                    Game.OnGameUpdate += OnGameUpdate;
                 }
             }
             catch
             {
-                Game.PrintChat("[Master Series] => {0} Not Support !", Name);
+                Game.PrintChat("<font color = \'{0}'>-></font> <font color = \'{1}'>{2}</font>: <font color = \'{3}'>Currently not supported !</font>", HtmlColor.BlueViolet, HtmlColor.Gold, Name, HtmlColor.Cyan);
             }
+            Config.AddItem(new MenuItem("Info", "Credits: Brian"));
             Config.AddToMainMenu();
         }
 
-        private static void OnGameUpdate(EventArgs args)
+        public static MenuItem ItemBool(Menu SubMenu, string Item, string Display, bool State = true)
         {
-            if (Player.IsDead) return;
-            targetObj = GetTarget();
-            var newTarget = Hud.SelectedUnit;
-            if (newTarget is Obj_AI_Hero && (newTarget as Obj_AI_Hero).IsValidTarget(2000) && (newTarget as Obj_AI_Hero).Health > 0) targetObj = (Obj_AI_Hero)newTarget;
-            LXOrbwalker.ForcedTarget = Config.Item("tsFocus").GetValue<bool>() ? targetObj : null;
+            return SubMenu.AddItem(new MenuItem(Name + "_" + SubMenu.Name + "_" + Item, Display).SetValue(State));
         }
 
-        private static void OnDraw(EventArgs args)
+        public static MenuItem ItemSlider(Menu SubMenu, string Item, string Display, int Cur, int Min = 1, int Max = 100)
         {
-            if (Player.IsDead || !Config.Item("tsDraw").GetValue<bool>() || targetObj == null) return;
-            Utility.DrawCircle(targetObj.Position, 130, Color.Red);
+            return SubMenu.AddItem(new MenuItem(Name + "_" + SubMenu.Name + "_" + Item, Display).SetValue(new Slider(Cur, Min, Max)));
         }
 
-        private static Obj_AI_Hero GetTarget()
+        public static MenuItem ItemList(Menu SubMenu, string Item, string Display, string[] Text)
         {
-            switch (Config.Item("tsMode").GetValue<StringList>().SelectedIndex)
-            {
-                case 0:
-                    selectTarget.SetTargetingMode(TargetSelector.TargetingMode.AutoPriority);
-                    break;
-                case 1:
-                    selectTarget.SetTargetingMode(TargetSelector.TargetingMode.MostAD);
-                    break;
-                case 2:
-                    selectTarget.SetTargetingMode(TargetSelector.TargetingMode.MostAP);
-                    break;
-                case 3:
-                    selectTarget.SetTargetingMode(TargetSelector.TargetingMode.LessAttack);
-                    break;
-                case 4:
-                    selectTarget.SetTargetingMode(TargetSelector.TargetingMode.LessCast);
-                    break;
-                case 5:
-                    selectTarget.SetTargetingMode(TargetSelector.TargetingMode.LowHP);
-                    break;
-                case 6:
-                    selectTarget.SetTargetingMode(TargetSelector.TargetingMode.Closest);
-                    break;
-                case 7:
-                    selectTarget.SetTargetingMode(TargetSelector.TargetingMode.NearMouse);
-                    break;
-            }
-            return selectTarget.Target;
+            return SubMenu.AddItem(new MenuItem(Name + "_" + SubMenu.Name + "_" + Item, Display).SetValue(new StringList(Text)));
         }
 
-        public static void Orbwalk(Obj_AI_Base target)
+        public static bool ItemActive(string Item)
         {
-            LXOrbwalker.Orbwalk(Game.CursorPos, (target != null && LXOrbwalker.InAutoAttackRange(target)) ? target : null);
+            return Config.SubMenu("OW").SubMenu("Mode").Item(Name + Item).GetValue<KeyBind>().Active;
         }
 
-        public static bool CanKill(Obj_AI_Base target, Spell Skill, int Stage = 0)
+        public static bool ItemBool(string SubMenu, string Item)
         {
-            return (Skill.GetHealthPrediction(target) + 35 < Skill.GetDamage(target, Stage)) ? true : false;
+            return Config.SubMenu(Name + "_Plugin").Item(Name + "_" + SubMenu + "_" + Item).GetValue<bool>();
+        }
+
+        public static Int32 ItemSlider(string SubMenu, string Item)
+        {
+            return Config.SubMenu(Name + "_Plugin").Item(Name + "_" + SubMenu + "_" + Item).GetValue<Slider>().Value;
+        }
+
+        public static Int32 ItemList(string SubMenu, string Item)
+        {
+            return Config.SubMenu(Name + "_Plugin").Item(Name + "_" + SubMenu + "_" + Item).GetValue<StringList>().SelectedIndex;
         }
 
         public static void SkinChanger(object sender, OnValueChangeEventArgs e)
         {
-            Utility.DelayAction.Add(35, () => Packet.S2C.UpdateModel.Encoded(new Packet.S2C.UpdateModel.Struct(Player.NetworkId, Config.Item(Name + "SkinID").GetValue<Slider>().Value, Name)).Process());
+            if (Config.SubMenu(Name + "_Plugin").Item(Name + "_Misc_CustomSkin") == null) return;
+            Utility.DelayAction.Add(35, () =>
+                {
+                    var SkinPacket = new GamePacket(0x97);
+                    SkinPacket.WriteInteger(Player.NetworkId);
+                    SkinPacket.Position = 1;
+                    var t1 = SkinPacket.ReadByte();
+                    var t2 = SkinPacket.ReadByte();
+                    var t3 = SkinPacket.ReadByte();
+                    var t4 = SkinPacket.ReadByte();
+                    SkinPacket.WriteByte(t1);
+                    SkinPacket.WriteByte(t2);
+                    SkinPacket.WriteByte(t3);
+                    SkinPacket.WriteByte((byte)(t4 & 0xB));
+                    SkinPacket.WriteByte(1);
+                    SkinPacket.WriteInteger(ItemSlider("Misc", "CustomSkin"));
+                    for (int i = 0; i < Name.Length; i++)
+                    {
+                        SkinPacket.WriteByte(Convert.ToByte(Name[i]));
+                    }
+                    for (int i = 0; i < 64 - Name.Length; i++)
+                    {
+                        SkinPacket.WriteByte(0);
+                    }
+                    SkinPacket.Process();
+                });
         }
 
-        public static List<Obj_AI_Base> CheckingCollision(Obj_AI_Base from, Obj_AI_Base target, Spell Skill, bool Mid = true, bool OnlyHero = false)
+        private static void OnGameUpdate(EventArgs args)
+        {
+            targetObj = TS.Target;
+        }
+
+        public static bool IsValid(Obj_AI_Base Target, float Range = float.MaxValue, bool EnemyOnly = true, Vector3 From = default(Vector3))
+        {
+            if (Target == null || !Target.IsValid || Target.IsDead || !Target.IsVisible || (EnemyOnly && !Target.IsTargetable) || (EnemyOnly && Target.IsInvulnerable) || Target.IsMe) return false;
+            if (EnemyOnly ? Target.IsAlly : Target.IsEnemy) return false;
+            if ((From != default(Vector3) ? From : Player.Position).Distance(Target.Position) > Range) return false;
+            return true;
+        }
+
+        public static bool PacketCast()
+        {
+            return ItemBool("Misc", "UsePacket");
+        }
+
+        public static void CustomOrbwalk(Obj_AI_Base Target)
+        {
+            Orbwalk.Orbwalk(Game.CursorPos, Orbwalk.InAutoAttackRange(Target) ? Target : null);
+        }
+
+        public static bool CanKill(Obj_AI_Base Target, Spell Skill, int Stage = 0)
+        {
+            return (Skill.GetHealthPrediction(Target) + 35 <= Skill.GetDamage(Target, Stage)) ? true : false;
+        }
+
+        public static List<Obj_AI_Base> CheckingCollision(Obj_AI_Base From, Obj_AI_Base Target, Spell Skill, bool Mid = true, bool OnlyHero = false)
         {
             var ListCol = new List<Obj_AI_Base>();
-            foreach (var Obj in ObjectManager.Get<Obj_AI_Base>().Where(i => i.IsValidTarget(Skill.Range) && (!Mid || (Mid && Skill.GetPrediction(i).Hitchance >= HitChance.Medium)) && ((!OnlyHero && i is Obj_AI_Minion) || (OnlyHero && i is Obj_AI_Hero)) && i != target))
+            foreach (var Obj in ObjectManager.Get<Obj_AI_Base>().Where(i => IsValid(i, Skill.Range) /*&& Skill.GetPrediction(i).Hitchance >= HitChance.Medium*/ && ((!OnlyHero && !(i is Obj_AI_Turret)) || (OnlyHero && i is Obj_AI_Hero)) && i != Target))
             {
-                var Segment = (Mid ? Obj : target).Position.To2D().ProjectOn(from.Position.To2D(), Mid ? target.Position.To2D() : Obj.Position.To2D());
-                if (Segment.IsOnSegment)
-                {
-                    if (Mid)
-                    {
-                        if (Obj.Position.Distance(new Vector3(Segment.SegmentPoint.X, Obj.Position.Y, Segment.SegmentPoint.Y)) <= Obj.BoundingRadius + Skill.Width) ListCol.Add(Obj);
-                    }
-                    else
-                    {
-                        if (Obj.Distance(Segment.LinePoint) <= target.BoundingRadius + Skill.Width) ListCol.Add(Obj);
-                    }
-                }
+                if ((Mid ? Obj : Target).Position.To2D().Distance(From.Position.To2D(), (Mid ? Target : Obj).Position.To2D(), true) <= Skill.Width + (Mid ? Obj : Target).BoundingRadius) ListCol.Add(Obj);
+                //var Segment = (Mid ? Obj : Target).Position.To2D().ProjectOn(From.Position.To2D(), (Mid ? Target : Obj).Position.To2D());
+                //if (Segment.IsOnSegment && Obj.Position.Distance(new Vector3(Segment.SegmentPoint.X, Obj.Position.Y, Segment.SegmentPoint.Y)) <= Skill.Width + Obj.BoundingRadius) ListCol.Add(Obj);
+                //if (Segment.IsOnSegment && Obj.Position.To2D().Distance(Segment.SegmentPoint) <= Skill.Width + Obj.BoundingRadius) ListCol.Add(Obj);
             }
             return ListCol.Distinct().ToList();
         }
 
-        public static bool SmiteCollision(Obj_AI_Hero target, Spell Skill)
+        public static bool SmiteCollision(Obj_AI_Hero Target, Spell Skill)
         {
             if (!SmiteReady()) return false;
-            var Col1 = CheckingCollision(Player, target, Skill);
-            if (Col1.Count == 0 || Col1.Count > 1) return false;
-            if (Skill.InRange(target.Position) && Col1.First() is Obj_AI_Minion)
+            var Col = CheckingCollision(Player, Target, Skill);
+            if (Skill.InRange(Target.Position) && Col.Count == 1)
             {
-                if (CastSmite(Col1.First()))
+                if (Col.First().IsMinion && CastSmite(Col.First()))
                 {
-                    Skill.Cast(Skill.GetPrediction(target).CastPosition, PacketCast);
+                    Skill.Cast(Target.Position, PacketCast());
                     return true;
                 }
             }
@@ -181,26 +342,35 @@ namespace Master
             return (IData != null && IData.Slot != SpellSlot.Unknown && IData.State == SpellState.Ready);
         }
 
-        public static bool CastFlash(Vector3 pos)
+        public static bool CastFlash(Vector3 Pos)
         {
-            return (FlashReady() && Player.SummonerSpellbook.CastSpell(FData.Slot, pos));
+            if (!FlashReady()) return false;
+            return Player.SummonerSpellbook.CastSpell(FData.Slot, Pos);
         }
 
-        public static bool CastSmite(Obj_AI_Base target)
+        public static bool CastSmite(Obj_AI_Base Target, bool Killable = true)
         {
-            return (SmiteReady() && target.IsValidTarget(SData.SData.CastRange[0]) && target.Health <= Player.GetSummonerSpellDamage(target, Damage.SummonerSpell.Smite) && Player.SummonerSpellbook.CastSpell(SData.Slot, target));
+            if (!SmiteReady() || !IsValid(Target, 760) || (Killable && Target.Health > Player.GetSummonerSpellDamage(Target, Damage.SummonerSpell.Smite))) return false;
+            return Player.SummonerSpellbook.CastSpell(SData.Slot, Target);
         }
 
-        public static bool CastIgnite(Obj_AI_Hero target)
+        public static bool CastIgnite(Obj_AI_Hero Target)
         {
-            return (IgniteReady() && target.IsValidTarget(IData.SData.CastRange[0]) && HealthPrediction.GetHealthPrediction(target, (int)(Player.Distance(target) / 1500 * 1000 + 250)) + 35 < Player.GetSummonerSpellDamage(target, Damage.SummonerSpell.Ignite) && Player.SummonerSpellbook.CastSpell(IData.Slot, target));
+            if (!IgniteReady() || !IsValid(Target, 720) || Target.Health + 35 > Player.GetSummonerSpellDamage(Target, Damage.SummonerSpell.Ignite)) return false;
+            return Player.SummonerSpellbook.CastSpell(IData.Slot, Target);
         }
 
         public static InventorySlot GetWardSlot()
         {
-            Int32[] wardId = { 3340, 3361, 3205, 3207, 3154, 3160, 2049, 2045, 2050, 2044 };
-            foreach (var Id in wardId.Where(i => Items.CanUseItem(i))) return Player.InventoryItems.First(i => i.Id == (ItemId)Id);
+            Int32[] WardId = { 3340, 3361, 2049, 2045, 2044 };
+            foreach (var Id in WardId.Where(i => Items.CanUseItem(i))) return Player.InventoryItems.First(i => i.Id == (ItemId)Id);
             return null;
+        }
+
+        public static float GetWardRange(ItemId ID)
+        {
+            Int32[] TricketWard = { 3340, 3361 };
+            return 600 * ((Player.Masteries.Any(i => i.Page == MasteryPage.Utility && i.Id == 68 && i.Points == 1) && TricketWard.Contains((Int32)ID)) ? 1.15f : 1);
         }
     }
 }

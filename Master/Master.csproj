@@ -54,19 +54,16 @@
   </ItemGroup>
   <ItemGroup>
     <Reference Include="LeagueSharp">
-      <HintPath>D:\LeagueSharp\\System\LeagueSharp.dll</HintPath>
+      <HintPath>E:\LeagueSharp\\System\LeagueSharp.dll</HintPath>
     </Reference>
     <Reference Include="LeagueSharp.Common">
-      <HintPath>D:\LeagueSharp\\System\LeagueSharp.Common.dll</HintPath>
-    </Reference>
-    <Reference Include="LX-Orbwalker">
-      <HintPath>D:\LeagueSharp\\System\LX-Orbwalker.dll</HintPath>
+      <HintPath>E:\LeagueSharp\\System\LeagueSharp.Common.dll</HintPath>
     </Reference>
     <Reference Include="SharpDX">
-      <HintPath>D:\LeagueSharp\\System\SharpDX.dll</HintPath>
+      <HintPath>E:\LeagueSharp\\System\SharpDX.dll</HintPath>
     </Reference>
     <Reference Include="SharpDX.Direct3D9">
-      <HintPath>D:\LeagueSharp\\System\SharpDX.Direct3D9.dll</HintPath>
+      <HintPath>E:\LeagueSharp\\System\SharpDX.Direct3D9.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Drawing" />
@@ -86,8 +83,10 @@
     <Compile Include="Champions\Tryndamere.cs" />
     <Compile Include="Champions\Udyr.cs" />
     <Compile Include="Champions\XinZhao.cs" />
+    <Compile Include="Orbwalker.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="TargetSelector.cs" />
   </ItemGroup>
   <ItemGroup>
     <BootstrapperPackage Include=".NETFramework,Version=v4.5">
