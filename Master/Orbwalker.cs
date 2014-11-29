@@ -55,6 +55,7 @@ namespace MasterCommon
         private static int LastMove;
         private static int WindUp;
         private static int LastRealAttack;
+        private static int Tick;
 
         public class BeforeAttackEventArgs
         {
@@ -103,7 +104,7 @@ namespace MasterCommon
                     MiscMenu.AddItem(new MenuItem("OW_Misc_HoldZone", "Hold Zone").SetValue(new Slider(50, 100, 0)));
                     MiscMenu.AddItem(new MenuItem("OW_Misc_FarmDelay", "Farm Delay").SetValue(new Slider(0, 200, 0)));
                     MiscMenu.AddItem(new MenuItem("OW_Misc_ExtraWindUp", "Extra WindUp Time").SetValue(new Slider(80, 200, 0)));
-                    MiscMenu.AddItem(new MenuItem("OW_Misc_AutoWindUp", "Auto WindUp").SetValue(false));
+                    MiscMenu.AddItem(new MenuItem("OW_Misc_AutoWindUp", "Auto WindUp").SetValue(true));
                     MiscMenu.AddItem(new MenuItem("OW_Misc_PriorityUnit", "Priority Unit").SetValue(new StringList(new[] { "Minion", "Hero" })));
                     MiscMenu.AddItem(new MenuItem("OW_Misc_Humanizer", "Humanizer Delay").SetValue(new Slider(80, 200, 15)));
                     MiscMenu.AddItem(new MenuItem("OW_Misc_MeleePrediction", "Melee Movement Prediction").SetValue(false));
@@ -169,6 +170,7 @@ namespace MasterCommon
 
         private static void OnDraw(EventArgs args)
         {
+            if (Player.IsDead) return;
             if (Config.Item("OW_Draw_AARange").GetValue<Circle>().Active) Utility.DrawCircle(Player.Position, GetAutoAttackRange(), Config.Item("OW_Draw_AARange").GetValue<Circle>().Color);
             if (Config.Item("OW_Draw_AARangeEnemy").GetValue<Circle>().Active)
             {
@@ -193,6 +195,8 @@ namespace MasterCommon
 
         private static void OnGameUpdate(EventArgs args)
         {
+            if (Environment.TickCount - Tick < 100) return;
+            Tick = Environment.TickCount;
             CheckAutoWindUp();
             if (Player.IsDead || CurrentMode == Mode.None || MenuGUI.IsChatOpen || CustomMode || Player.IsChannelingImportantSpell()) return;
             Orbwalk(Game.CursorPos, GetPossibleTarget());

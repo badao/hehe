@@ -38,16 +38,16 @@ namespace MasterPlugin
             //Game.PrintChat("{0}/{1}/{2}", SkillE.Instance.SData.SpellCastTime, SkillE.Instance.SData.LineWidth, SkillE.Instance.SData.MissileSpeed);
             //Game.PrintChat("{0}/{1}", SkillR.Instance.SData.SpellCastTime, SkillR.Instance.SData.MissileSpeed);
 
-            Config.SubMenu("OW").SubMenu("Mode").AddItem(new MenuItem(Name + "StarCombo", "Star Combo").SetValue(new KeyBind("X".ToCharArray()[0], KeyBindType.Press)));
-            Config.SubMenu("OW").SubMenu("Mode").AddItem(new MenuItem(Name + "InsecCombo", "Insec").SetValue(new KeyBind("T".ToCharArray()[0], KeyBindType.Press)));
-            Config.SubMenu("OW").SubMenu("Mode").AddItem(new MenuItem(Name + "KSMob", "Kill Steal Mob").SetValue(new KeyBind("Z".ToCharArray()[0], KeyBindType.Press)));
+            Config.SubMenu("OW").SubMenu("Mode").AddItem(new MenuItem(Name + "_OW_StarCombo", "Star Combo").SetValue(new KeyBind("X".ToCharArray()[0], KeyBindType.Press)));
+            Config.SubMenu("OW").SubMenu("Mode").AddItem(new MenuItem(Name + "_OW_InsecCombo", "Insec").SetValue(new KeyBind("T".ToCharArray()[0], KeyBindType.Press)));
+            Config.SubMenu("OW").SubMenu("Mode").AddItem(new MenuItem(Name + "_OW_KSMob", "Kill Steal Mob").SetValue(new KeyBind("Z".ToCharArray()[0], KeyBindType.Press)));
             var ChampMenu = new Menu(Name + " Plugin", Name + "_Plugin");
             {
                 var ComboMenu = new Menu("Combo", "Combo");
                 {
                     ItemBool(ComboMenu, "Passive", "Use Passive", false);
                     ItemBool(ComboMenu, "Q", "Use Q");
-                    ItemBool(ComboMenu, "W", "Use W");
+                    ItemBool(ComboMenu, "W", "Use W", false);
                     ItemSlider(ComboMenu, "WUnder", "-> If Hp Under", 30);
                     ItemBool(ComboMenu, "E", "Use E");
                     ItemBool(ComboMenu, "R", "Use R If Killable");
@@ -107,7 +107,7 @@ namespace MasterPlugin
                 }
                 var MiscMenu = new Menu("Misc", "Misc");
                 {
-                    ItemBool(MiscMenu, "QLastHit", "Use Q To Last Hit");
+                    ItemBool(MiscMenu, "QLastHit", "Use Q To Last Hit", false);
                     ItemBool(MiscMenu, "WSurvive", "Try Use W To Survive");
                     ItemBool(MiscMenu, "SmiteCol", "Auto Smite Collision");
                     ItemSlider(MiscMenu, "CustomSkin", "Skin Changer", 5, 0, 6).ValueChanged += SkinChanger;
@@ -301,7 +301,7 @@ namespace MasterPlugin
         private void OnCreateObjMinion(GameObject sender, EventArgs args)
         {
             if (sender == null || !sender.IsValid || sender.IsEnemy || Player.IsDead || !SkillW.IsReady() || SkillW.Instance.Name != "BlindMonkWOne" || !WardCasted) return;
-            if ((Orbwalk.CurrentMode == Orbwalk.Mode.Flee || ItemActive("StarCombo") || ItemActive("InsecCombo")) && Player.Distance3D((Obj_AI_Minion)sender) <= SkillW.Range + sender.BoundingRadius && sender.Name.EndsWith("Ward"))
+            if ((Orbwalk.CurrentMode == Orbwalk.Mode.Flee || ItemActive("StarCombo") || ItemActive("InsecCombo")) && Player.Distance3D((Obj_AI_Minion)sender) <= SkillW.Range + sender.BoundingRadius/*IsValid((Obj_AI_Minion)sender, SkillW.Range + sender.BoundingRadius, false)*/ && sender.Name.EndsWith("Ward") && (sender as Obj_AI_Minion).Buffs.Any(i => i.Caster.IsMe))
             {
                 SkillW.CastOnUnit((Obj_AI_Minion)sender, PacketCast());
                 return;
@@ -416,7 +416,6 @@ namespace MasterPlugin
             {
                 if (SmiteReady() && Obj.Team == GameObjectTeam.Neutral)
                 {
-                    string[] Mob = { "SRU_Red", "SRU_Blue", "SRU_Krug", "SRU_Gromp", "SRU_Razorbeak", "SRU_Murkwolf" };
                     if ((ItemBool("SmiteMob", "Baron") && Obj.Name.StartsWith("SRU_Baron")) || (ItemBool("SmiteMob", "Dragon") && Obj.Name.StartsWith("SRU_Dragon")) || (!Obj.Name.Contains("Mini") && (
                         (ItemBool("SmiteMob", "Red") && Obj.Name.StartsWith("SRU_Red")) || (ItemBool("SmiteMob", "Blue") && Obj.Name.StartsWith("SRU_Blue")) ||
                         (ItemBool("SmiteMob", "Krug") && Obj.Name.StartsWith("SRU_Krug")) || (ItemBool("SmiteMob", "Gromp") && Obj.Name.StartsWith("SRU_Gromp")) ||
@@ -443,7 +442,7 @@ namespace MasterPlugin
                 {
                     if (SkillQ.Instance.Name == "BlindMonkQOne" && SkillQ.InRange(Obj.Position))
                     {
-                        if ((!Passive || !Orbwalk.InAutoAttackRange(Obj)) && !CanKill(Obj, SkillQ)) SkillQ.Cast(Obj, PacketCast());
+                        if ((!Passive || !Orbwalk.InAutoAttackRange(Obj)) && !CanKill(Obj, SkillQ)) SkillQ.CastIfHitchanceEquals(Obj, HitChance.Medium, PacketCast());
                     }
                     else if ((Obj.HasBuff("BlindMonkQOne", true) || Obj.HasBuff("blindmonkqonechaos", true)) && (Obj.Health + 35 <= GetQ2Dmg(Obj) || Player.Distance3D(Obj) > 500 || !QCasted || !Passive)) SkillQ.Cast(PacketCast());
                 }
@@ -461,7 +460,7 @@ namespace MasterPlugin
         {
             if (!SkillW.IsReady() || SkillW.Instance.Name != "BlindMonkWOne") return;
             bool IsWard = false;
-            foreach (var Obj in ObjectManager.Get<Obj_AI_Base>().Where(i => IsValid(i, SkillW.Range + i.BoundingRadius, false) && !(i is Obj_AI_Turret) && IsValid(i, 230, false, Pos) && (!ItemActive("InsecCombo") || (ItemActive("InsecCombo") && i.Name.EndsWith("Ward") && i.IsMinion))).OrderBy(i => i.Position.Distance(Pos)))
+            foreach (var Obj in ObjectManager.Get<Obj_AI_Base>().Where(i => IsValid(i, SkillW.Range + i.BoundingRadius, false) && !(i is Obj_AI_Turret) && i.Position.Distance(Pos) < 230 && (!ItemActive("InsecCombo") || (ItemActive("InsecCombo") && i.Name.EndsWith("Ward") && i.IsMinion))).OrderBy(i => i.Position.Distance(Pos)))
             {
                 SkillW.CastOnUnit(Obj, PacketCast());
                 if (Obj.Name.EndsWith("Ward") && Obj.IsMinion)
@@ -474,7 +473,7 @@ namespace MasterPlugin
             {
                 GetWardSlot().UseItem((Player.Position.Distance(Pos) > GetWardRange(GetWardSlot().Id)) ? Player.Position.To2D().Extend(Pos.To2D(), GetWardRange(GetWardSlot().Id)).To3D() : Pos);
                 WardCasted = true;
-                Utility.DelayAction.Add(500, () => WardCasted = false);
+                Utility.DelayAction.Add(1000, () => WardCasted = false);
             }
         }
 

@@ -160,11 +160,12 @@ namespace Master
     {
         public static Obj_AI_Hero Player = null, targetObj = null;
         public static Spell SkillQ, SkillW, SkillE, SkillR;
-        private static SpellDataInst FData, SData, IData;
+        private static SpellSlot FlashSlot, SmiteSlot, IgniteSlot;
         public static Int32 Tiamat = 3077, Hydra = 3074, Bilge = 3144, Blade = 3153, Rand = 3143, Youmuu = 3142;
         public static Menu Config;
         public static String Name;
         private static M_TargetSelector TS;
+        private static string[] SmiteName = { "summonersmite", "s5_summonersmiteplayerganker", "s5_summonersmitequick", "s5_summonersmiteduel", "itemsmiteaoe" };
 
         private static void Main(string[] args)
         {
@@ -190,9 +191,9 @@ namespace Master
                     //var RData = Player.Spellbook.GetSpell(SpellSlot.R);
                     //Game.PrintChat("{0}/{1}/{2}/{3}", QData.SData.CastRange[0], WData.SData.CastRange[0], EData.SData.CastRange[0], RData.SData.CastRange[0]);
                     ItemBool(Config.SubMenu(Name + "_Plugin").SubMenu("Misc"), "UsePacket", "Use Packet To Cast");
-                    FData = Player.SummonerSpellbook.GetSpell(Player.GetSpellSlot("summonerflash"));
-                    SData = Player.SummonerSpellbook.GetSpell(Player.GetSpellSlot("summonersmite"));
-                    IData = Player.SummonerSpellbook.GetSpell(Player.GetSpellSlot("summonerdot"));
+                    FlashSlot = Player.GetSpellSlot("summonerflash");
+                    SmiteSlot = SmiteName.Any(i => Player.GetSpellSlot(i) != SpellSlot.Unknown) ? Player.GetSpellSlot(SmiteName.First(i => Player.GetSpellSlot(i) != SpellSlot.Unknown)) : SpellSlot.Unknown;
+                    IgniteSlot = Player.GetSpellSlot("summonerdot");
                     SkinChanger(null, null);
                     Game.PrintChat("<font color = \'{0}'>-></font> <font color = \'{1}'>Master Of {2}</font>: <font color = \'{3}'>Loaded !</font>", HtmlColor.BlueViolet, HtmlColor.Gold, Name, HtmlColor.Cyan);
                     Game.OnGameUpdate += OnGameUpdate;
@@ -223,7 +224,7 @@ namespace Master
 
         public static bool ItemActive(string Item)
         {
-            return Config.SubMenu("OW").SubMenu("Mode").Item(Name + Item).GetValue<KeyBind>().Active;
+            return Config.SubMenu("OW").SubMenu("Mode").Item(Name + "_OW_" + Item).GetValue<KeyBind>().Active;
         }
 
         public static bool ItemBool(string SubMenu, string Item)
@@ -329,35 +330,36 @@ namespace Master
 
         public static bool FlashReady()
         {
-            return (FData != null && FData.Slot != SpellSlot.Unknown && FData.State == SpellState.Ready);
+            return Player.SummonerSpellbook.CanUseSpell(FlashSlot) == SpellState.Ready;
         }
 
         public static bool SmiteReady()
         {
-            return (SData != null && SData.Slot != SpellSlot.Unknown && SData.State == SpellState.Ready);
+            SmiteSlot = SmiteName.Any(i => Player.GetSpellSlot(i) != SpellSlot.Unknown) ? Player.GetSpellSlot(SmiteName.First(i => Player.GetSpellSlot(i) != SpellSlot.Unknown)) : SpellSlot.Unknown;
+            return Player.SummonerSpellbook.CanUseSpell(SmiteSlot) == SpellState.Ready;
         }
 
         public static bool IgniteReady()
         {
-            return (IData != null && IData.Slot != SpellSlot.Unknown && IData.State == SpellState.Ready);
+            return Player.SummonerSpellbook.CanUseSpell(IgniteSlot) == SpellState.Ready;
         }
 
         public static bool CastFlash(Vector3 Pos)
         {
             if (!FlashReady()) return false;
-            return Player.SummonerSpellbook.CastSpell(FData.Slot, Pos);
+            return Player.SummonerSpellbook.CastSpell(FlashSlot, Pos);
         }
 
         public static bool CastSmite(Obj_AI_Base Target, bool Killable = true)
         {
             if (!SmiteReady() || !IsValid(Target, 760) || (Killable && Target.Health > Player.GetSummonerSpellDamage(Target, Damage.SummonerSpell.Smite))) return false;
-            return Player.SummonerSpellbook.CastSpell(SData.Slot, Target);
+            return Player.SummonerSpellbook.CastSpell(SmiteSlot, Target);
         }
 
         public static bool CastIgnite(Obj_AI_Hero Target)
         {
             if (!IgniteReady() || !IsValid(Target, 720) || Target.Health + 35 > Player.GetSummonerSpellDamage(Target, Damage.SummonerSpell.Ignite)) return false;
-            return Player.SummonerSpellbook.CastSpell(IData.Slot, Target);
+            return Player.SummonerSpellbook.CastSpell(IgniteSlot, Target);
         }
 
         public static InventorySlot GetWardSlot()
