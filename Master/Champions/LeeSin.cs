@@ -301,7 +301,7 @@ namespace MasterPlugin
         private void OnCreateObjMinion(GameObject sender, EventArgs args)
         {
             if (sender == null || !sender.IsValid || sender.IsEnemy || Player.IsDead || !SkillW.IsReady() || SkillW.Instance.Name != "BlindMonkWOne" || !WardCasted) return;
-            if ((Orbwalk.CurrentMode == Orbwalk.Mode.Flee || ItemActive("StarCombo") || ItemActive("InsecCombo")) && Player.Distance3D((Obj_AI_Minion)sender) <= SkillW.Range + sender.BoundingRadius/*IsValid((Obj_AI_Minion)sender, SkillW.Range + sender.BoundingRadius, false)*/ && sender.Name.EndsWith("Ward") && (sender as Obj_AI_Minion).Buffs.Any(i => i.Caster.IsMe))
+            if ((Orbwalk.CurrentMode == Orbwalk.Mode.Flee || ItemActive("StarCombo") || ItemActive("InsecCombo")) && Player.Distance3D((Obj_AI_Minion)sender) <= SkillW.Range + sender.BoundingRadius/*IsValid((Obj_AI_Minion)sender, SkillW.Range + sender.BoundingRadius, false)*/ && sender.Name.EndsWith("Ward"))
             {
                 SkillW.CastOnUnit((Obj_AI_Minion)sender, PacketCast());
                 return;
