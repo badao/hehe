@@ -189,7 +189,10 @@ namespace Master
                     //var WData = Player.Spellbook.GetSpell(SpellSlot.W);
                     //var EData = Player.Spellbook.GetSpell(SpellSlot.E);
                     //var RData = Player.Spellbook.GetSpell(SpellSlot.R);
-                    //Game.PrintChat("{0}/{1}/{2}/{3}", QData.SData.CastRange[0], WData.SData.CastRange[0], EData.SData.CastRange[0], RData.SData.CastRange[0]);
+                    //Game.PrintChat("{0}/{1}/{2}/{3}", QData.SData.CastRange[0], QData.SData.SpellCastTime, QData.SData.LineWidth, QData.SData.MissileSpeed);
+                    //Game.PrintChat("{0}/{1}/{2}/{3}", WData.SData.CastRange[0], WData.SData.SpellCastTime, WData.SData.LineWidth, WData.SData.MissileSpeed);
+                    //Game.PrintChat("{0}/{1}/{2}/{3}", EData.SData.CastRange[0], EData.SData.SpellCastTime, EData.SData.LineWidth, EData.SData.MissileSpeed);
+                    //Game.PrintChat("{0}/{1}/{2}/{3}", RData.SData.CastRange[0], RData.SData.SpellCastTime, RData.SData.LineWidth, RData.SData.MissileSpeed);
                     ItemBool(Config.SubMenu(Name + "_Plugin").SubMenu("Misc"), "UsePacket", "Use Packet To Cast");
                     FlashSlot = Player.GetSpellSlot("summonerflash");
                     SmiteSlot = SmiteName.Any(i => Player.GetSpellSlot(i) != SpellSlot.Unknown) ? Player.GetSpellSlot(SmiteName.First(i => Player.GetSpellSlot(i) != SpellSlot.Unknown)) : SpellSlot.Unknown;
@@ -244,20 +247,22 @@ namespace Master
 
         public static void SkinChanger(object sender, OnValueChangeEventArgs e)
         {
+            //Utility.DelayAction.Add(35, () => Packet.S2C.UpdateModel.Encoded(new Packet.S2C.UpdateModel.Struct(Player.NetworkId, ItemSlider("Misc", "CustomSkin"), Name)).Process());
             if (Config.SubMenu(Name + "_Plugin").Item(Name + "_Misc_CustomSkin") == null) return;
             Utility.DelayAction.Add(35, () =>
                 {
                     var SkinPacket = new GamePacket(0x97);
                     SkinPacket.WriteInteger(Player.NetworkId);
-                    SkinPacket.Position = 1;
-                    var t1 = SkinPacket.ReadByte();
-                    var t2 = SkinPacket.ReadByte();
-                    var t3 = SkinPacket.ReadByte();
-                    var t4 = SkinPacket.ReadByte();
-                    SkinPacket.WriteByte(t1);
-                    SkinPacket.WriteByte(t2);
-                    SkinPacket.WriteByte(t3);
-                    SkinPacket.WriteByte((byte)(t4 & 0xB));
+                    SkinPacket.WriteInteger(Player.NetworkId & ~0x40000000);
+                    //SkinPacket.Position = 1;
+                    //var t1 = SkinPacket.ReadByte();
+                    //var t2 = SkinPacket.ReadByte();
+                    //var t3 = SkinPacket.ReadByte();
+                    //var t4 = SkinPacket.ReadByte();
+                    //SkinPacket.WriteByte(t1);
+                    //SkinPacket.WriteByte(t2);
+                    //SkinPacket.WriteByte(t3);
+                    //SkinPacket.WriteByte((byte)(t4 & 0xB));
                     SkinPacket.WriteByte(1);
                     SkinPacket.WriteInteger(ItemSlider("Misc", "CustomSkin"));
                     for (int i = 0; i < Name.Length; i++)
@@ -297,18 +302,17 @@ namespace Master
 
         public static bool CanKill(Obj_AI_Base Target, Spell Skill, int Stage = 0)
         {
-            return (Skill.GetHealthPrediction(Target) + 35 <= Skill.GetDamage(Target, Stage)) ? true : false;
+            return Skill.GetHealthPrediction(Target) + 10 <= Skill.GetDamage(Target, Stage);
         }
 
         public static List<Obj_AI_Base> CheckingCollision(Obj_AI_Base From, Obj_AI_Base Target, Spell Skill, bool Mid = true, bool OnlyHero = false)
         {
             var ListCol = new List<Obj_AI_Base>();
-            foreach (var Obj in ObjectManager.Get<Obj_AI_Base>().Where(i => IsValid(i, Skill.Range) /*&& Skill.GetPrediction(i).Hitchance >= HitChance.Medium*/ && ((!OnlyHero && !(i is Obj_AI_Turret)) || (OnlyHero && i is Obj_AI_Hero)) && i != Target))
+            foreach (var Obj in ObjectManager.Get<Obj_AI_Base>().Where(i => IsValid(i, Skill.Range) && Skill.GetPrediction(i).Hitchance >= HitChance.Medium && ((!OnlyHero && !(i is Obj_AI_Turret)) || (OnlyHero && i is Obj_AI_Hero)) && i != Target))
             {
-                if ((Mid ? Obj : Target).Position.To2D().Distance(From.Position.To2D(), (Mid ? Target : Obj).Position.To2D(), true) <= Skill.Width + (Mid ? Obj : Target).BoundingRadius) ListCol.Add(Obj);
-                //var Segment = (Mid ? Obj : Target).Position.To2D().ProjectOn(From.Position.To2D(), (Mid ? Target : Obj).Position.To2D());
-                //if (Segment.IsOnSegment && Obj.Position.Distance(new Vector3(Segment.SegmentPoint.X, Obj.Position.Y, Segment.SegmentPoint.Y)) <= Skill.Width + Obj.BoundingRadius) ListCol.Add(Obj);
-                //if (Segment.IsOnSegment && Obj.Position.To2D().Distance(Segment.SegmentPoint) <= Skill.Width + Obj.BoundingRadius) ListCol.Add(Obj);
+                //if ((Mid ? Obj : Target).Position.To2D().Distance(From.Position.To2D(), (Mid ? Target : Obj).Position.To2D(), true) <= Skill.Width + (Mid ? Obj : Target).BoundingRadius) ListCol.Add(Obj);
+                var Segment = (Mid ? Obj : Target).Position.To2D().ProjectOn(From.Position.To2D(), (Mid ? Target : Obj).Position.To2D());
+                if (Segment.IsOnSegment && Obj.Position.Distance(new Vector3(Segment.SegmentPoint.X, Obj.Position.Y, Segment.SegmentPoint.Y)) <= Skill.Width + Obj.BoundingRadius) ListCol.Add(Obj);
             }
             return ListCol.Distinct().ToList();
         }
@@ -330,18 +334,18 @@ namespace Master
 
         public static bool FlashReady()
         {
-            return Player.SummonerSpellbook.CanUseSpell(FlashSlot) == SpellState.Ready;
+            return (FlashSlot != SpellSlot.Unknown && Player.SummonerSpellbook.CanUseSpell(FlashSlot) == SpellState.Ready);
         }
 
         public static bool SmiteReady()
         {
             SmiteSlot = SmiteName.Any(i => Player.GetSpellSlot(i) != SpellSlot.Unknown) ? Player.GetSpellSlot(SmiteName.First(i => Player.GetSpellSlot(i) != SpellSlot.Unknown)) : SpellSlot.Unknown;
-            return Player.SummonerSpellbook.CanUseSpell(SmiteSlot) == SpellState.Ready;
+            return (SmiteSlot != SpellSlot.Unknown && Player.SummonerSpellbook.CanUseSpell(SmiteSlot) == SpellState.Ready);
         }
 
         public static bool IgniteReady()
         {
-            return Player.SummonerSpellbook.CanUseSpell(IgniteSlot) == SpellState.Ready;
+            return (IgniteSlot != SpellSlot.Unknown && Player.SummonerSpellbook.CanUseSpell(IgniteSlot) == SpellState.Ready);
         }
 
         public static bool CastFlash(Vector3 Pos)
@@ -372,7 +376,7 @@ namespace Master
         public static float GetWardRange(ItemId ID)
         {
             Int32[] TricketWard = { 3340, 3361 };
-            return 600 * ((Player.Masteries.Any(i => i.Page == MasteryPage.Utility && i.Id == 68 && i.Points == 1) && TricketWard.Contains((Int32)ID)) ? 1.15f : 1);
+            return 600 * (Player.Masteries.Any(i => i.Page == MasteryPage.Utility && i.Id == 68 && i.Points == 1) && TricketWard.Contains((Int32)ID) ? 1.15f : 1);
         }
     }
 }

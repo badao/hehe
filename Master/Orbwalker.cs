@@ -55,7 +55,6 @@ namespace MasterCommon
         private static int LastMove;
         private static int WindUp;
         private static int LastRealAttack;
-        private static int Tick;
 
         public class BeforeAttackEventArgs
         {
@@ -195,8 +194,6 @@ namespace MasterCommon
 
         private static void OnGameUpdate(EventArgs args)
         {
-            if (Environment.TickCount - Tick < 100) return;
-            Tick = Environment.TickCount;
             CheckAutoWindUp();
             if (Player.IsDead || CurrentMode == Mode.None || MenuGUI.IsChatOpen || CustomMode || Player.IsChannelingImportantSpell()) return;
             Orbwalk(Game.CursorPos, GetPossibleTarget());
@@ -371,9 +368,9 @@ namespace MasterCommon
         {
             Obj_AI_Hero KillableObj = null;
             var HitsToKill = double.MaxValue;
-            foreach (var Obj in AllEnemys.Where(i => i.IsValidTarget() && (Player.ChampionName == "Azir") ? InSoldierAttackRange(i) : InAutoAttackRange(i)))
+            foreach (var Obj in AllEnemys.Where(i => i.IsValidTarget() && Player.ChampionName == "Azir" ? InSoldierAttackRange(i) : InAutoAttackRange(i)))
             {
-                var KillHits = (Player.ChampionName == "Azir") ? CountKillHitsAzirSoldier(Obj) : CountKillHits(Obj);
+                var KillHits = Player.ChampionName == "Azir" ? CountKillHitsAzirSoldier(Obj) : CountKillHits(Obj);
                 if (KillableObj != null && (!(KillHits < HitsToKill) || Obj.HasBuffOfType(BuffType.Invulnerability))) continue;
                 KillableObj = Obj;
                 HitsToKill = KillHits;
@@ -399,11 +396,11 @@ namespace MasterCommon
             }
             if (CurrentMode == Mode.Harass || CurrentMode == Mode.LastHit || CurrentMode == Mode.LaneClear || CurrentMode == Mode.LaneFreeze)
             {
-                foreach (var Obj in ObjectManager.Get<Obj_AI_Minion>().Where(i => i.IsValidTarget() && i.Name != "Beacon" && (Player.ChampionName == "Azir") ? InSoldierAttackRange(i) : InAutoAttackRange(i) && i.Team != GameObjectTeam.Neutral))
+                foreach (var Obj in ObjectManager.Get<Obj_AI_Minion>().Where(i => i.IsValidTarget() && i.Name != "Beacon" && Player.ChampionName == "Azir" ? InSoldierAttackRange(i) : InAutoAttackRange(i) && i.Team != GameObjectTeam.Neutral))
                 {
                     var Time = (int)(Player.AttackCastDelay * 1000 - 100 + Game.Ping / 2 + 1000 * Player.Distance(Obj) / MyProjectileSpeed());
-                    var predHp = HealthPrediction.GetHealthPrediction(Obj, Time, FarmDelay((Player.ChampionName == "Azir") ? -125 : 0));
-                    if (predHp > 0 && predHp <= ((Player.ChampionName == "Azir") ? GetAzirAASandwarriorDamage(Obj) : Player.GetAutoAttackDamage(Obj, true))) return Obj;
+                    var predHp = HealthPrediction.GetHealthPrediction(Obj, Time, FarmDelay(Player.ChampionName == "Azir" ? -125 : 0));
+                    if (predHp > 0 && predHp <= (Player.ChampionName == "Azir" ? GetAzirAASandwarriorDamage(Obj) : Player.GetAutoAttackDamage(Obj, true))) return Obj;
                 }
             }
             if (CurrentMode != Mode.LastHit)
@@ -418,7 +415,7 @@ namespace MasterCommon
             var maxHp = float.MaxValue;
             if (CurrentMode == Mode.Harass || CurrentMode == Mode.LaneClear || CurrentMode == Mode.LaneFreeze)
             {
-                foreach (var Obj in ObjectManager.Get<Obj_AI_Minion>().Where(i => i.IsValidTarget() && i.Name != "Beacon" && (Player.ChampionName == "Azir") ? InSoldierAttackRange(i) : InAutoAttackRange(i) && i.Team == GameObjectTeam.Neutral && (i.MaxHealth >= maxHp || Math.Abs(maxHp - float.MaxValue) < float.Epsilon)))
+                foreach (var Obj in ObjectManager.Get<Obj_AI_Minion>().Where(i => i.IsValidTarget() && i.Name != "Beacon" && Player.ChampionName == "Azir" ? InSoldierAttackRange(i) : InAutoAttackRange(i) && i.Team == GameObjectTeam.Neutral && (i.MaxHealth >= maxHp || Math.Abs(maxHp - float.MaxValue) < float.Epsilon)))
                 {
                     Target = Obj;
                     maxHp = Obj.MaxHealth;
@@ -427,10 +424,10 @@ namespace MasterCommon
             }
             if (CurrentMode == Mode.LaneClear && !ShouldWait())
             {
-                foreach (var Obj in ObjectManager.Get<Obj_AI_Minion>().Where(i => i.IsValidTarget() && i.Name != "Beacon" && (Player.ChampionName == "Azir") ? InSoldierAttackRange(i) : InAutoAttackRange(i)))
+                foreach (var Obj in ObjectManager.Get<Obj_AI_Minion>().Where(i => i.IsValidTarget() && i.Name != "Beacon" && Player.ChampionName == "Azir" ? InSoldierAttackRange(i) : InAutoAttackRange(i)))
                 {
-                    var predHp = HealthPrediction.LaneClearHealthPrediction(Obj, (int)(Player.AttackDelay * 1000 * ClearWaitTimeMod), FarmDelay((Player.ChampionName == "Azir") ? -125 : 0));
-                    if (predHp >= ((Player.ChampionName == "Azir") ? GetAzirAASandwarriorDamage(Obj) + Player.GetAutoAttackDamage(Obj) : Player.GetAutoAttackDamage(Obj, true) * 2) || Math.Abs(predHp - Obj.Health) < float.Epsilon)
+                    var predHp = HealthPrediction.LaneClearHealthPrediction(Obj, (int)(Player.AttackDelay * 1000 * ClearWaitTimeMod), FarmDelay(Player.ChampionName == "Azir" ? -125 : 0));
+                    if (predHp >= (Player.ChampionName == "Azir" ? GetAzirAASandwarriorDamage(Obj) + Player.GetAutoAttackDamage(Obj) : Player.GetAutoAttackDamage(Obj, true) * 2) || Math.Abs(predHp - Obj.Health) < float.Epsilon)
                     {
                         if (Obj.Health >= maxHp || Math.Abs(maxHp - float.MaxValue) < float.Epsilon)
                         {
@@ -446,7 +443,7 @@ namespace MasterCommon
 
         private static bool ShouldWait()
         {
-            return ObjectManager.Get<Obj_AI_Minion>().Any(i => i.IsValidTarget() && i.Team != GameObjectTeam.Neutral && (Player.ChampionName == "Azir") ? InSoldierAttackRange(i) : InAutoAttackRange(i) && HealthPrediction.LaneClearHealthPrediction(i, (int)(Player.AttackDelay * 1000 * ClearWaitTimeMod), FarmDelay()) <= Player.GetAutoAttackDamage(i));
+            return ObjectManager.Get<Obj_AI_Minion>().Any(i => i.IsValidTarget() && i.Team != GameObjectTeam.Neutral && Player.ChampionName == "Azir" ? InSoldierAttackRange(i) : InAutoAttackRange(i) && HealthPrediction.LaneClearHealthPrediction(i, (int)(Player.AttackDelay * 1000 * ClearWaitTimeMod), FarmDelay()) <= Player.GetAutoAttackDamage(i));
         }
 
         public static bool IsAutoAttack(string Name)

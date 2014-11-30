@@ -34,7 +34,6 @@ namespace MasterCommon
         };
 
         private static Menu Config;
-        private int Tick;
         private float Range;
         private Obj_AI_Hero Player = ObjectManager.Player, newTarget = null;
         public Obj_AI_Hero Target = null;
@@ -79,8 +78,6 @@ namespace MasterCommon
 
         private void OnGameUpdate(EventArgs args)
         {
-            if (Environment.TickCount - Tick < 100) return;
-            Tick = Environment.TickCount;
             Target = GetTarget();
             MasterCommon.M_Orbwalker.ForcedTarget = Config.SubMenu("TS").Item("TS_Focus").GetValue<bool>() ? Target : null;
         }

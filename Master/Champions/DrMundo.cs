@@ -8,9 +8,9 @@ using SharpDX;
 
 using Orbwalk = MasterCommon.M_Orbwalker;
 
-namespace Master
+namespace MasterPlugin
 {
-    class DrMundo : Program
+    class DrMundo : Master.Program
     {
         public DrMundo()
         {
@@ -18,39 +18,66 @@ namespace Master
             SkillW = new Spell(SpellSlot.W, 325);
             SkillE = new Spell(SpellSlot.E, 300);
             SkillR = new Spell(SpellSlot.R, 20);
-            SkillQ.SetSkillshot(SkillQ.Instance.SData.SpellCastTime, SkillQ.Instance.SData.LineWidth - 20, SkillQ.Instance.SData.MissileSpeed, true, SkillshotType.SkillshotLine);
+            SkillQ.SetSkillshot(-0.5f, 75, 1500, true, SkillshotType.SkillshotLine);
+            SkillW.SetSkillshot(-0.3864f, 0, 20, false, SkillshotType.SkillshotCircle);
 
-            Config.AddSubMenu(new Menu("Combo/Harass", "csettings"));
-            Config.SubMenu("csettings").AddItem(new MenuItem("qusage", "Use Q").SetValue(true));
-            Config.SubMenu("csettings").AddItem(new MenuItem("wusage", "Use W").SetValue(true));
-            Config.SubMenu("csettings").AddItem(new MenuItem("autowusage", "Use W If Hp Above").SetValue(new Slider(20, 1)));
-            Config.SubMenu("csettings").AddItem(new MenuItem("eusage", "Use E").SetValue(true));
-            Config.SubMenu("csettings").AddItem(new MenuItem("ignite", "Auto Ignite If Killable").SetValue(true));
-            Config.SubMenu("csettings").AddItem(new MenuItem("iusage", "Use Item").SetValue(true));
-
-            Config.AddSubMenu(new Menu("Lane/Jungle Clear", "LaneJungClear"));
-            Config.SubMenu("LaneJungClear").AddItem(new MenuItem("useClearQ", "Use Q").SetValue(true));
-            Config.SubMenu("LaneJungClear").AddItem(new MenuItem("useClearW", "Use W").SetValue(true));
-            Config.SubMenu("LaneJungClear").AddItem(new MenuItem("useClearAutoW", "Use W If Hp Above").SetValue(new Slider(20, 1)));
-            Config.SubMenu("LaneJungClear").AddItem(new MenuItem("useClearE", "Use E").SetValue(true));
-
-            Config.AddSubMenu(new Menu("Ultimate", "useUlt"));
-            Config.SubMenu("useUlt").AddItem(new MenuItem("surviveR", "Try Use R To Survive").SetValue(true));
-            Config.SubMenu("useUlt").AddItem(new MenuItem("autouseR", "Use R If Hp Under").SetValue(new Slider(35, 1)));
-
-            Config.AddSubMenu(new Menu("Misc", "miscs"));
-            Config.SubMenu("miscs").AddItem(new MenuItem("lasthitQ", "Use Q To Last Hit").SetValue(true));
-            Config.SubMenu("miscs").AddItem(new MenuItem("killstealQ", "Auto Q To Kill Steal").SetValue(true));
-            Config.SubMenu("miscs").AddItem(new MenuItem("SmiteCol", "Auto Smite Collision Minion").SetValue(true));
-            Config.SubMenu("miscs").AddItem(new MenuItem("CustomSkin", "Skin Changer").SetValue(new Slider(7, 0, 7))).ValueChanged += SkinChanger;
-
-            Config.AddSubMenu(new Menu("Draw", "DrawSettings"));
-            Config.SubMenu("DrawSettings").AddItem(new MenuItem("DrawQ", "Q Range").SetValue(true));
-            Config.SubMenu("DrawSettings").AddItem(new MenuItem("DrawW", "W Range").SetValue(true));
-
+            var ChampMenu = new Menu(Name + " Plugin", Name + "_Plugin");
+            {
+                var ComboMenu = new Menu("Combo/Harass", "Combo");
+                {
+                    ItemBool(ComboMenu, "Q", "Use Q");
+                    ItemBool(ComboMenu, "W", "Use W");
+                    ItemSlider(ComboMenu, "WAbove", "-> If Hp Above", 20);
+                    ItemBool(ComboMenu, "E", "Use E");
+                    ItemBool(ComboMenu, "Item", "Use Item");
+                    ItemBool(ComboMenu, "Ignite", "Auto Ignite If Killable");
+                    ChampMenu.AddSubMenu(ComboMenu);
+                }
+                var ClearMenu = new Menu("Lane/Jungle Clear", "Clear");
+                {
+                    var SmiteMob = new Menu("Smite Mob If Killable", "SmiteMob");
+                    {
+                        ItemBool(SmiteMob, "Baron", "Baron Nashor");
+                        ItemBool(SmiteMob, "Dragon", "Dragon");
+                        ItemBool(SmiteMob, "Red", "Red Brambleback");
+                        ItemBool(SmiteMob, "Blue", "Blue Sentinel");
+                        ItemBool(SmiteMob, "Krug", "Ancient Krug");
+                        ItemBool(SmiteMob, "Gromp", "Gromp");
+                        ItemBool(SmiteMob, "Raptor", "Crimson Raptor");
+                        ItemBool(SmiteMob, "Wolf", "Greater Murk Wolf");
+                        ClearMenu.AddSubMenu(SmiteMob);
+                    }
+                    ItemBool(ClearMenu, "Q", "Use Q");
+                    ItemBool(ClearMenu, "W", "Use W");
+                    ItemSlider(ClearMenu, "WAbove", "-> If Hp Above", 20);
+                    ItemBool(ClearMenu, "E", "Use E");
+                    ChampMenu.AddSubMenu(ClearMenu);
+                }
+                var UltiMenu = new Menu("Ultimate", "Ultimate");
+                {
+                    ItemBool(UltiMenu, "RSurvive", "Try Use R To Survive");
+                    ItemSlider(UltiMenu, "RUnder", "-> If Hp Under", 35);
+                    ChampMenu.AddSubMenu(UltiMenu);
+                }
+                var MiscMenu = new Menu("Misc", "Misc");
+                {
+                    ItemBool(MiscMenu, "QLastHit", "Use Q To Last Hit");
+                    ItemBool(MiscMenu, "QKillSteal", "Use Q To Kill Steal");
+                    ItemBool(MiscMenu, "SmiteCol", "Auto Smite Collision");
+                    ItemSlider(MiscMenu, "CustomSkin", "Skin Changer", 7, 0, 7).ValueChanged += SkinChanger;
+                    ChampMenu.AddSubMenu(MiscMenu);
+                }
+                var DrawMenu = new Menu("Draw", "Draw");
+                {
+                    ItemBool(DrawMenu, "Q", "Q Range", false);
+                    ItemBool(DrawMenu, "W", "W Range", false);
+                    ChampMenu.AddSubMenu(DrawMenu);
+                }
+                Config.AddSubMenu(ChampMenu);
+            }
             Game.OnGameUpdate += OnGameUpdate;
             Drawing.OnDraw += OnDraw;
-            GameObject.OnCreate += OnCreate;
+            Obj_AI_Base.OnProcessSpellCast += OnProcessSpellCast;
         }
 
         private void OnGameUpdate(EventArgs args)
@@ -64,36 +91,34 @@ namespace Master
             {
                 LaneJungClear();
             }
-            else if (Orbwalk.CurrentMode == Orbwalk.Mode.LastHit && Config.Item("lasthitQ").GetValue<bool>()) LastHit();
-            if (Config.Item("killstealQ").GetValue<bool>()) KillSteal();
+            else if (Orbwalk.CurrentMode == Orbwalk.Mode.LastHit) LastHit();
+            if (ItemBool("Misc", "QKillSteal")) KillSteal();
         }
 
         private void OnDraw(EventArgs args)
         {
             if (Player.IsDead) return;
-            if (Config.Item("DrawQ").GetValue<bool>() && SkillQ.Level > 0) Utility.DrawCircle(Player.Position, SkillQ.Range, SkillQ.IsReady() ? Color.Green : Color.Red);
-            if (Config.Item("DrawW").GetValue<bool>() && SkillW.Level > 0) Utility.DrawCircle(Player.Position, SkillW.Range, SkillW.IsReady() ? Color.Green : Color.Red);
+            if (ItemBool("Draw", "Q") && SkillQ.Level > 0) Utility.DrawCircle(Player.Position, SkillQ.Range, SkillQ.IsReady() ? Color.Green : Color.Red);
+            if (ItemBool("Draw", "W") && SkillW.Level > 0) Utility.DrawCircle(Player.Position, SkillW.Range, SkillW.IsReady() ? Color.Green : Color.Red);
         }
 
-        private void OnCreate(GameObject sender, EventArgs args)
+        private void OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
         {
-            if (sender is Obj_SpellMissile && sender.IsValid && Config.Item("surviveR").GetValue<bool>() && SkillR.IsReady())
+            if (Player.IsDead) return;
+            if (sender.IsEnemy && ItemBool("Ultimate", "RSurvive") && SkillR.IsReady())
             {
-                var missle = (Obj_SpellMissile)sender;
-                var caster = missle.SpellCaster;
-                if (caster.IsEnemy)
+                if (args.Target.IsMe && ((Orbwalk.IsAutoAttack(args.SData.Name) && (Player.Health - sender.GetAutoAttackDamage(Player, true)) * 100 / Player.MaxHealth <= ItemSlider("Ultimate", "RUnder")) || (args.SData.Name == "summonerdot" && (Player.Health - (sender as Obj_AI_Hero).GetSummonerSpellDamage(Player, Damage.SummonerSpell.Ignite)) * 100 / Player.MaxHealth <= ItemSlider("Ultimate", "RUnder"))))
                 {
-                    if (missle.SData.Name.Contains("BasicAttack"))
+                    SkillR.Cast(PacketCast());
+                }
+                else if ((args.Target.IsMe || (Player.Position.Distance(args.Start) <= args.SData.CastRange[0] && Player.Position.Distance(args.End) <= Orbwalk.GetAutoAttackRange())) && Damage.Spells.ContainsKey((sender as Obj_AI_Hero).ChampionName))
+                {
+                    for (var i = 3; i > -1; i--)
                     {
-                        if (missle.Target.IsMe && (Player.Health - caster.GetAutoAttackDamage(Player, true)) * 100 / Player.MaxHealth <= Config.Item("autouseR").GetValue<Slider>().Value) SkillR.Cast();
-                    }
-                    else if (missle.Target.IsMe || missle.EndPosition.Distance(Player.Position) <= 130)
-                    {
-                        if (missle.SData.Name == "summonerdot")
+                        if (Damage.Spells[(sender as Obj_AI_Hero).ChampionName].FirstOrDefault(a => a.Slot == (sender as Obj_AI_Hero).GetSpellSlot(args.SData.Name, false) && a.Stage == i) != null)
                         {
-                            if ((Player.Health - (caster as Obj_AI_Hero).GetSummonerSpellDamage(Player, Damage.SummonerSpell.Ignite)) * 100 / Player.MaxHealth <= Config.Item("autouseR").GetValue<Slider>().Value) SkillR.Cast();
+                            if ((Player.Health - (sender as Obj_AI_Hero).GetSpellDamage(Player, (sender as Obj_AI_Hero).GetSpellSlot(args.SData.Name, false), i)) * 100 / Player.MaxHealth <= ItemSlider("Ultimate", "RUnder")) SkillR.Cast(PacketCast());
                         }
-                        else if ((Player.Health - (caster as Obj_AI_Hero).GetSpellDamage(Player, (caster as Obj_AI_Hero).GetSpellSlot(missle.SData.Name, false), 1)) * 100 / Player.MaxHealth <= Config.Item("autouseR").GetValue<Slider>().Value) SkillR.Cast();
                     }
                 }
             }
@@ -101,73 +126,79 @@ namespace Master
 
         private void NormalCombo()
         {
-            if (Config.Item("wusage").GetValue<bool>() && SkillW.IsReady() && Player.HasBuff("BurningAgony") && Player.CountEnemysInRange(500) == 0) SkillW.Cast();
+            if (ItemBool("Combo", "W") && SkillW.IsReady() && Player.HasBuff("BurningAgony", true) && Player.CountEnemysInRange(500) == 0) SkillW.Cast(PacketCast());
             if (targetObj == null) return;
-            if (Config.Item("qusage").GetValue<bool>() && SkillQ.IsReady())
+            if (ItemBool("Combo", "W") && SkillW.IsReady())
             {
-                if (Config.Item("SmiteCol").GetValue<bool>() && SkillQ.GetPrediction(targetObj).Hitchance == HitChance.Collision)
+                if (Player.Health * 100 / Player.MaxHealth >= ItemSlider("Combo", "WAbove"))
+                {
+                    if (Player.Distance3D(targetObj) <= SkillW.Range + 35)
+                    {
+                        if (!Player.HasBuff("BurningAgony", true)) SkillW.Cast(PacketCast());
+                    }
+                    else if (Player.HasBuff("BurningAgony", true)) SkillW.Cast(PacketCast());
+                }
+                else if (Player.HasBuff("BurningAgony", true)) SkillW.Cast(PacketCast());
+            }
+            if (ItemBool("Combo", "Q") && SkillQ.IsReady() && SkillQ.InRange(targetObj.Position))
+            {
+                if (ItemBool("Misc", "SmiteCol"))
                 {
                     if (!SmiteCollision(targetObj, SkillQ)) SkillQ.CastIfHitchanceEquals(targetObj, HitChance.VeryHigh, PacketCast());
                 }
                 else SkillQ.CastIfHitchanceEquals(targetObj, HitChance.VeryHigh, PacketCast());
             }
-            if (Config.Item("wusage").GetValue<bool>() && SkillW.IsReady())
-            {
-                if (Player.Health * 100 / Player.MaxHealth >= Config.Item("autowusage").GetValue<Slider>().Value)
-                {
-                    if (SkillW.InRange(targetObj.Position))
-                    {
-                        if (!Player.HasBuff("BurningAgony")) SkillW.Cast(PacketCast());
-                    }
-                    else if (Player.HasBuff("BurningAgony")) SkillW.Cast(PacketCast());
-                }
-                else if (Player.HasBuff("BurningAgony")) SkillW.Cast(PacketCast());
-            }
-            if (Config.Item("eusage").GetValue<bool>() && SkillE.IsReady() && Orbwalk.InAutoAttackRange(targetObj)) SkillE.Cast(PacketCast());
-            if (Config.Item("iusage").GetValue<bool>() && Items.CanUseItem(Rand) && Player.CountEnemysInRange(450) >= 1) Items.UseItem(Rand);
-            if (Config.Item("ignite").GetValue<bool>()) CastIgnite(targetObj);
+            if (ItemBool("Combo", "E") && SkillE.IsReady() && Orbwalk.InAutoAttackRange(targetObj)) SkillE.Cast(PacketCast());
+            if (ItemBool("Combo", "Item") && Items.CanUseItem(Rand) && Player.CountEnemysInRange(450) >= 1) Items.UseItem(Rand);
+            if (ItemBool("Combo", "Ignite")) CastIgnite(targetObj);
         }
 
         private void LaneJungClear()
         {
-            var minionObj = MinionManager.GetMinions(Player.Position, SkillQ.Range, MinionTypes.All, MinionTeam.NotAlly).FirstOrDefault();
-            if (minionObj == null)
+            var minionObj = ObjectManager.Get<Obj_AI_Minion>().Where(i => IsValid(i, SkillQ.Range)).OrderBy(i => i.Health);
+            if (minionObj.Count() == 0 && ItemBool("Clear", "W") && SkillW.IsReady() && Player.HasBuff("BurningAgony", true)) SkillW.Cast(PacketCast());
+            foreach (var Obj in minionObj)
             {
-                if (Config.Item("useClearW").GetValue<bool>() && SkillW.IsReady() && Player.HasBuff("BurningAgony")) SkillW.Cast(PacketCast());
-                return;
-            }
-            if (Config.Item("useClearE").GetValue<bool>() && SkillE.IsReady() && Orbwalk.InAutoAttackRange(minionObj)) SkillE.Cast(PacketCast());
-            if (Config.Item("useClearW").GetValue<bool>() && SkillW.IsReady())
-            {
-                if (Player.Health * 100 / Player.MaxHealth >= Config.Item("useClearAutoW").GetValue<Slider>().Value)
+                if (SmiteReady() && Obj.Team == GameObjectTeam.Neutral)
                 {
-                    if (MinionManager.GetMinions(Player.Position, SkillW.Range + 100, MinionTypes.All, MinionTeam.NotAlly).Count >= 2)
-                    {
-                        if (!Player.HasBuff("BurningAgony")) SkillW.Cast(PacketCast());
-                    }
-                    else if (Player.HasBuff("BurningAgony")) SkillW.Cast(PacketCast());
+                    if ((ItemBool("SmiteMob", "Baron") && Obj.Name.StartsWith("SRU_Baron")) || (ItemBool("SmiteMob", "Dragon") && Obj.Name.StartsWith("SRU_Dragon")) || (!Obj.Name.Contains("Mini") && (
+                        (ItemBool("SmiteMob", "Red") && Obj.Name.StartsWith("SRU_Red")) || (ItemBool("SmiteMob", "Blue") && Obj.Name.StartsWith("SRU_Blue")) ||
+                        (ItemBool("SmiteMob", "Krug") && Obj.Name.StartsWith("SRU_Krug")) || (ItemBool("SmiteMob", "Gromp") && Obj.Name.StartsWith("SRU_Gromp")) ||
+                        (ItemBool("SmiteMob", "Raptor") && Obj.Name.StartsWith("SRU_Razorbeak")) || (ItemBool("SmiteMob", "Wolf") && Obj.Name.StartsWith("SRU_Murkwolf"))))) CastSmite(Obj);
                 }
-                else if (Player.HasBuff("BurningAgony")) SkillW.Cast(PacketCast());
+                if (ItemBool("Clear", "E") && SkillE.IsReady() && Orbwalk.InAutoAttackRange(Obj)) SkillE.Cast(PacketCast());
+                if (ItemBool("Clear", "W") && SkillW.IsReady())
+                {
+                    if (Player.Health * 100 / Player.MaxHealth >= ItemSlider("Clear", "WAbove"))
+                    {
+                        if (minionObj.Count(i => Player.Distance3D(i) <= SkillW.Range + 35) >= 2 || (Obj.MaxHealth >= 1200 && Player.Distance3D(Obj) <= SkillW.Range + 35))
+                        {
+                            if (!Player.HasBuff("BurningAgony", true)) SkillW.Cast(PacketCast());
+                        }
+                        else if (Player.HasBuff("BurningAgony", true)) SkillW.Cast(PacketCast());
+                    }
+                    else if (Player.HasBuff("BurningAgony", true)) SkillW.Cast(PacketCast());
+                }
+                if (ItemBool("Clear", "Q") && SkillQ.IsReady() && (Obj.MaxHealth >= 1200 || CanKill(Obj, SkillQ))) SkillQ.CastIfHitchanceEquals(Obj, HitChance.Medium, PacketCast());
             }
-            if (Config.Item("useClearQ").GetValue<bool>() && SkillQ.IsReady() && CanKill(minionObj, SkillQ)) SkillQ.CastIfHitchanceEquals(minionObj, HitChance.VeryHigh, PacketCast());
         }
 
         private void LastHit()
         {
-            var minionObj = MinionManager.GetMinions(Player.Position, SkillQ.Range, MinionTypes.All, MinionTeam.NotAlly).Where(i => CanKill(i, SkillQ)).OrderByDescending(i => i.Distance(Player)).FirstOrDefault();
-            if (minionObj != null && SkillQ.IsReady()) SkillQ.CastIfHitchanceEquals(minionObj, HitChance.VeryHigh, PacketCast());
+            if (!ItemBool("Misc", "QLastHit") || !SkillQ.IsReady()) return;
+            foreach (var Obj in ObjectManager.Get<Obj_AI_Minion>().Where(i => IsValid(i, SkillQ.Range) && CanKill(i, SkillQ)).OrderBy(i => i.Health).OrderByDescending(i => i.Distance3D(Player))) SkillQ.CastIfHitchanceEquals(Obj, HitChance.VeryHigh, PacketCast());
         }
 
         private void KillSteal()
         {
-            var target = ObjectManager.Get<Obj_AI_Hero>().FirstOrDefault(i => i.IsValidTarget(SkillQ.Range) && CanKill(i, SkillQ) && i != targetObj);
-            if (target != null && SkillQ.IsReady())
+            if (!SkillQ.IsReady()) return;
+            foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => IsValid(i, SkillQ.Range) && CanKill(i, SkillQ) && i != targetObj).OrderBy(i => i.Health).OrderBy(i => i.Distance3D(Player)))
             {
-                if (Config.Item("SmiteCol").GetValue<bool>() && SkillQ.GetPrediction(target).Hitchance == HitChance.Collision)
+                if (ItemBool("Misc", "SmiteCol"))
                 {
-                    if (!SmiteCollision(target, SkillQ)) SkillQ.CastIfHitchanceEquals(target, HitChance.VeryHigh, PacketCast());
+                    if (!SmiteCollision(Obj, SkillQ)) SkillQ.CastIfHitchanceEquals(Obj, HitChance.VeryHigh, PacketCast());
                 }
-                else SkillQ.CastIfHitchanceEquals(target, HitChance.VeryHigh, PacketCast());
+                else SkillQ.CastIfHitchanceEquals(Obj, HitChance.VeryHigh, PacketCast());
             }
         }
     }

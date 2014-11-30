@@ -8,59 +8,83 @@ using SharpDX;
 
 using Orbwalk = MasterCommon.M_Orbwalker;
 
-namespace Master
+namespace MasterPlugin
 {
-    class Garen : Program
+    class Garen : Master.Program
     {
         public Garen()
         {
-            SkillQ = new Spell(SpellSlot.Q, 20);
+            SkillQ = new Spell(SpellSlot.Q, 300);
             SkillW = new Spell(SpellSlot.W, 20);
             SkillE = new Spell(SpellSlot.E, 300);
             SkillR = new Spell(SpellSlot.R, 400);
-            SkillR.SetTargetted(SkillR.Instance.SData.SpellCastTime, SkillR.Instance.SData.MissileSpeed);
+            SkillQ.SetSkillshot(0.0435f, 0, 0, false, SkillshotType.SkillshotCircle);
+            SkillE.SetSkillshot(0, 160, 700, false, SkillshotType.SkillshotCircle);
+            SkillR.SetTargetted(-0.13f, 900);
 
-            Config.AddSubMenu(new Menu("Combo/Harass", "csettings"));
-            Config.SubMenu("csettings").AddItem(new MenuItem("qusage", "Use Q").SetValue(true));
-            Config.SubMenu("csettings").AddItem(new MenuItem("wusage", "Use W").SetValue(true));
-            Config.SubMenu("csettings").AddItem(new MenuItem("autowusage", "Use W If Hp Under").SetValue(new Slider(60, 1)));
-            Config.SubMenu("csettings").AddItem(new MenuItem("eusage", "Use E").SetValue(true));
-            Config.SubMenu("csettings").AddItem(new MenuItem("rusage", "Use R To Finish").SetValue(true));
-            Config.SubMenu("csettings").AddItem(new MenuItem("ignite", "Auto Ignite If Killable").SetValue(true));
-            Config.SubMenu("csettings").AddItem(new MenuItem("iusage", "Use Item").SetValue(true));
-
-            Config.AddSubMenu(new Menu("Lane/Jungle Clear", "LaneJungClear"));
-            Config.SubMenu("LaneJungClear").AddItem(new MenuItem("useClearQ", "Use Q").SetValue(true));
-            Config.SubMenu("LaneJungClear").AddItem(new MenuItem("useClearE", "Use E").SetValue(true));
-
-            Config.AddSubMenu(new Menu("Ultimate", "useUlt"));
-            foreach (var enemy in ObjectManager.Get<Obj_AI_Hero>().Where(i => i.IsEnemy))
+            var ChampMenu = new Menu(Name + " Plugin", Name + "_Plugin");
             {
-                Config.SubMenu("useUlt").AddItem(new MenuItem("ult" + enemy.ChampionName, "Use Ultimate On " + enemy.ChampionName).SetValue(true));
+                var ComboMenu = new Menu("Combo/Harass", "Combo");
+                {
+                    ItemBool(ComboMenu, "Q", "Use Q");
+                    ItemBool(ComboMenu, "W", "Use W");
+                    ItemSlider(ComboMenu, "WUnder", "-> If Hp Under", 60);
+                    ItemBool(ComboMenu, "E", "Use E");
+                    ItemBool(ComboMenu, "R", "Use R If Killable");
+                    ItemBool(ComboMenu, "Item", "Use Item");
+                    ItemBool(ComboMenu, "Ignite", "Auto Ignite If Killable");
+                    ChampMenu.AddSubMenu(ComboMenu);
+                }
+                var ClearMenu = new Menu("Lane/Jungle Clear", "Clear");
+                {
+                    ItemBool(ClearMenu, "Q", "Use Q");
+                    ItemBool(ClearMenu, "E", "Use E");
+                    ChampMenu.AddSubMenu(ClearMenu);
+                }
+                var UltiMenu = new Menu("Ultimate", "Ultimate");
+                {
+                    foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => i.IsEnemy)) ItemBool(UltiMenu, Obj.ChampionName, "Use R On " + Obj.ChampionName);
+                    ChampMenu.AddSubMenu(UltiMenu);
+                }
+                var MiscMenu = new Menu("Misc", "Misc");
+                {
+                    ItemBool(MiscMenu, "QLastHit", "Use Q To Last Hit");
+                    ItemBool(MiscMenu, "WSurvive", "Try Use W To Survive");
+                    ItemSlider(MiscMenu, "CustomSkin", "Skin Changer", 6, 0, 6).ValueChanged += SkinChanger;
+                    ChampMenu.AddSubMenu(MiscMenu);
+                }
+                var DrawMenu = new Menu("Draw", "Draw");
+                {
+                    ItemBool(DrawMenu, "E", "E Range", false);
+                    ItemBool(DrawMenu, "R", "R Range", false);
+                    ChampMenu.AddSubMenu(DrawMenu);
+                }
+                Config.AddSubMenu(ChampMenu);
             }
-
-            Config.AddSubMenu(new Menu("Misc", "miscs"));
-            Config.SubMenu("miscs").AddItem(new MenuItem("CustomSkin", "Skin Changer").SetValue(new Slider(6, 0, 6))).ValueChanged += SkinChanger;
-
-            Config.AddSubMenu(new Menu("Draw", "DrawSettings"));
-            Config.SubMenu("DrawSettings").AddItem(new MenuItem("DrawE", "E Range").SetValue(true));
-            Config.SubMenu("DrawSettings").AddItem(new MenuItem("DrawR", "R Range").SetValue(true));
-
             Game.OnGameUpdate += OnGameUpdate;
             Drawing.OnDraw += OnDraw;
+            Obj_AI_Base.OnProcessSpellCast += OnProcessSpellCast;
             Orbwalk.AfterAttack += AfterAttack;
         }
 
         private void OnGameUpdate(EventArgs args)
         {
             if (Player.IsDead || MenuGUI.IsChatOpen) return;
-            if (Orbwalk.CurrentMode == Orbwalk.Mode.Combo || Orbwalk.CurrentMode == Orbwalk.Mode.Harass)
+            if (Orbwalk.CurrentMode == Orbwalk.Mode.Combo)
             {
                 NormalCombo();
+            }
+            else if (Orbwalk.CurrentMode == Orbwalk.Mode.Harass)
+            {
+                NormalCombo(true);
             }
             else if (Orbwalk.CurrentMode == Orbwalk.Mode.LaneClear || Orbwalk.CurrentMode == Orbwalk.Mode.LaneFreeze)
             {
                 LaneJungClear();
+            }
+            else if (Orbwalk.CurrentMode == Orbwalk.Mode.LastHit)
+            {
+                LastHit();
             }
             else if (Orbwalk.CurrentMode == Orbwalk.Mode.Flee && SkillQ.IsReady()) SkillQ.Cast();
         }
@@ -68,46 +92,90 @@ namespace Master
         private void OnDraw(EventArgs args)
         {
             if (Player.IsDead) return;
-            if (Config.Item("DrawE").GetValue<bool>() && SkillE.Level > 0) Utility.DrawCircle(Player.Position, SkillE.Range, SkillE.IsReady() ? Color.Green : Color.Red);
-            if (Config.Item("DrawR").GetValue<bool>() && SkillR.Level > 0) Utility.DrawCircle(Player.Position, SkillR.Range, SkillR.IsReady() ? Color.Green : Color.Red);
+            if (ItemBool("Draw", "E") && SkillE.Level > 0) Utility.DrawCircle(Player.Position, SkillE.Range, SkillE.IsReady() ? Color.Green : Color.Red);
+            if (ItemBool("Draw", "R") && SkillR.Level > 0) Utility.DrawCircle(Player.Position, SkillR.Range, SkillR.IsReady() ? Color.Green : Color.Red);
+        }
+
+        private void OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
+        {
+            if (Player.IsDead) return;
+            if (sender.IsMe && Orbwalk.IsAutoAttack(args.SData.Name) && IsValid((Obj_AI_Base)args.Target) && CanKill((Obj_AI_Base)args.Target, SkillQ) && SkillQ.IsReady() && (args.Target is Obj_AI_Hero || args.Target is Obj_AI_Minion))
+            {
+                if (Orbwalk.CurrentMode != Orbwalk.Mode.None && Orbwalk.CurrentMode != Orbwalk.Mode.Flee) SkillQ.Cast(PacketCast());
+            }
+            else if (sender.IsEnemy && ItemBool("Misc", "WSurvive") && SkillW.IsReady())
+            {
+                if (args.Target.IsMe && (Orbwalk.IsAutoAttack(args.SData.Name) && Player.Health <= sender.GetAutoAttackDamage(Player, true)))
+                {
+                    SkillW.Cast(PacketCast());
+                }
+                else if ((args.Target.IsMe || (Player.Position.Distance(args.Start) <= args.SData.CastRange[0] && Player.Position.Distance(args.End) <= Orbwalk.GetAutoAttackRange())) && Damage.Spells.ContainsKey((sender as Obj_AI_Hero).ChampionName))
+                {
+                    for (var i = 3; i > -1; i--)
+                    {
+                        if (Damage.Spells[(sender as Obj_AI_Hero).ChampionName].FirstOrDefault(a => a.Slot == (sender as Obj_AI_Hero).GetSpellSlot(args.SData.Name, false) && a.Stage == i) != null)
+                        {
+                            if (Player.Health <= (sender as Obj_AI_Hero).GetSpellDamage(Player, (sender as Obj_AI_Hero).GetSpellSlot(args.SData.Name, false), i)) SkillW.Cast(PacketCast());
+                        }
+                    }
+                }
+            }
         }
 
         private void AfterAttack(Obj_AI_Base unit, Obj_AI_Base target)
         {
             if (!unit.IsMe) return;
-            if (Config.Item("qusage").GetValue<bool>() && SkillQ.IsReady() && target.IsValidTarget(Orbwalk.GetAutoAttackRange(Player, target)) && (Orbwalk.CurrentMode == Orbwalk.Mode.Combo || Orbwalk.CurrentMode == Orbwalk.Mode.Harass)) SkillQ.Cast(PacketCast());
+            if (ItemBool("Combo", "Q") && SkillQ.IsReady() && IsValid(target, Orbwalk.GetAutoAttackRange() + 50) && (Orbwalk.CurrentMode == Orbwalk.Mode.Combo || Orbwalk.CurrentMode == Orbwalk.Mode.Harass)) SkillQ.Cast(PacketCast());
         }
 
-        private void NormalCombo()
+        private void NormalCombo(bool IsHarass = false)
         {
             if (targetObj == null) return;
-            if (Config.Item("qusage").GetValue<bool>() && SkillQ.IsReady() && targetObj.IsValidTarget(1000) && !Orbwalk.InAutoAttackRange(targetObj)) SkillQ.Cast(PacketCast());
-            if (Config.Item("eusage").GetValue<bool>() && SkillE.IsReady() && !Player.HasBuff("GarenE") && !Player.HasBuff("GarenQ", true) && SkillE.InRange(targetObj.Position)) SkillE.Cast(PacketCast());
-            if (Config.Item("wusage").GetValue<bool>() && SkillW.IsReady() && Orbwalk.InAutoAttackRange(targetObj) && Player.Health * 100 / Player.MaxHealth <= Config.Item("autowusage").GetValue<Slider>().Value) SkillW.Cast(PacketCast());
-            if (Config.Item("rusage").GetValue<bool>() && Config.Item("ult" + targetObj.ChampionName).GetValue<bool>() && SkillR.IsReady() && SkillR.InRange(targetObj.Position) && CanKill(targetObj, SkillR)) SkillR.CastOnUnit(targetObj, PacketCast());
-            if (Config.Item("iusage").GetValue<bool>() && Items.CanUseItem(Rand) && Player.CountEnemysInRange(450) >= 1) Items.UseItem(Rand);
-            if (Config.Item("ignite").GetValue<bool>()) CastIgnite(targetObj);
+            if (ItemBool("Combo", "Q") && SkillQ.IsReady() && IsHarass ? Player.Distance3D(targetObj) <= Orbwalk.GetAutoAttackRange() + 50 : targetObj.IsValidTarget(800) && !Orbwalk.InAutoAttackRange(targetObj))
+            {
+                if (IsHarass)
+                {
+                    Orbwalk.SetAttack(false);
+                    Player.IssueOrder(GameObjectOrder.AttackUnit, targetObj);
+                    Orbwalk.SetAttack(true);
+                }
+                else SkillQ.Cast(PacketCast());
+            }
+            if (ItemBool("Combo", "E") && SkillE.IsReady() && !Player.HasBuff("GarenE", true) && !Player.HasBuff("GarenQ", true) && SkillE.InRange(targetObj.Position)) SkillE.Cast(PacketCast());
+            if (ItemBool("Combo", "W") && SkillW.IsReady() && Orbwalk.InAutoAttackRange(targetObj) && Player.Health * 100 / Player.MaxHealth <= ItemSlider("Combo", "WUnder")) SkillW.Cast(PacketCast());
+            if (ItemBool("Combo", "R") && ItemBool("Ultimate", targetObj.ChampionName) && SkillR.IsReady() && SkillR.InRange(targetObj.Position) && CanKill(targetObj, SkillR)) SkillR.CastOnUnit(targetObj, PacketCast());
+            if (ItemBool("Combo", "Item") && Items.CanUseItem(Rand) && Player.CountEnemysInRange(450) >= 1) Items.UseItem(Rand);
+            if (ItemBool("Combo", "Ignite")) CastIgnite(targetObj);
         }
 
         private void LaneJungClear()
         {
-            foreach (var minionObj in MinionManager.GetMinions(Player.Position, 800, MinionTypes.All, MinionTeam.NotAlly))
+            foreach (var Obj in ObjectManager.Get<Obj_AI_Minion>().Where(i => IsValid(i, 450)).OrderBy(i => i.Health))
             {
-                if (Config.Item("useClearQ").GetValue<bool>())
+                if (ItemBool("Clear", "Q") && SkillQ.IsReady())
                 {
-                    if (CanKill(minionObj, SkillQ) && Orbwalk.InAutoAttackRange(minionObj))
+                    if (CanKill(Obj, SkillQ) && Player.Distance3D(Obj) <= Orbwalk.GetAutoAttackRange() + 50)
                     {
-                        if (SkillQ.IsReady() || Player.HasBuff("GarenQ", true))
-                        {
-                            Orbwalk.SetAttack(false);
-                            if (!Player.HasBuff("GarenQ", true)) SkillQ.Cast(PacketCast());
-                            if (Player.HasBuff("GarenQ", true)) Player.IssueOrder(GameObjectOrder.AttackUnit, minionObj);
-                            Orbwalk.SetAttack(true);
-                        }
+                        Orbwalk.SetAttack(false);
+                        Player.IssueOrder(GameObjectOrder.AttackUnit, Obj);
+                        Orbwalk.SetAttack(true);
+                        break;
                     }
-                    else if (Player.Distance(minionObj) > 450 && SkillQ.IsReady()) SkillQ.Cast();
+                    else if (Player.Distance(Obj) > 500) SkillQ.Cast(PacketCast());
                 }
-                if (Config.Item("useClearE").GetValue<bool>() && SkillE.IsReady() && !Player.HasBuff("GarenE") && !Player.HasBuff("GarenQ", true) && SkillE.InRange(minionObj.Position)) SkillE.Cast(PacketCast());
+                if (ItemBool("Clear", "E") && SkillE.IsReady() && !Player.HasBuff("GarenE", true) && !Player.HasBuff("GarenQ", true) && SkillE.InRange(Obj.Position)) SkillE.Cast(PacketCast());
+            }
+        }
+
+        private void LastHit()
+        {
+            if (!ItemBool("Misc", "QLastHit") || !SkillQ.IsReady()) return;
+            foreach (var Obj in ObjectManager.Get<Obj_AI_Minion>().Where(i => IsValid(i, Orbwalk.GetAutoAttackRange() + 50) && CanKill(i, SkillQ)).OrderBy(i => i.Health).OrderBy(i => i.Distance3D(Player)))
+            {
+                Orbwalk.SetAttack(false);
+                Player.IssueOrder(GameObjectOrder.AttackUnit, Obj);
+                Orbwalk.SetAttack(true);
+                break;
             }
         }
     }
