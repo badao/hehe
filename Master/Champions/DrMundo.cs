@@ -14,7 +14,7 @@ namespace MasterPlugin
     {
         public DrMundo()
         {
-            SkillQ = new Spell(SpellSlot.Q, 1100);
+            SkillQ = new Spell(SpellSlot.Q, 975);
             SkillW = new Spell(SpellSlot.W, 325);
             SkillE = new Spell(SpellSlot.E, 300);
             SkillR = new Spell(SpellSlot.R, 20);
@@ -82,7 +82,7 @@ namespace MasterPlugin
 
         private void OnGameUpdate(EventArgs args)
         {
-            if (Player.IsDead || MenuGUI.IsChatOpen) return;
+            if (Player.IsDead || MenuGUI.IsChatOpen || Player.IsChannelingImportantSpell() || Player.IsRecalling()) return;
             if (Orbwalk.CurrentMode == Orbwalk.Mode.Combo || Orbwalk.CurrentMode == Orbwalk.Mode.Harass)
             {
                 NormalCombo();
@@ -126,19 +126,19 @@ namespace MasterPlugin
 
         private void NormalCombo()
         {
-            if (ItemBool("Combo", "W") && SkillW.IsReady() && Player.HasBuff("BurningAgony", true) && Player.CountEnemysInRange(500) == 0) SkillW.Cast(PacketCast());
+            if (ItemBool("Combo", "W") && SkillW.IsReady() && Player.HasBuff("BurningAgony") && Player.CountEnemysInRange(500) == 0) SkillW.Cast(PacketCast());
             if (targetObj == null) return;
             if (ItemBool("Combo", "W") && SkillW.IsReady())
             {
-                if (Player.Health * 100 / Player.MaxHealth >= ItemSlider("Combo", "WAbove"))
+                if (Player.HealthPercentage() >= ItemSlider("Combo", "WAbove"))
                 {
                     if (Player.Distance3D(targetObj) <= SkillW.Range + 35)
                     {
-                        if (!Player.HasBuff("BurningAgony", true)) SkillW.Cast(PacketCast());
+                        if (!Player.HasBuff("BurningAgony")) SkillW.Cast(PacketCast());
                     }
-                    else if (Player.HasBuff("BurningAgony", true)) SkillW.Cast(PacketCast());
+                    else if (Player.HasBuff("BurningAgony")) SkillW.Cast(PacketCast());
                 }
-                else if (Player.HasBuff("BurningAgony", true)) SkillW.Cast(PacketCast());
+                else if (Player.HasBuff("BurningAgony")) SkillW.Cast(PacketCast());
             }
             if (ItemBool("Combo", "Q") && SkillQ.IsReady() && SkillQ.InRange(targetObj.Position))
             {
@@ -156,7 +156,7 @@ namespace MasterPlugin
         private void LaneJungClear()
         {
             var minionObj = ObjectManager.Get<Obj_AI_Minion>().Where(i => IsValid(i, SkillQ.Range)).OrderBy(i => i.Health);
-            if (minionObj.Count() == 0 && ItemBool("Clear", "W") && SkillW.IsReady() && Player.HasBuff("BurningAgony", true)) SkillW.Cast(PacketCast());
+            if (minionObj.Count() == 0 && ItemBool("Clear", "W") && SkillW.IsReady() && Player.HasBuff("BurningAgony")) SkillW.Cast(PacketCast());
             foreach (var Obj in minionObj)
             {
                 if (SmiteReady() && Obj.Team == GameObjectTeam.Neutral)
@@ -169,15 +169,15 @@ namespace MasterPlugin
                 if (ItemBool("Clear", "E") && SkillE.IsReady() && Orbwalk.InAutoAttackRange(Obj)) SkillE.Cast(PacketCast());
                 if (ItemBool("Clear", "W") && SkillW.IsReady())
                 {
-                    if (Player.Health * 100 / Player.MaxHealth >= ItemSlider("Clear", "WAbove"))
+                    if (Player.HealthPercentage() >= ItemSlider("Clear", "WAbove"))
                     {
                         if (minionObj.Count(i => Player.Distance3D(i) <= SkillW.Range + 35) >= 2 || (Obj.MaxHealth >= 1200 && Player.Distance3D(Obj) <= SkillW.Range + 35))
                         {
-                            if (!Player.HasBuff("BurningAgony", true)) SkillW.Cast(PacketCast());
+                            if (!Player.HasBuff("BurningAgony")) SkillW.Cast(PacketCast());
                         }
-                        else if (Player.HasBuff("BurningAgony", true)) SkillW.Cast(PacketCast());
+                        else if (Player.HasBuff("BurningAgony")) SkillW.Cast(PacketCast());
                     }
-                    else if (Player.HasBuff("BurningAgony", true)) SkillW.Cast(PacketCast());
+                    else if (Player.HasBuff("BurningAgony")) SkillW.Cast(PacketCast());
                 }
                 if (ItemBool("Clear", "Q") && SkillQ.IsReady() && (Obj.MaxHealth >= 1200 || CanKill(Obj, SkillQ))) SkillQ.CastIfHitchanceEquals(Obj, HitChance.Medium, PacketCast());
             }

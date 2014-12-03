@@ -20,7 +20,7 @@ namespace MasterPlugin
         {
             SkillQ = new Spell(SpellSlot.Q, 700);
             SkillW = new Spell(SpellSlot.W, 300);
-            SkillE = new Spell(SpellSlot.E, 187.5f);
+            SkillE = new Spell(SpellSlot.E, 300);
             SkillR = new Spell(SpellSlot.R, 100);
             SkillQ.SetTargetted(-0.5f, 0);
             SkillW.SetSkillshot(0.0435f, 0, 0, false, SkillshotType.SkillshotCircle);
@@ -36,8 +36,8 @@ namespace MasterPlugin
                     ItemBool(ComboMenu, "E", "Use E");
                     ItemBool(ComboMenu, "R", "Use R");
                     ItemList(ComboMenu, "RMode", "-> Mode", new[] { "Player Hp", "# Enemy" });
-                    ItemSlider(ComboMenu, "RUnder", "-> If Hp Under", 40);
-                    ItemSlider(ComboMenu, "RCount", "-> If Enemy Above", 2, 1, 4);
+                    ItemSlider(ComboMenu, "RUnder", "--> If Hp Under", 40);
+                    ItemSlider(ComboMenu, "RCount", "--> If Enemy Above", 2, 1, 4);
                     ItemBool(ComboMenu, "Item", "Use Item");
                     ItemBool(ComboMenu, "Ignite", "Auto Ignite If Killable");
                     ChampMenu.AddSubMenu(ComboMenu);
@@ -73,6 +73,7 @@ namespace MasterPlugin
                 }
                 var MiscMenu = new Menu("Misc", "Misc");
                 {
+                    ItemBool(MiscMenu, "WJPink", "Ward Jump Use Pink Ward", false);
                     ItemBool(MiscMenu, "WLastHit", "Use W To Last Hit");
                     ItemBool(MiscMenu, "WQKillSteal", "Use WQ To Kill Steal");
                     ItemBool(MiscMenu, "EAntiGap", "Use E To Anti Gap Closer");
@@ -100,7 +101,7 @@ namespace MasterPlugin
 
         private void OnGameUpdate(EventArgs args)
         {
-            if (Player.IsDead || MenuGUI.IsChatOpen)
+            if (Player.IsDead || MenuGUI.IsChatOpen || Player.IsChannelingImportantSpell() || Player.IsRecalling())
             {
                 if (Player.IsDead) RCount = 0;
                 return;
@@ -138,13 +139,13 @@ namespace MasterPlugin
 
         private void OnEnemyGapcloser(ActiveGapcloser gapcloser)
         {
-            if (!ItemBool("Misc", "EAntiGap")) return;
+            if (!ItemBool("Misc", "EAntiGap") || Player.IsDead) return;
             if (IsValid(gapcloser.Sender, SkillE.Range + 10) && SkillE.IsReady()) SkillE.Cast(PacketCast());
         }
 
         private void OnPossibleToInterrupt(Obj_AI_Base unit, InterruptableSpell spell)
         {
-            if (!ItemBool("Misc", "EInterrupt")) return;
+            if (!ItemBool("Misc", "EInterrupt") || Player.IsDead) return;
             if (Player.Mana >= SkillQ.Instance.ManaCost + SkillE.Instance.ManaCost && !SkillE.InRange(unit.Position) && IsValid(unit, SkillQ.Range)) SkillQ.CastOnUnit(unit, PacketCast());
             if (IsValid(unit, SkillE.Range) && SkillE.IsReady()) SkillE.Cast(PacketCast());
         }
@@ -154,7 +155,7 @@ namespace MasterPlugin
             if (Player.IsDead) return;
             if (sender.IsMe)
             {
-                if (Orbwalk.IsAutoAttack(args.SData.Name) && IsValid((Obj_AI_Base)args.Target) && (args.Target as Obj_AI_Base).Health + 5 <= GetBonusDmg((Obj_AI_Base)args.Target) && Orbwalk.CurrentMode == Orbwalk.Mode.LastHit && SkillW.IsReady() && args.Target is Obj_AI_Minion) SkillW.Cast(PacketCast());
+                if (Orbwalk.IsAutoAttack(args.SData.Name) && IsValid((Obj_AI_Base)args.Target) && SkillW.IsReady() && Orbwalk.CurrentMode == Orbwalk.Mode.LastHit && SkillW.GetHealthPrediction((Obj_AI_Base)args.Target) + 5 <= GetBonusDmg((Obj_AI_Base)args.Target) && args.Target is Obj_AI_Minion) SkillW.Cast(PacketCast());
                 if (args.SData.Name == "JaxCounterStrike")
                 {
                     ECasted = true;
@@ -238,7 +239,7 @@ namespace MasterPlugin
             if (targetObj == null) return;
             if (ItemBool("Combo", "E") && SkillE.IsReady())
             {
-                if (!Player.HasBuff("JaxCounterStrike", true))
+                if (!Player.HasBuff("JaxEvasion"))
                 {
                     if ((ItemBool("Combo", "Q") && SkillQ.IsReady() && SkillQ.InRange(targetObj.Position)) || SkillE.InRange(targetObj.Position)) SkillE.Cast(PacketCast());
                 }
@@ -246,14 +247,14 @@ namespace MasterPlugin
             }
             if (ItemBool("Combo", "Q") && SkillQ.IsReady() && SkillQ.InRange(targetObj.Position))
             {
-                if ((ItemBool("Combo", "E") && SkillE.IsReady() && Player.HasBuff("JaxCounterStrike", true) && !SkillE.InRange(targetObj.Position)) || (!Orbwalk.InAutoAttackRange(targetObj) && Player.Distance3D(targetObj) > 450)) SkillQ.CastOnUnit(targetObj, PacketCast());
+                if ((ItemBool("Combo", "E") && SkillE.IsReady() && Player.HasBuff("JaxEvasion") && !SkillE.InRange(targetObj.Position)) || (!Orbwalk.InAutoAttackRange(targetObj) && Player.Distance3D(targetObj) > 450)) SkillQ.CastOnUnit(targetObj, PacketCast());
             }
             if (ItemBool("Combo", "R") && SkillR.IsReady())
             {
                 switch (ItemList("Combo", "RMode"))
                 {
                     case 0:
-                        if (Player.Health * 100 / Player.MaxHealth <= ItemSlider("Combo", "RUnder")) SkillR.Cast(PacketCast());
+                        if (Player.HealthPercentage() <= ItemSlider("Combo", "RUnder")) SkillR.Cast(PacketCast());
                         break;
                     case 1:
                         if (Player.CountEnemysInRange((int)SkillQ.Range) >= ItemSlider("Combo", "RCount")) SkillR.Cast(PacketCast());
@@ -270,15 +271,15 @@ namespace MasterPlugin
             if (ItemBool("Harass", "W") && SkillW.IsReady() && ItemBool("Harass", "Q") && SkillQ.IsReady() && SkillQ.InRange(targetObj.Position)) SkillW.Cast(PacketCast());
             if (ItemBool("Harass", "E") && SkillE.IsReady())
             {
-                if (!Player.HasBuff("JaxCounterStrike", true))
+                if (!Player.HasBuff("JaxEvasion"))
                 {
                     if ((ItemBool("Harass", "Q") && SkillQ.IsReady() && SkillQ.InRange(targetObj.Position)) || SkillE.InRange(targetObj.Position)) SkillE.Cast(PacketCast());
                 }
                 else if (SkillE.InRange(targetObj.Position) && !IsValid(targetObj, SkillE.Range - 3.5f)) SkillE.Cast(PacketCast());
             }
-            if (ItemBool("Harass", "Q") && SkillQ.IsReady() && SkillQ.InRange(targetObj.Position) && Player.Health * 100 / Player.MaxHealth >= ItemList("Harass", "QAbove"))
+            if (ItemBool("Harass", "Q") && SkillQ.IsReady() && SkillQ.InRange(targetObj.Position) && Player.HealthPercentage() >= ItemList("Harass", "QAbove"))
             {
-                if ((ItemBool("Harass", "E") && SkillE.IsReady() && Player.HasBuff("JaxCounterStrike", true) && !SkillE.InRange(targetObj.Position)) || (!Orbwalk.InAutoAttackRange(targetObj) && Player.Distance3D(targetObj) > 450)) SkillQ.CastOnUnit(targetObj, PacketCast());
+                if ((ItemBool("Harass", "E") && SkillE.IsReady() && Player.HasBuff("JaxEvasion") && !SkillE.InRange(targetObj.Position)) || (!Orbwalk.InAutoAttackRange(targetObj) && Player.Distance3D(targetObj) > 450)) SkillQ.CastOnUnit(targetObj, PacketCast());
             }
         }
 
@@ -295,20 +296,21 @@ namespace MasterPlugin
                 }
                 if (ItemBool("Clear", "E") && SkillE.IsReady())
                 {
-                    if (!Player.HasBuff("JaxCounterStrike", true))
+                    if (!Player.HasBuff("JaxEvasion"))
                     {
                         if ((ItemBool("Clear", "Q") && SkillQ.IsReady()) || SkillE.InRange(Obj.Position)) SkillE.Cast(PacketCast());
                     }
                     else if (SkillE.InRange(Obj.Position) && !ECasted) SkillE.Cast(PacketCast());
                 }
-                if (ItemBool("Clear", "Q") && SkillQ.IsReady() && ((ItemBool("Clear", "E") && SkillE.IsReady() && Player.HasBuff("JaxCounterStrike", true) && !SkillE.InRange(Obj.Position)) || (!Orbwalk.InAutoAttackRange(Obj) && Player.Distance3D(Obj) > 450))) SkillQ.CastOnUnit(Obj, PacketCast());
+                if (ItemBool("Clear", "Q") && SkillQ.IsReady() && ((ItemBool("Clear", "E") && SkillE.IsReady() && Player.HasBuff("JaxEvasion") && !SkillE.InRange(Obj.Position)) || (!Orbwalk.InAutoAttackRange(Obj) && Player.Distance3D(Obj) > 450))) SkillQ.CastOnUnit(Obj, PacketCast());
+                if (ItemBool("Clear", "Item")) UseItem(Obj, true);
             }
         }
 
         private void LastHit()
         {
-            if (!ItemBool("Misc", "WLastHit") || !SkillW.IsReady() || !Player.HasBuff("JaxEmpowerTwo", true)) return;
-            foreach (var Obj in ObjectManager.Get<Obj_AI_Minion>().Where(i => IsValid(i, Orbwalk.GetAutoAttackRange() + 50) && i.Health + 5 <= GetBonusDmg(i)).OrderBy(i => i.Health).OrderBy(i => i.Distance3D(Player)))
+            if (!ItemBool("Misc", "WLastHit") || !SkillW.IsReady() || !Player.HasBuff("JaxEmpowerTwo")) return;
+            foreach (var Obj in ObjectManager.Get<Obj_AI_Minion>().Where(i => IsValid(i, Orbwalk.GetAutoAttackRange() + 50) && SkillW.GetHealthPrediction(i) + 5 <= GetBonusDmg(i)).OrderBy(i => i.Health).OrderBy(i => i.Distance3D(Player)))
             {
                 Orbwalk.SetAttack(false);
                 Player.IssueOrder(GameObjectOrder.AttackUnit, Obj);
@@ -341,28 +343,28 @@ namespace MasterPlugin
         private void KillSteal()
         {
             if (Player.Mana < SkillQ.Instance.ManaCost + SkillW.Instance.ManaCost) return;
-            foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => IsValid(i, SkillQ.Range) && i.Health + 5 <= SkillQ.GetDamage(i) + GetBonusDmg(i) && i != targetObj).OrderBy(i => i.Health).OrderByDescending(i => i.Distance3D(Player)))
+            foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => IsValid(i, SkillQ.Range) && SkillQ.GetHealthPrediction(i) + 5 <= SkillQ.GetDamage(i) + GetBonusDmg(i) && i != targetObj).OrderBy(i => i.Health).OrderByDescending(i => i.Distance3D(Player)))
             {
                 if (SkillW.IsReady()) SkillW.Cast(PacketCast());
-                if (SkillQ.IsReady() && Player.HasBuff("JaxEmpowerTwo", true)) SkillQ.CastOnUnit(Obj, PacketCast());
+                if (SkillQ.IsReady() && Player.HasBuff("JaxEmpowerTwo")) SkillQ.CastOnUnit(Obj, PacketCast());
             }
         }
 
-        private void UseItem(Obj_AI_Hero Target, bool Farm = false)
+        private void UseItem(Obj_AI_Base Target, bool IsFarm = false)
         {
-            if (Items.CanUseItem(Bilge) && Player.Distance3D(Target) <= 450 && !Farm) Items.UseItem(Bilge, Target);
-            if (Items.CanUseItem(Blade) && Player.Distance3D(Target) <= 450 && !Farm) Items.UseItem(Blade, Target);
-            if (Items.CanUseItem(Tiamat) && Farm ? Player.Distance3D(Target) <= 350 : Player.CountEnemysInRange(350) >= 1) Items.UseItem(Tiamat);
-            if (Items.CanUseItem(Hydra) && Farm ? Player.Distance3D(Target) <= 350 : (Player.CountEnemysInRange(350) >= 2 || (Player.GetAutoAttackDamage(Target) < Target.Health && Player.CountEnemysInRange(350) == 1))) Items.UseItem(Hydra);
-            if (Items.CanUseItem(Rand) && Player.CountEnemysInRange(450) >= 1 && !Farm) Items.UseItem(Rand);
+            if (Items.CanUseItem(Bilge) && Player.Distance3D(Target) <= 450 && !IsFarm) Items.UseItem(Bilge, Target);
+            if (Items.CanUseItem(Blade) && Player.Distance3D(Target) <= 450 && !IsFarm) Items.UseItem(Blade, Target);
+            if (Items.CanUseItem(Tiamat) && IsFarm ? Player.Distance3D(Target) <= 350 : Player.CountEnemysInRange(350) >= 1) Items.UseItem(Tiamat);
+            if (Items.CanUseItem(Hydra) && IsFarm ? Player.Distance3D(Target) <= 350 : (Player.CountEnemysInRange(350) >= 2 || (Player.GetAutoAttackDamage(Target, true) < Target.Health && Player.CountEnemysInRange(350) == 1))) Items.UseItem(Hydra);
+            if (Items.CanUseItem(Rand) && Player.CountEnemysInRange(450) >= 1 && !IsFarm) Items.UseItem(Rand);
         }
 
         private double GetBonusDmg(Obj_AI_Base Target)
         {
             double DmgItem = 0;
-            if (Items.HasItem(Sheen) && ((Items.CanUseItem(Sheen) && SkillW.IsReady()) || Player.HasBuff("sheen", true)) && Player.BaseAttackDamage > DmgItem) DmgItem = Player.BaseAttackDamage;
-            if (Items.HasItem(Trinity) && ((Items.CanUseItem(Trinity) && SkillW.IsReady()) || Player.HasBuff("sheen", true)) && Player.BaseAttackDamage * 2 > DmgItem) DmgItem = Player.BaseAttackDamage * 2;
-            return (SkillW.IsReady() || Player.HasBuff("JaxEmpowerTwo", true) ? SkillW.GetDamage(Target) : 0) + (RCount >= 2 ? SkillR.GetDamage(Target) : 0) + Player.GetAutoAttackDamage(Target, true) + Player.CalcDamage(Target, Damage.DamageType.Physical, DmgItem);
+            if (Items.HasItem(Sheen) && ((Items.CanUseItem(Sheen) && SkillW.IsReady()) || Player.HasBuff("Sheen")) && Player.BaseAttackDamage > DmgItem) DmgItem = Player.BaseAttackDamage;
+            if (Items.HasItem(Trinity) && ((Items.CanUseItem(Trinity) && SkillW.IsReady()) || Player.HasBuff("Sheen")) && Player.BaseAttackDamage * 2 > DmgItem) DmgItem = Player.BaseAttackDamage * 2;
+            return (SkillW.IsReady() || Player.HasBuff("JaxEmpowerTwo") ? SkillW.GetDamage(Target) : 0) + (RCount >= 2 ? SkillR.GetDamage(Target) : 0) + Player.GetAutoAttackDamage(Target, true) + Player.CalcDamage(Target, Damage.DamageType.Physical, DmgItem);
         }
     }
 }

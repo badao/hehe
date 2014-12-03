@@ -166,6 +166,7 @@ namespace Master
         public static String Name;
         private static M_TargetSelector TS;
         private static string[] SmiteName = { "summonersmite", "s5_summonersmiteplayerganker", "s5_summonersmitequick", "s5_summonersmiteduel", "itemsmiteaoe" };
+        private static bool SkinCasted = false;
 
         private static void Main(string[] args)
         {
@@ -189,10 +190,10 @@ namespace Master
                     //var WData = Player.Spellbook.GetSpell(SpellSlot.W);
                     //var EData = Player.Spellbook.GetSpell(SpellSlot.E);
                     //var RData = Player.Spellbook.GetSpell(SpellSlot.R);
-                    //Game.PrintChat("{0}/{1}/{2}/{3}", QData.SData.CastRange[0], QData.SData.SpellCastTime, QData.SData.LineWidth, QData.SData.MissileSpeed);
-                    //Game.PrintChat("{0}/{1}/{2}/{3}", WData.SData.CastRange[0], WData.SData.SpellCastTime, WData.SData.LineWidth, WData.SData.MissileSpeed);
-                    //Game.PrintChat("{0}/{1}/{2}/{3}", EData.SData.CastRange[0], EData.SData.SpellCastTime, EData.SData.LineWidth, EData.SData.MissileSpeed);
-                    //Game.PrintChat("{0}/{1}/{2}/{3}", RData.SData.CastRange[0], RData.SData.SpellCastTime, RData.SData.LineWidth, RData.SData.MissileSpeed);
+                    //Game.PrintChat("{0}-{1}/{2}/{3}/{4}", QData.SData.CastRange[0], QData.SData.CastRangeDisplayOverride[0], QData.SData.SpellCastTime, QData.SData.LineWidth, QData.SData.MissileSpeed);
+                    //Game.PrintChat("{0}-{1}/{2}/{3}/{4}", WData.SData.CastRange[0], WData.SData.CastRangeDisplayOverride[0], WData.SData.SpellCastTime, WData.SData.LineWidth, WData.SData.MissileSpeed);
+                    //Game.PrintChat("{0}-{1}/{2}/{3}/{4}", EData.SData.CastRange[0], EData.SData.CastRangeDisplayOverride[0], EData.SData.SpellCastTime, EData.SData.LineWidth, EData.SData.MissileSpeed);
+                    //Game.PrintChat("{0}-{1}/{2}/{3}/{4}", RData.SData.CastRange[0], RData.SData.CastRangeDisplayOverride[0], RData.SData.SpellCastTime, RData.SData.LineWidth, RData.SData.MissileSpeed);
                     ItemBool(Config.SubMenu(Name + "_Plugin").SubMenu("Misc"), "UsePacket", "Use Packet To Cast");
                     FlashSlot = Player.GetSpellSlot("summonerflash");
                     SmiteSlot = SmiteName.Any(i => Player.GetSpellSlot(i) != SpellSlot.Unknown) ? Player.GetSpellSlot(SmiteName.First(i => Player.GetSpellSlot(i) != SpellSlot.Unknown)) : SpellSlot.Unknown;
@@ -200,6 +201,7 @@ namespace Master
                     SkinChanger(null, null);
                     Game.PrintChat("<font color = \'{0}'>-></font> <font color = \'{1}'>Master Of {2}</font>: <font color = \'{3}'>Loaded !</font>", HtmlColor.BlueViolet, HtmlColor.Gold, Name, HtmlColor.Cyan);
                     Game.OnGameUpdate += OnGameUpdate;
+                    Game.OnGameProcessPacket += OnGameProcessPacket;
                 }
             }
             catch
@@ -247,39 +249,27 @@ namespace Master
 
         public static void SkinChanger(object sender, OnValueChangeEventArgs e)
         {
-            //Utility.DelayAction.Add(35, () => Packet.S2C.UpdateModel.Encoded(new Packet.S2C.UpdateModel.Struct(Player.NetworkId, ItemSlider("Misc", "CustomSkin"), Name)).Process());
             if (Config.SubMenu(Name + "_Plugin").Item(Name + "_Misc_CustomSkin") == null) return;
-            Utility.DelayAction.Add(35, () =>
-                {
-                    var SkinPacket = new GamePacket(0x97);
-                    SkinPacket.WriteInteger(Player.NetworkId);
-                    SkinPacket.WriteInteger(Player.NetworkId & ~0x40000000);
-                    //SkinPacket.Position = 1;
-                    //var t1 = SkinPacket.ReadByte();
-                    //var t2 = SkinPacket.ReadByte();
-                    //var t3 = SkinPacket.ReadByte();
-                    //var t4 = SkinPacket.ReadByte();
-                    //SkinPacket.WriteByte(t1);
-                    //SkinPacket.WriteByte(t2);
-                    //SkinPacket.WriteByte(t3);
-                    //SkinPacket.WriteByte((byte)(t4 & 0xB));
-                    SkinPacket.WriteByte(1);
-                    SkinPacket.WriteInteger(ItemSlider("Misc", "CustomSkin"));
-                    for (int i = 0; i < Name.Length; i++)
-                    {
-                        SkinPacket.WriteByte(Convert.ToByte(Name[i]));
-                    }
-                    for (int i = 0; i < 64 - Name.Length; i++)
-                    {
-                        SkinPacket.WriteByte(0);
-                    }
-                    SkinPacket.Process();
-                });
+            Utility.DelayAction.Add(35, () => Packet.S2C.UpdateModel.Encoded(new Packet.S2C.UpdateModel.Struct(Player.NetworkId, ItemSlider("Misc", "CustomSkin"), Player.BaseSkinName)).Process());
         }
 
         private static void OnGameUpdate(EventArgs args)
         {
             targetObj = TS.Target;
+            if (SkinCasted && Config.SubMenu(Name + "_Plugin").Item(Name + "_Misc_CustomSkin") != null)
+            {
+                Packet.S2C.UpdateModel.Encoded(new Packet.S2C.UpdateModel.Struct(Player.NetworkId, ItemSlider("Misc", "CustomSkin"), (Name == "Udyr") ? Player.SkinName : Player.BaseSkinName)).Process();
+                SkinCasted = false;
+            }
+        }
+
+        private static void OnGameProcessPacket(GamePacketEventArgs args)
+        {
+            if (args.Channel == PacketChannel.S2C && args.PacketData[0] == Packet.S2C.UpdateModel.Header)
+            {
+                var SkinPacket = Packet.S2C.UpdateModel.Decoded(args.PacketData);
+                if (SkinPacket.NetworkId == Player.NetworkId) SkinCasted = true;
+            }
         }
 
         public static bool IsValid(Obj_AI_Base Target, float Range = float.MaxValue, bool EnemyOnly = true, Vector3 From = default(Vector3))
@@ -297,6 +287,7 @@ namespace Master
 
         public static void CustomOrbwalk(Obj_AI_Base Target)
         {
+            Orbwalk.CustomMode = true;
             Orbwalk.Orbwalk(Game.CursorPos, Orbwalk.InAutoAttackRange(Target) ? Target : null);
         }
 
@@ -362,20 +353,23 @@ namespace Master
 
         public static bool CastIgnite(Obj_AI_Hero Target)
         {
-            if (!IgniteReady() || !IsValid(Target, 720) || Target.Health + 35 > Player.GetSummonerSpellDamage(Target, Damage.SummonerSpell.Ignite)) return false;
+            if (!IgniteReady() || !IsValid(Target, 720) || Target.Health + 5 > Player.GetSummonerSpellDamage(Target, Damage.SummonerSpell.Ignite)) return false;
             return Player.SummonerSpellbook.CastSpell(IgniteSlot, Target);
         }
 
         public static InventorySlot GetWardSlot()
         {
-            Int32[] WardId = { 3340, 3361, 2049, 2045, 2044 };
-            foreach (var Id in WardId.Where(i => Items.CanUseItem(i))) return Player.InventoryItems.First(i => i.Id == (ItemId)Id);
-            return null;
+            InventorySlot Ward = null;
+            Int32[] WardPink = { 3362, 2043 };
+            Int32[] WardGreen = { 3340, 3361, 2049, 2045, 2044 };
+            if (ItemBool("Misc", "WJPink")) foreach (var Id in WardPink.Where(i => Items.CanUseItem(i))) Ward = Player.InventoryItems.First(i => i.Id == (ItemId)Id);
+            foreach (var Id in WardGreen.Where(i => Items.CanUseItem(i))) Ward = Player.InventoryItems.First(i => i.Id == (ItemId)Id);
+            return Ward;
         }
 
         public static float GetWardRange(ItemId ID)
         {
-            Int32[] TricketWard = { 3340, 3361 };
+            Int32[] TricketWard = { 3340, 3361, 3362 };
             return 600 * (Player.Masteries.Any(i => i.Page == MasteryPage.Utility && i.Id == 68 && i.Points == 1) && TricketWard.Contains((Int32)ID) ? 1.15f : 1);
         }
     }

@@ -32,8 +32,8 @@ namespace MasterPlugin
                     ItemSlider(ComboMenu, "WAbove", "-> If Mp Above", 20);
                     ItemBool(ComboMenu, "E", "Use E");
                     ItemBool(ComboMenu, "R", "Use R");
-                    ItemList(ComboMenu, "RMode", "-> Mode", new[] { "Finish", "# Enemy" });
-                    ItemSlider(ComboMenu, "RAbove", "-> If Enemy Above", 2, 1, 4);
+                    ItemList(ComboMenu, "RMode", "-> Mode", new[] { "Killable", "# Enemy" });
+                    ItemSlider(ComboMenu, "RAbove", "--> If Enemy Above", 2, 1, 4);
                     ItemBool(ComboMenu, "Item", "Use Item");
                     ItemBool(ComboMenu, "Ignite", "Auto Ignite If Killable");
                     ChampMenu.AddSubMenu(ComboMenu);
@@ -89,7 +89,7 @@ namespace MasterPlugin
 
         private void OnGameUpdate(EventArgs args)
         {
-            if (Player.IsDead || MenuGUI.IsChatOpen) return;
+            if (Player.IsDead || MenuGUI.IsChatOpen || Player.IsChannelingImportantSpell() || Player.IsRecalling()) return;
             if (Orbwalk.CurrentMode == Orbwalk.Mode.Combo)
             {
                 NormalCombo();
@@ -112,13 +112,13 @@ namespace MasterPlugin
 
         private void OnEnemyGapcloser(ActiveGapcloser gapcloser)
         {
-            if (!ItemBool("Misc", "QAntiGap")) return;
+            if (!ItemBool("Misc", "QAntiGap") || Player.IsDead) return;
             if (IsValid(gapcloser.Sender, SkillQ.Range) && SkillQ.IsReady() && Player.Distance3D(gapcloser.Sender) < 400) SkillQ.Cast(gapcloser.Sender.Position, PacketCast());
         }
 
         private void NormalCombo()
         {
-            if (ItemBool("Combo", "W") && SkillW.IsReady() && Player.HasBuff("AuraofDespair", true) && Player.CountEnemysInRange(500) == 0) SkillW.Cast(PacketCast());
+            if (ItemBool("Combo", "W") && SkillW.IsReady() && Player.HasBuff("AuraofDespair") && Player.CountEnemysInRange(500) == 0) SkillW.Cast(PacketCast());
             if (targetObj == null) return;
             if (ItemBool("Combo", "Q") && SkillQ.IsReady())
             {
@@ -142,11 +142,11 @@ namespace MasterPlugin
                 {
                     if (Player.Distance3D(targetObj) <= SkillW.Range + 35)
                     {
-                        if (!Player.HasBuff("AuraofDespair", true)) SkillW.Cast(PacketCast());
+                        if (!Player.HasBuff("AuraofDespair")) SkillW.Cast(PacketCast());
                     }
-                    else if (Player.HasBuff("AuraofDespair", true)) SkillW.Cast(PacketCast());
+                    else if (Player.HasBuff("AuraofDespair")) SkillW.Cast(PacketCast());
                 }
-                else if (Player.HasBuff("AuraofDespair", true)) SkillW.Cast(PacketCast());
+                else if (Player.HasBuff("AuraofDespair")) SkillW.Cast(PacketCast());
             }
             if (ItemBool("Combo", "E") && SkillE.IsReady() && SkillE.InRange(targetObj.Position)) SkillE.Cast(PacketCast());
             if (ItemBool("Combo", "R") && SkillR.IsReady())
@@ -168,7 +168,7 @@ namespace MasterPlugin
 
         private void Harass()
         {
-            if (ItemBool("Harass", "W") && SkillW.IsReady() && Player.HasBuff("AuraofDespair", true) && Player.CountEnemysInRange(500) == 0) SkillW.Cast(PacketCast());
+            if (ItemBool("Harass", "W") && SkillW.IsReady() && Player.HasBuff("AuraofDespair") && Player.CountEnemysInRange(500) == 0) SkillW.Cast(PacketCast());
             if (targetObj == null) return;
             if (ItemBool("Harass", "E") && SkillE.IsReady() && SkillE.InRange(targetObj.Position)) SkillE.Cast(PacketCast());
             if (ItemBool("Harass", "W") && SkillW.IsReady())
@@ -177,18 +177,18 @@ namespace MasterPlugin
                 {
                     if (Player.Distance3D(targetObj) <= SkillW.Range + 35)
                     {
-                        if (!Player.HasBuff("AuraofDespair", true)) SkillW.Cast(PacketCast());
+                        if (!Player.HasBuff("AuraofDespair")) SkillW.Cast(PacketCast());
                     }
-                    else if (Player.HasBuff("AuraofDespair", true)) SkillW.Cast(PacketCast());
+                    else if (Player.HasBuff("AuraofDespair")) SkillW.Cast(PacketCast());
                 }
-                else if (Player.HasBuff("AuraofDespair", true)) SkillW.Cast(PacketCast());
+                else if (Player.HasBuff("AuraofDespair")) SkillW.Cast(PacketCast());
             }
         }
 
         private void LaneJungClear()
         {
             var minionObj = ObjectManager.Get<Obj_AI_Minion>().Where(i => IsValid(i, SkillQ.Range)).OrderBy(i => i.Health);
-            if (minionObj.Count() == 0 && ItemBool("Clear", "W") && SkillW.IsReady() && Player.HasBuff("AuraofDespair", true)) SkillW.Cast(PacketCast());
+            if (minionObj.Count() == 0 && ItemBool("Clear", "W") && SkillW.IsReady() && Player.HasBuff("AuraofDespair")) SkillW.Cast(PacketCast());
             foreach (var Obj in minionObj)
             {
                 if (SmiteReady() && Obj.Team == GameObjectTeam.Neutral)
@@ -205,11 +205,11 @@ namespace MasterPlugin
                     {
                         if (minionObj.Count(i => Player.Distance3D(i) <= SkillW.Range + 35) >= 2 || (Obj.MaxHealth >= 1200 && Player.Distance3D(Obj) <= SkillW.Range + 35))
                         {
-                            if (!Player.HasBuff("AuraofDespair", true)) SkillW.Cast(PacketCast());
+                            if (!Player.HasBuff("AuraofDespair")) SkillW.Cast(PacketCast());
                         }
-                        else if (Player.HasBuff("AuraofDespair", true)) SkillW.Cast(PacketCast());
+                        else if (Player.HasBuff("AuraofDespair")) SkillW.Cast(PacketCast());
                     }
-                    else if (Player.HasBuff("AuraofDespair", true)) SkillW.Cast(PacketCast());
+                    else if (Player.HasBuff("AuraofDespair")) SkillW.Cast(PacketCast());
                 }
                 if (ItemBool("Clear", "Q") && SkillQ.IsReady() && (!Orbwalk.InAutoAttackRange(Obj) || CanKill(Obj, SkillQ))) SkillQ.CastIfHitchanceEquals(Obj, HitChance.Medium, PacketCast());
             }

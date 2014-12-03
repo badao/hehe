@@ -8,66 +8,88 @@ using SharpDX;
 
 using Orbwalk = MasterCommon.M_Orbwalker;
 
-namespace Master
+namespace MasterPlugi
 {
-    class Renekton : Program
+    class Renekton : Master.Program
     {
-        private Vector3 DashBackPos = default(Vector3);
-        private bool ECasted = false;
+        private Vector3 HarassBackPos = default(Vector3);
+        private bool WCasted = false, ECasted = false;
+        private int AACount = 0;
 
         public Renekton()
         {
             SkillQ = new Spell(SpellSlot.Q, 325);
             SkillW = new Spell(SpellSlot.W, 300);
-            SkillE = new Spell(SpellSlot.E, 480);
+            SkillE = new Spell(SpellSlot.E, 450);
             SkillR = new Spell(SpellSlot.R, 20);
-            SkillQ.SetSkillshot(SkillQ.Instance.SData.SpellCastTime, SkillQ.Instance.SData.LineWidth, SkillQ.Instance.SData.MissileSpeed, false, SkillshotType.SkillshotCircle);
-            SkillE.SetSkillshot(SkillE.Instance.SData.SpellCastTime, SkillE.Instance.SData.LineWidth, SkillE.Instance.SData.MissileSpeed, false, SkillshotType.SkillshotLine);
+            SkillQ.SetSkillshot(-0.5f, 0, 0, false, SkillshotType.SkillshotCircle);
+            SkillW.SetSkillshot(0.0435f, 0, 0, false, SkillshotType.SkillshotCircle);
+            SkillE.SetSkillshot(-0.5f, 50, 20, false, SkillshotType.SkillshotLine);
 
-            Config.AddSubMenu(new Menu("Combo", "csettings"));
-            Config.SubMenu("csettings").AddItem(new MenuItem("qusage", "Use Q").SetValue(true));
-            Config.SubMenu("csettings").AddItem(new MenuItem("wusage", "Use W").SetValue(true));
-            Config.SubMenu("csettings").AddItem(new MenuItem("eusage", "Use E").SetValue(true));
-            Config.SubMenu("csettings").AddItem(new MenuItem("ignite", "Auto Ignite If Killable").SetValue(true));
-            Config.SubMenu("csettings").AddItem(new MenuItem("iusage", "Use Item").SetValue(true));
-
-            Config.AddSubMenu(new Menu("Harass", "hsettings"));
-            Config.SubMenu("hsettings").AddItem(new MenuItem("harMode", "Use Harass If Hp Above").SetValue(new Slider(20, 1)));
-            Config.SubMenu("hsettings").AddItem(new MenuItem("useHarQ", "Use Q").SetValue(true));
-            Config.SubMenu("hsettings").AddItem(new MenuItem("useHarW", "Use W").SetValue(true));
-
-            Config.AddSubMenu(new Menu("Lane/Jungle Clear", "LaneJungClear"));
-            Config.SubMenu("LaneJungClear").AddItem(new MenuItem("useClearQ", "Use Q").SetValue(true));
-            Config.SubMenu("LaneJungClear").AddItem(new MenuItem("useClearW", "Use W").SetValue(true));
-            Config.SubMenu("LaneJungClear").AddItem(new MenuItem("useClearE", "Use E").SetValue(true));
-            Config.SubMenu("LaneJungClear").AddItem(new MenuItem("useClearI", "Use Tiamat/Hydra Item").SetValue(true));
-
-            Config.AddSubMenu(new Menu("Ultimate", "useUlt"));
-            Config.SubMenu("useUlt").AddItem(new MenuItem("surviveR", "Try Use R To Survive").SetValue(true));
-            Config.SubMenu("useUlt").AddItem(new MenuItem("autouseR", "Use R If Hp Under").SetValue(new Slider(20, 1)));
-
-            Config.AddSubMenu(new Menu("Misc", "miscs"));
-            Config.SubMenu("miscs").AddItem(new MenuItem("useAntiW", "Use W To Anti Gap Closer").SetValue(true));
-            Config.SubMenu("miscs").AddItem(new MenuItem("useInterW", "Use W To Interrupt").SetValue(true));
-            Config.SubMenu("miscs").AddItem(new MenuItem("calcelW", "Cancel W Animation").SetValue(true));
-            Config.SubMenu("miscs").AddItem(new MenuItem("CustomSkin", "Skin Changer").SetValue(new Slider(6, 0, 6))).ValueChanged += SkinChanger;
-
-            Config.AddSubMenu(new Menu("Draw", "DrawSettings"));
-            Config.SubMenu("DrawSettings").AddItem(new MenuItem("DrawQ", "Q Range").SetValue(true));
-            Config.SubMenu("DrawSettings").AddItem(new MenuItem("DrawE", "E Range").SetValue(true));
-
+            var ChampMenu = new Menu(Name + " Plugin", Name + "_Plugin");
+            {
+                var ComboMenu = new Menu("Combo", "Combo");
+                {
+                    ItemBool(ComboMenu, "Q", "Use Q");
+                    ItemBool(ComboMenu, "W", "Use W");
+                    ItemBool(ComboMenu, "E", "Use E");
+                    ItemBool(ComboMenu, "Item", "Use Item");
+                    ItemBool(ComboMenu, "Ignite", "Auto Ignite If Killable");
+                    ChampMenu.AddSubMenu(ComboMenu);
+                }
+                var HarassMenu = new Menu("Harass", "Harass");
+                {
+                    ItemBool(HarassMenu, "Q", "Use Q");
+                    ItemBool(HarassMenu, "W", "Use W");
+                    ItemBool(HarassMenu, "E", "Use E");
+                    ItemSlider(HarassMenu, "EAbove", "-> If Hp Above", 20);
+                    ChampMenu.AddSubMenu(HarassMenu);
+                }
+                var ClearMenu = new Menu("Lane/Jungle Clear", "Clear");
+                {
+                    ItemBool(ClearMenu, "Q", "Use Q");
+                    ItemBool(ClearMenu, "W", "Use W");
+                    ItemBool(ClearMenu, "E", "Use E");
+                    ItemBool(ClearMenu, "Item", "Use Tiamat/Hydra");
+                    ChampMenu.AddSubMenu(ClearMenu);
+                }
+                var UltiMenu = new Menu("Ultimate", "Ultimate");
+                {
+                    ItemBool(UltiMenu, "RSurvive", "Try Use R To Survive");
+                    ItemSlider(UltiMenu, "RUnder", "-> If Hp Under", 30);
+                    ChampMenu.AddSubMenu(UltiMenu);
+                }
+                var MiscMenu = new Menu("Misc", "Misc");
+                {
+                    ItemBool(MiscMenu, "WAntiGap", "Use W To Anti Gap Closer");
+                    ItemBool(MiscMenu, "WInterrupt", "Use W To Interrupt");
+                    ItemBool(MiscMenu, "WCancel", "Cancel W Animation");
+                    ItemSlider(MiscMenu, "CustomSkin", "Skin Changer", 6, 0, 6).ValueChanged += SkinChanger;
+                    ChampMenu.AddSubMenu(MiscMenu);
+                }
+                var DrawMenu = new Menu("Draw", "Draw");
+                {
+                    ItemBool(DrawMenu, "Q", "Q Range", false);
+                    ItemBool(DrawMenu, "E", "E Range", false);
+                    ChampMenu.AddSubMenu(DrawMenu);
+                }
+                Config.AddSubMenu(ChampMenu);
+            }
             Game.OnGameUpdate += OnGameUpdate;
             Drawing.OnDraw += OnDraw;
             AntiGapcloser.OnEnemyGapcloser += OnEnemyGapcloser;
             Interrupter.OnPossibleToInterrupt += OnPossibleToInterrupt;
             Obj_AI_Base.OnProcessSpellCast += OnProcessSpellCast;
-            GameObject.OnCreate += OnCreate;
             Orbwalk.AfterAttack += AfterAttack;
         }
 
         private void OnGameUpdate(EventArgs args)
         {
-            if (Player.IsDead || MenuGUI.IsChatOpen) return;
+            if (Player.IsDead || MenuGUI.IsChatOpen || Player.IsChannelingImportantSpell() || Player.IsRecalling())
+            {
+                if (Player.IsDead) AACount = 0;
+                return;
+            }
             switch (Orbwalk.CurrentMode)
             {
                 case Orbwalk.Mode.Combo:
@@ -91,61 +113,74 @@ namespace Master
         private void OnDraw(EventArgs args)
         {
             if (Player.IsDead) return;
-            if (Config.Item("DrawQ").GetValue<bool>() && SkillQ.Level > 0) Utility.DrawCircle(Player.Position, SkillQ.Range, SkillQ.IsReady() ? Color.Green : Color.Red);
-            if (Config.Item("DrawE").GetValue<bool>() && SkillE.Level > 0) Utility.DrawCircle(Player.Position, SkillE.Range, SkillE.IsReady() ? Color.Green : Color.Red);
+            if (ItemBool("Draw", "Q") && SkillQ.Level > 0) Utility.DrawCircle(Player.Position, SkillQ.Range, SkillQ.IsReady() ? Color.Green : Color.Red);
+            if (ItemBool("Draw", "E") && SkillE.Level > 0) Utility.DrawCircle(Player.Position, SkillE.Range, SkillE.IsReady() ? Color.Green : Color.Red);
         }
 
         private void OnEnemyGapcloser(ActiveGapcloser gapcloser)
         {
-            if (!Config.Item("useAntiW").GetValue<bool>()) return;
-            if (gapcloser.Sender.IsValidTarget(SkillE.Range) && (SkillW.IsReady() || Player.HasBuff("RenektonPreExecute", true)))
+            if (!ItemBool("Misc", "WAntiGap") || Player.IsDead) return;
+            if (IsValid(gapcloser.Sender, Orbwalk.GetAutoAttackRange() + 50) && (SkillW.IsReady() || Player.HasBuff("RenektonExecuteReady")))
             {
-                if (!Player.HasBuff("RenektonPreExecute", true)) SkillW.Cast(PacketCast());
-                if (Player.HasBuff("RenektonPreExecute", true)) Player.IssueOrder(GameObjectOrder.AttackUnit, gapcloser.Sender);
+                if (SkillW.IsReady()) SkillW.Cast(PacketCast());
+                if (Player.HasBuff("RenektonExecuteReady")) Player.IssueOrder(GameObjectOrder.AttackUnit, gapcloser.Sender);
             }
         }
 
         private void OnPossibleToInterrupt(Obj_AI_Base unit, InterruptableSpell spell)
         {
-            if (!Config.Item("useInterW").GetValue<bool>()) return;
-            if (SkillW.IsReady() && SkillE.IsReady() && !SkillW.InRange(unit.Position) && unit.IsValidTarget(SkillE.Range)) SkillE.Cast(unit.Position + Vector3.Normalize(unit.Position - Player.Position) * 200, PacketCast());
-            if (unit.IsValidTarget(SkillW.Range) && (SkillW.IsReady() || Player.HasBuff("RenektonPreExecute", true)))
+            if (!ItemBool("Misc", "WInterrupt") || Player.IsDead) return;
+            if ((SkillW.IsReady() || Player.HasBuff("RenektonExecuteReady")) && SkillE.IsReady() && !SkillW.InRange(unit.Position) && IsValid(unit, SkillE.Range)) SkillE.Cast(unit.Position + Vector3.Normalize(unit.Position - Player.Position) * 200, PacketCast());
+            if (IsValid(unit, Orbwalk.GetAutoAttackRange() + 50) && (SkillW.IsReady() || Player.HasBuff("RenektonExecuteReady")))
             {
-                if (!Player.HasBuff("RenektonPreExecute", true)) SkillW.Cast(PacketCast());
-                if (Player.HasBuff("RenektonPreExecute", true)) Player.IssueOrder(GameObjectOrder.AttackUnit, unit);
+                if (SkillW.IsReady()) SkillW.Cast(PacketCast());
+                if (Player.HasBuff("RenektonExecuteReady")) Player.IssueOrder(GameObjectOrder.AttackUnit, unit);
             }
         }
 
         private void OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
         {
-            if (!sender.IsMe) return;
-            if (args.SData.Name == "RenektonSliceAndDice")
+            if (Player.IsDead) return;
+            if (sender.IsMe)
             {
-                ECasted = true;
-                Utility.DelayAction.Add(400, () => ECasted = false);
-                if (Orbwalk.CurrentMode == Orbwalk.Mode.Harass && DashBackPos == default(Vector3) && ECasted) DashBackPos = Player.Position + (Player.Position - targetObj.Position) * SkillE.Range;
-            }
-        }
-
-        private void OnCreate(GameObject sender, EventArgs args)
-        {
-            if (sender is Obj_SpellMissile && sender.IsValid && Config.Item("surviveR").GetValue<bool>() && SkillR.IsReady())
-            {
-                var missle = (Obj_SpellMissile)sender;
-                var caster = missle.SpellCaster;
-                if (caster.IsEnemy)
+                if (Orbwalk.IsAutoAttack(args.SData.Name) && IsValid((Obj_AI_Base)args.Target) && SkillW.IsReady())
                 {
-                    if (missle.SData.Name.Contains("BasicAttack"))
+                    var Obj = (Obj_AI_Base)args.Target;
+                    if ((Orbwalk.CurrentMode == Orbwalk.Mode.LaneClear || Orbwalk.CurrentMode == Orbwalk.Mode.LaneFreeze) && args.Target is Obj_AI_Minion && (CanKill(Obj, SkillW, Player.Mana >= 50 ? 1 : 0) || Obj.MaxHealth >= 1200))
                     {
-                        if (missle.Target.IsMe && (Player.Health - caster.GetAutoAttackDamage(Player, true)) * 100 / Player.MaxHealth <= Config.Item("autouseR").GetValue<Slider>().Value) SkillR.Cast();
+                        SkillW.Cast(PacketCast());
                     }
-                    else if (missle.Target.IsMe || missle.EndPosition.Distance(Player.Position) <= 130)
+                    else if ((Orbwalk.CurrentMode == Orbwalk.Mode.Combo || Orbwalk.CurrentMode == Orbwalk.Mode.Harass) && args.Target is Obj_AI_Hero) SkillW.Cast(PacketCast());
+                }
+                if (args.SData.Name == "RenektonCleave") AACount = 0;
+                if (args.SData.Name == "RenektonPreExecute")
+                {
+                    AACount = 0;
+                    WCasted = true;
+                    Utility.DelayAction.Add(1000, () => WCasted = false);
+                }
+                if (args.SData.Name == "RenektonSliceAndDice")
+                {
+                    ECasted = true;
+                    Utility.DelayAction.Add((Orbwalk.CurrentMode == Orbwalk.Mode.LaneClear || Orbwalk.CurrentMode == Orbwalk.Mode.LaneFreeze) ? 3000 : 1800, () => ECasted = false);
+                    AACount = 0;
+                }
+                if (args.SData.Name == "renektondice") AACount = 0;
+            }
+            else if (sender.IsEnemy && ItemBool("Ultimate", "RSurvive") && SkillR.IsReady())
+            {
+                if (args.Target.IsMe && ((Orbwalk.IsAutoAttack(args.SData.Name) && (Player.Health - sender.GetAutoAttackDamage(Player, true)) * 100 / Player.MaxHealth <= ItemSlider("Ultimate", "RUnder")) || (args.SData.Name == "summonerdot" && (Player.Health - (sender as Obj_AI_Hero).GetSummonerSpellDamage(Player, Damage.SummonerSpell.Ignite)) * 100 / Player.MaxHealth <= ItemSlider("Ultimate", "RUnder"))))
+                {
+                    SkillR.Cast(PacketCast());
+                }
+                else if ((args.Target.IsMe || (Player.Position.Distance(args.Start) <= args.SData.CastRange[0] && Player.Position.Distance(args.End) <= Orbwalk.GetAutoAttackRange())) && Damage.Spells.ContainsKey((sender as Obj_AI_Hero).ChampionName))
+                {
+                    for (var i = 3; i > -1; i--)
                     {
-                        if (missle.SData.Name == "summonerdot")
+                        if (Damage.Spells[(sender as Obj_AI_Hero).ChampionName].FirstOrDefault(a => a.Slot == (sender as Obj_AI_Hero).GetSpellSlot(args.SData.Name, false) && a.Stage == i) != null)
                         {
-                            if ((Player.Health - (caster as Obj_AI_Hero).GetSummonerSpellDamage(Player, Damage.SummonerSpell.Ignite)) * 100 / Player.MaxHealth <= Config.Item("autouseR").GetValue<Slider>().Value) SkillR.Cast();
+                            if ((Player.Health - (sender as Obj_AI_Hero).GetSpellDamage(Player, (sender as Obj_AI_Hero).GetSpellSlot(args.SData.Name, false), i)) * 100 / Player.MaxHealth <= ItemSlider("Ultimate", "RUnder")) SkillR.Cast(PacketCast());
                         }
-                        else if ((Player.Health - (caster as Obj_AI_Hero).GetSpellDamage(Player, (caster as Obj_AI_Hero).GetSpellSlot(missle.SData.Name, false), 1)) * 100 / Player.MaxHealth <= Config.Item("autouseR").GetValue<Slider>().Value) SkillR.Cast();
                     }
                 }
             }
@@ -153,60 +188,96 @@ namespace Master
 
         private void AfterAttack(Obj_AI_Base unit, Obj_AI_Base target)
         {
-            if (!unit.IsMe || Orbwalk.CurrentMode != Orbwalk.Mode.Combo || Orbwalk.CurrentMode != Orbwalk.Mode.Harass) return;
-            if (Config.Item("calcelW").GetValue<bool>() && target.HasBuffOfType(BuffType.Stun) && target.Buffs.FirstOrDefault(i => i.SourceName == Name) != null && target is Obj_AI_Hero && target.IsValidTarget(350))
+            if (!unit.IsMe) return;
+            if (WCasted) WCasted = false;
+            AACount += 1;
+            if (Orbwalk.CurrentMode == Orbwalk.Mode.Combo || Orbwalk.CurrentMode == Orbwalk.Mode.Harass)
             {
-                if (Items.CanUseItem(Tiamat)) Items.UseItem(Tiamat);
-                if (Items.CanUseItem(Hydra)) Items.UseItem(Hydra);
+                if (ItemBool("Misc", "WCancel") && target.HasBuff("Stun") && target is Obj_AI_Hero) UseItem(target, true);
             }
         }
 
         private void NormalCombo()
         {
             if (targetObj == null) return;
-            if (Config.Item("eusage").GetValue<bool>() && SkillE.IsReady() && SkillE.Instance.Name == "RenektonSliceAndDice" && SkillE.InRange(targetObj.Position)) SkillE.Cast(targetObj.Position + Vector3.Normalize(targetObj.Position - Player.Position) * 200, PacketCast());
-            if (Config.Item("wusage").GetValue<bool>() && SkillW.InRange(targetObj.Position) && !ECasted && SkillW.IsReady()) SkillW.Cast(PacketCast());
-            if (Config.Item("qusage").GetValue<bool>() && SkillQ.IsReady() && SkillQ.InRange(targetObj.Position) && !ECasted) SkillQ.Cast(PacketCast());
-            if (Config.Item("eusage").GetValue<bool>() && SkillE.IsReady() && SkillE.Instance.Name != "RenektonSliceAndDice" && !ECasted && SkillE.InRange(targetObj.Position)) SkillE.Cast(targetObj.Position + Vector3.Normalize(targetObj.Position - Player.Position) * 200, PacketCast());
-            if (Config.Item("iusage").GetValue<bool>() && !ECasted) UseItem(targetObj);
-            if (Config.Item("ignite").GetValue<bool>()) CastIgnite(targetObj);
+            if (ItemBool("Combo", "W") && (SkillW.IsReady() || Player.HasBuff("RenektonExecuteReady")) && !Player.IsDashing() && Orbwalk.InAutoAttackRange(targetObj))
+            {
+                Orbwalk.SetAttack(false);
+                Player.IssueOrder(GameObjectOrder.AttackUnit, targetObj);
+                Orbwalk.SetAttack(true);
+            }
+            if (ItemBool("Combo", "Q") && SkillQ.IsReady() && !Player.IsDashing() && SkillQ.InRange(targetObj.Position)) SkillQ.Cast(PacketCast());
+            if (ItemBool("Combo", "E") && SkillE.IsReady() && SkillE.InRange(targetObj.Position))
+            {
+                if (SkillE.Instance.Name == "RenektonSliceAndDice")
+                {
+                    SkillE.Cast(Player.Position.To2D().Extend(targetObj.Position.To2D(), targetObj.Distance3D(Player) + 200), PacketCast());
+                }
+                else if (!ECasted || !IsValid(targetObj, SkillE.Range - 30) || CanKill(targetObj, SkillE, Player.Mana >= 50 ? 1 : 0)) SkillE.Cast(Player.Position.To2D().Extend(targetObj.Position.To2D(), targetObj.Distance3D(Player) + 200), PacketCast());
+            }
+            if (ItemBool("Combo", "Item")) UseItem(targetObj);
+            if (ItemBool("Combo", "Ignite")) CastIgnite(targetObj);
         }
 
         private void Harass()
         {
             if (targetObj == null) return;
-            var HpEnough = Player.Health * 100 / Player.MaxHealth >= Config.Item("harMode").GetValue<Slider>().Value;
-            if (SkillE.IsReady() && SkillE.Instance.Name == "RenektonSliceAndDice" && SkillE.InRange(targetObj.Position) && HpEnough) SkillE.Cast(targetObj.Position + Vector3.Normalize(targetObj.Position - Player.Position) * 200, PacketCast());
-            if (Config.Item("useHarW").GetValue<bool>() && SkillW.InRange(targetObj.Position) && !ECasted && SkillW.IsReady()) SkillW.Cast(PacketCast());
-            if (Config.Item("useHarQ").GetValue<bool>() && SkillQ.IsReady() && SkillQ.InRange(targetObj.Position) && !ECasted) SkillQ.Cast(PacketCast());
-            if (SkillE.IsReady() && SkillE.Instance.Name != "RenektonSliceAndDice" && !ECasted && DashBackPos != default(Vector3)) SkillE.Cast(DashBackPos, PacketCast());
-            if (!SkillE.IsReady()) DashBackPos = default(Vector3);
+            if (ItemBool("Harass", "W") && (SkillW.IsReady() || Player.HasBuff("RenektonExecuteReady")) && !Player.IsDashing() && (AACount >= 1 || (SkillE.IsReady() && SkillE.Instance.Name != "RenektonSliceAndDice")) && Orbwalk.InAutoAttackRange(targetObj))
+            {
+                Orbwalk.SetAttack(false);
+                Player.IssueOrder(GameObjectOrder.AttackUnit, targetObj);
+                Orbwalk.SetAttack(true);
+            }
+            if (ItemBool("Harass", "Q") && SkillQ.IsReady() && !Player.IsDashing() && AACount >= 2 && SkillQ.InRange(targetObj.Position)) SkillQ.Cast(PacketCast());
+            if (ItemBool("Harass", "E") && !Player.IsDashing())
+            {
+                if (SkillE.IsReady())
+                {
+                    if (SkillE.Instance.Name == "RenektonSliceAndDice")
+                    {
+                        if (SkillE.InRange(targetObj.Position) && Player.HealthPercentage() >= ItemSlider("Harass", "EAbove"))
+                        {
+                            HarassBackPos = Player.ServerPosition;
+                            SkillE.Cast(Player.Position.To2D().Extend(targetObj.Position.To2D(), targetObj.Distance3D(Player) + 200), PacketCast());
+                        }
+                    }
+                    else if (!ECasted || AACount >= 2) SkillE.Cast(HarassBackPos, PacketCast());
+                }
+                else if (HarassBackPos != default(Vector3)) HarassBackPos = default(Vector3);
+            }
         }
 
         private void LaneJungClear()
         {
-            var minionObj = MinionManager.GetMinions(Player.Position, SkillE.Range - 50, MinionTypes.All, MinionTeam.NotAlly);
-            if (minionObj.Count == 0) return;
-            var posEFarm = SkillE.GetLineFarmLocation(minionObj);
-            if (Config.Item("useClearE").GetValue<bool>() && SkillE.IsReady() && SkillE.Instance.Name == "RenektonSliceAndDice") SkillE.Cast(posEFarm.MinionsHit >= 2 ? posEFarm.Position : minionObj.First().Position.To2D(), PacketCast());
-            if (Config.Item("useClearQ").GetValue<bool>() && SkillQ.IsReady() && minionObj.Count(i => i.IsValidTarget(SkillQ.Range)) >= 2 && !ECasted) SkillQ.Cast(PacketCast());
-            if (Config.Item("useClearW").GetValue<bool>() && !ECasted && SkillW.IsReady() && minionObj.FirstOrDefault(i => SkillW.InRange(i.Position) && (Player.Mana >= SkillW.Instance.ManaCost) ? CanKill(i, SkillW, 1) : CanKill(i, SkillW)) != null) SkillW.Cast(PacketCast());
-            if (Config.Item("useClearE").GetValue<bool>() && SkillE.IsReady() && SkillE.Instance.Name != "RenektonSliceAndDice" && !ECasted) SkillE.Cast(posEFarm.MinionsHit >= 2 ? posEFarm.Position : minionObj.First().Position.To2D(), PacketCast());
-            if (Config.Item("useClearI").GetValue<bool>() && minionObj.Count(i => i.IsValidTarget(350)) >= 2 && !ECasted)
+            var minionObj = ObjectManager.Get<Obj_AI_Base>().Where(i => IsValid(i, SkillE.Range) && i is Obj_AI_Minion).OrderBy(i => i.Health);
+            foreach (var Obj in minionObj)
             {
-                if (Items.CanUseItem(Tiamat)) Items.UseItem(Tiamat);
-                if (Items.CanUseItem(Hydra)) Items.UseItem(Hydra);
+                if (ItemBool("Clear", "Q") && SkillQ.IsReady() && !Player.IsDashing() && (AACount >= 2 || (SkillE.IsReady() && SkillE.Instance.Name != "RenektonSliceAndDice")) && (minionObj.Count(i => IsValid(i, SkillQ.Range)) >= 2 || (Obj.MaxHealth >= 1200 && SkillQ.InRange(Obj.Position)))) SkillQ.Cast(PacketCast());
+                if (ItemBool("Clear", "W") && (SkillW.IsReady() || Player.HasBuff("RenektonExecuteReady")) && !Player.IsDashing() && AACount >= 1 && Orbwalk.InAutoAttackRange(Obj) && (CanKill(Obj, SkillW, Player.Mana >= 50 ? 1 : 0) || Obj.MaxHealth >= 1200))
+                {
+                    Orbwalk.SetAttack(false);
+                    Player.IssueOrder(GameObjectOrder.AttackUnit, Obj);
+                    Orbwalk.SetAttack(true);
+                    break;
+                }
+                if (ItemBool("Clear", "E") && SkillE.IsReady() && !Player.IsDashing())
+                {
+                    var posEFarm = SkillE.GetLineFarmLocation(minionObj.ToList());
+                    if (SkillE.Instance.Name == "RenektonSliceAndDice")
+                    {
+                        SkillE.Cast(posEFarm.MinionsHit >= 2 ? posEFarm.Position : Player.Position.To2D().Extend(Obj.Position.To2D(), Obj.Distance3D(Player) + 200), PacketCast());
+                    }
+                    else if (!ECasted || AACount >= 2) SkillE.Cast(posEFarm.MinionsHit >= 2 ? posEFarm.Position : Player.Position.To2D().Extend(Obj.Position.To2D(), Obj.Distance3D(Player) + 200), PacketCast());
+                }
+                if (ItemBool("Clear", "Item") && AACount >= 1) UseItem(Obj, true);
             }
         }
 
-        private void UseItem(Obj_AI_Hero target)
+        private void UseItem(Obj_AI_Base Target, bool IsFarm = false)
         {
-            if (!Config.Item("calcelW").GetValue<bool>() || (Config.Item("calcelW").GetValue<bool>() && !Player.HasBuff("RenektonPreExecute", true)))
-            {
-                if (Items.CanUseItem(Tiamat) && Player.CountEnemysInRange(350) >= 1) Items.UseItem(Tiamat);
-                if (Items.CanUseItem(Hydra) && (Player.CountEnemysInRange(350) >= 2 || (Player.GetAutoAttackDamage(target) < target.Health && Player.CountEnemysInRange(350) == 1))) Items.UseItem(Hydra);
-            }
-            if (Items.CanUseItem(Rand) && Player.CountEnemysInRange(450) >= 1) Items.UseItem(Rand);
+            if (Items.CanUseItem(Tiamat) && IsFarm ? Player.Distance3D(Target) <= 350 : Player.CountEnemysInRange(350) >= 1) Items.UseItem(Tiamat);
+            if (Items.CanUseItem(Hydra) && IsFarm ? Player.Distance3D(Target) <= 350 : (Player.CountEnemysInRange(350) >= 2 || (Player.GetAutoAttackDamage(Target, true) < Target.Health && Player.CountEnemysInRange(350) == 1))) Items.UseItem(Hydra);
+            if (Items.CanUseItem(Rand) && Player.CountEnemysInRange(450) >= 1 && !IsFarm) Items.UseItem(Rand);
         }
     }
 }

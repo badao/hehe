@@ -12,7 +12,7 @@ namespace MasterPlugin
 {
     class Nasus : Master.Program
     {
-        private Int32 Sheen = 3057, Iceborn = 3025;
+        private Int32 Sheen = 3057, Iceborn = 3025, Trinity = 3078;
 
         public Nasus()
         {
@@ -87,7 +87,7 @@ namespace MasterPlugin
 
         private void OnGameUpdate(EventArgs args)
         {
-            if (Player.IsDead || MenuGUI.IsChatOpen) return;
+            if (Player.IsDead || MenuGUI.IsChatOpen || Player.IsChannelingImportantSpell() || Player.IsRecalling()) return;
             if (Orbwalk.CurrentMode == Orbwalk.Mode.Combo || Orbwalk.CurrentMode == Orbwalk.Mode.Harass)
             {
                 NormalCombo();
@@ -114,7 +114,7 @@ namespace MasterPlugin
             {
                 var Obj = (Obj_AI_Base)args.Target;
                 var DmgAA = Player.GetAutoAttackDamage(Obj) * Math.Floor(SkillQ.Instance.Cooldown / (1 / (Player.PercentMultiplicativeAttackSpeedMod * 0.638)));
-                if (Orbwalk.CurrentMode == Orbwalk.Mode.LastHit && Obj.Health + 5 <= GetBonusDmg(Obj) && (args.Target is Obj_AI_Minion || args.Target is Obj_AI_Turret))
+                if (Orbwalk.CurrentMode == Orbwalk.Mode.LastHit && SkillQ.GetHealthPrediction(Obj) + 5 <= GetBonusDmg(Obj) && (args.Target is Obj_AI_Minion || args.Target is Obj_AI_Turret))
                 {
                     SkillQ.Cast(PacketCast());
                 }
@@ -147,7 +147,7 @@ namespace MasterPlugin
             if (ItemBool("Combo", "Q") && SkillQ.IsReady() && Player.Distance3D(targetObj) <= Orbwalk.GetAutoAttackRange() + 50)
             {
                 var DmgAA = Player.GetAutoAttackDamage(targetObj) * Math.Floor(SkillQ.Instance.Cooldown / (1 / (Player.PercentMultiplicativeAttackSpeedMod * 0.638)));
-                if (targetObj.Health + 5 <= GetBonusDmg(targetObj) || targetObj.Health + 5 > DmgAA + GetBonusDmg(targetObj))
+                if (SkillQ.GetHealthPrediction(targetObj) + 5 <= GetBonusDmg(targetObj) || SkillQ.GetHealthPrediction(targetObj) + 5 > DmgAA + GetBonusDmg(targetObj))
                 {
                     Orbwalk.SetAttack(false);
                     Player.IssueOrder(GameObjectOrder.AttackUnit, targetObj);
@@ -178,7 +178,7 @@ namespace MasterPlugin
                 if (ItemBool("Clear", "Q") && SkillQ.IsReady() && Player.Distance3D(Obj) <= Orbwalk.GetAutoAttackRange() + 50)
                 {
                     var DmgAA = Player.GetAutoAttackDamage(Obj) * Math.Floor(SkillQ.Instance.Cooldown / (1 / (Player.PercentMultiplicativeAttackSpeedMod * 0.638)));
-                    if (Obj.Health + 5 <= GetBonusDmg(targetObj) || Obj.Health + 5 > DmgAA + GetBonusDmg(Obj))
+                    if (SkillQ.GetHealthPrediction(Obj) + 5 <= GetBonusDmg(targetObj) || SkillQ.GetHealthPrediction(Obj) + 5 > DmgAA + GetBonusDmg(Obj))
                     {
                         Orbwalk.SetAttack(false);
                         Player.IssueOrder(GameObjectOrder.AttackUnit, Obj);
@@ -192,7 +192,7 @@ namespace MasterPlugin
         private void LastHit()
         {
             if (!ItemBool("Misc", "QLastHit") || !SkillQ.IsReady()) return;
-            foreach (var Obj in ObjectManager.Get<Obj_AI_Base>().Where(i => IsValid(i, Orbwalk.GetAutoAttackRange() + 50) && i.Health + 5 <= GetBonusDmg(i) && (i is Obj_AI_Minion || i is Obj_AI_Turret)).OrderBy(i => i.MaxHealth).OrderBy(i => i.Distance3D(Player)))
+            foreach (var Obj in ObjectManager.Get<Obj_AI_Base>().Where(i => IsValid(i, Orbwalk.GetAutoAttackRange() + 50) && SkillQ.GetHealthPrediction(i) + 5 <= GetBonusDmg(i) && (i is Obj_AI_Minion || i is Obj_AI_Turret)).OrderBy(i => i.MaxHealth).OrderBy(i => i.Distance3D(Player)))
             {
                 Orbwalk.SetAttack(false);
                 Player.IssueOrder(GameObjectOrder.AttackUnit, Obj);
@@ -210,8 +210,9 @@ namespace MasterPlugin
         private double GetBonusDmg(Obj_AI_Base Target)
         {
             double DmgItem = 0;
-            if (Items.HasItem(Sheen) && ((Items.CanUseItem(Sheen) && SkillQ.IsReady()) || Player.HasBuff("sheen", true)) && Player.BaseAttackDamage > DmgItem) DmgItem = Player.BaseAttackDamage;
-            if (Items.HasItem(Iceborn) && ((Items.CanUseItem(Iceborn) && SkillQ.IsReady()) || Player.HasBuff("itemfrozenfist", true)) && Player.BaseAttackDamage * 1.25 > DmgItem) DmgItem = Player.BaseAttackDamage * 1.25;
+            if (Items.HasItem(Sheen) && ((Items.CanUseItem(Sheen) && SkillQ.IsReady()) || Player.HasBuff("Sheen")) && Player.BaseAttackDamage > DmgItem) DmgItem = Player.BaseAttackDamage;
+            if (Items.HasItem(Iceborn) && ((Items.CanUseItem(Iceborn) && SkillQ.IsReady()) || Player.HasBuff("ItemFrozenFist")) && Player.BaseAttackDamage * 1.25 > DmgItem) DmgItem = Player.BaseAttackDamage * 1.25;
+            if (Items.HasItem(Trinity) && ((Items.CanUseItem(Trinity) && SkillQ.IsReady()) || Player.HasBuff("Sheen")) && Player.BaseAttackDamage * 2 > DmgItem) DmgItem = Player.BaseAttackDamage * 2;
             return (SkillQ.IsReady() ? SkillQ.GetDamage(Target) : 0) + Player.GetAutoAttackDamage(Target, SkillQ.IsReady() ? false : true) + Player.CalcDamage(Target, Damage.DamageType.Physical, DmgItem);
         }
     }

@@ -90,13 +90,13 @@ namespace MasterCommon
 
         private void OnWndProc(WndEventArgs args)
         {
-            if (args.Msg != (uint)WindowsMessages.WM_LBUTTONDOWN) return;
+            if (args.WParam != 1 || MenuGUI.IsChatOpen || Player.Spellbook.SelectedSpellSlot != SpellSlot.Unknown) return;
             newTarget = null;
             if (Player.IsDead) return;
             if (Master.Program.IsValid((Obj_AI_Hero)Hud.SelectedUnit, 230, true, Game.CursorPos))
             {
                 newTarget = (Obj_AI_Hero)Hud.SelectedUnit;
-                if (Config.SubMenu("TS").Item("TS_Print").GetValue<bool>()) Game.PrintChat("<font color = \'{0}'>-></font> New target: <font color = \'{1}'>{2}</font>", Master.HtmlColor.BlueViolet, Master.HtmlColor.Gold, newTarget.ChampionName);
+                if (Config.SubMenu("TS").Item("TS_Print").GetValue<bool>()) Game.PrintChat("<font color = \'{0}'>-></font> New Target: <font color = \'{1}'>{2}</font>", Master.HtmlColor.BlueViolet, Master.HtmlColor.Gold, newTarget.ChampionName);
             }
         }
 

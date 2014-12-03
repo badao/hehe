@@ -161,10 +161,17 @@ namespace MasterCommon
             }
             MovePrediction = new Spell(SpellSlot.Unknown, GetAutoAttackRange());
             MovePrediction.SetTargetted(Player.BasicAttack.SpellCastTime, Player.BasicAttack.MissileSpeed);
-            Drawing.OnDraw += OnDraw;
             Game.OnGameUpdate += OnGameUpdate;
+            Drawing.OnDraw += OnDraw;
             Obj_AI_Base.OnProcessSpellCast += OnProcessSpellCast;
             GameObject.OnCreate += OnCreateObjMissile;
+        }
+
+        private static void OnGameUpdate(EventArgs args)
+        {
+            CheckAutoWindUp();
+            if (Player.IsDead || CurrentMode == Mode.None || MenuGUI.IsChatOpen || CustomMode || Player.IsChannelingImportantSpell() || Player.IsRecalling()) return;
+            Orbwalk(Game.CursorPos, GetPossibleTarget());
         }
 
         private static void OnDraw(EventArgs args)
@@ -190,13 +197,6 @@ namespace MasterCommon
                     else if (Config.Item("OW_Draw_NearKill").GetValue<Circle>().Active && Obj.Health <= Player.GetAutoAttackDamage(Obj, true) * 2) Utility.DrawCircle(Obj.Position, Obj.BoundingRadius, Config.Item("OW_Draw_NearKill").GetValue<Circle>().Color);
                 }
             }
-        }
-
-        private static void OnGameUpdate(EventArgs args)
-        {
-            CheckAutoWindUp();
-            if (Player.IsDead || CurrentMode == Mode.None || MenuGUI.IsChatOpen || CustomMode || Player.IsChannelingImportantSpell()) return;
-            Orbwalk(Game.CursorPos, GetPossibleTarget());
         }
 
         private static void OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
