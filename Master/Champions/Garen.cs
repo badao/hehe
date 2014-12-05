@@ -24,7 +24,7 @@ namespace MasterPlugin
 
             var ChampMenu = new Menu(Name + " Plugin", Name + "_Plugin");
             {
-                var ComboMenu = new Menu("Combo/Harass", "Combo");
+                var ComboMenu = new Menu("Combo", "Combo");
                 {
                     ItemBool(ComboMenu, "Q", "Use Q");
                     ItemBool(ComboMenu, "W", "Use W");
@@ -35,9 +35,18 @@ namespace MasterPlugin
                     ItemBool(ComboMenu, "Ignite", "Auto Ignite If Killable");
                     ChampMenu.AddSubMenu(ComboMenu);
                 }
+                var HarassMenu = new Menu("Harass", "Harass");
+                {
+                    ItemBool(HarassMenu, "Q", "Use Q");
+                    ItemBool(HarassMenu, "W", "Use W");
+                    ItemSlider(HarassMenu, "WUnder", "-> If Hp Under", 60);
+                    ItemBool(HarassMenu, "E", "Use E");
+                    ChampMenu.AddSubMenu(HarassMenu);
+                }
                 var ClearMenu = new Menu("Lane/Jungle Clear", "Clear");
                 {
                     ItemBool(ClearMenu, "Q", "Use Q");
+                    ItemList(ClearMenu, "QMode", "-> Mode", new[] { "Always", "Killable" });
                     ItemBool(ClearMenu, "E", "Use E");
                     ChampMenu.AddSubMenu(ClearMenu);
                 }
@@ -70,13 +79,9 @@ namespace MasterPlugin
         private void OnGameUpdate(EventArgs args)
         {
             if (Player.IsDead || MenuGUI.IsChatOpen || Player.IsChannelingImportantSpell() || Player.IsRecalling()) return;
-            if (Orbwalk.CurrentMode == Orbwalk.Mode.Combo)
+            if (Orbwalk.CurrentMode == Orbwalk.Mode.Combo || Orbwalk.CurrentMode == Orbwalk.Mode.Harass)
             {
-                NormalCombo();
-            }
-            else if (Orbwalk.CurrentMode == Orbwalk.Mode.Harass)
-            {
-                NormalCombo(true);
+                NormalCombo(Orbwalk.CurrentMode.ToString());
             }
             else if (Orbwalk.CurrentMode == Orbwalk.Mode.LaneClear || Orbwalk.CurrentMode == Orbwalk.Mode.LaneFreeze)
             {
@@ -99,9 +104,13 @@ namespace MasterPlugin
         private void OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
         {
             if (Player.IsDead) return;
-            if (sender.IsMe && Orbwalk.IsAutoAttack(args.SData.Name) && IsValid((Obj_AI_Base)args.Target) && CanKill((Obj_AI_Base)args.Target, SkillQ) && SkillQ.IsReady() && (args.Target is Obj_AI_Hero || args.Target is Obj_AI_Minion))
+            if (sender.IsMe && Orbwalk.IsAutoAttack(args.SData.Name) && IsValid((Obj_AI_Base)args.Target) && SkillQ.IsReady())
             {
-                if (Orbwalk.CurrentMode != Orbwalk.Mode.None && Orbwalk.CurrentMode != Orbwalk.Mode.Flee) SkillQ.Cast(PacketCast());
+                if (args.Target is Obj_AI_Hero && Orbwalk.CurrentMode == Orbwalk.Mode.Harass && ItemBool("Harass", "Q"))
+                {
+                    SkillQ.Cast(PacketCast());
+                }
+                else if (args.Target is Obj_AI_Minion && CanKill((Obj_AI_Minion)args.Target, SkillQ) && ((Orbwalk.CurrentMode == Orbwalk.Mode.LastHit && ItemBool("Misc", "QLastHit")) || ((Orbwalk.CurrentMode == Orbwalk.Mode.LaneClear || Orbwalk.CurrentMode == Orbwalk.Mode.LaneFreeze) && ItemBool("Clear", "Q") && ItemList("Clear", "QMode") == 1))) SkillQ.Cast(PacketCast());
             }
             else if (sender.IsEnemy && ItemBool("Misc", "WSurvive") && SkillW.IsReady())
             {
@@ -125,15 +134,15 @@ namespace MasterPlugin
         private void AfterAttack(Obj_AI_Base unit, Obj_AI_Base target)
         {
             if (!unit.IsMe) return;
-            if (ItemBool("Combo", "Q") && SkillQ.IsReady() && IsValid(target, Orbwalk.GetAutoAttackRange() + 50) && (Orbwalk.CurrentMode == Orbwalk.Mode.Combo || Orbwalk.CurrentMode == Orbwalk.Mode.Harass)) SkillQ.Cast(PacketCast());
+            if (Orbwalk.CurrentMode == Orbwalk.Mode.Combo && ItemBool("Combo", "Q") && SkillQ.IsReady() && IsValid(target, Orbwalk.GetAutoAttackRange() + 50)) SkillQ.Cast(PacketCast());
         }
 
-        private void NormalCombo(bool IsHarass = false)
+        private void NormalCombo(string Mode)
         {
             if (targetObj == null) return;
-            if (ItemBool("Combo", "Q") && SkillQ.IsReady() && Player.Distance3D(targetObj) <= (IsHarass ? Orbwalk.GetAutoAttackRange() + 50 : 800) && !Orbwalk.InAutoAttackRange(targetObj))
+            if (ItemBool(Mode, "Q") && SkillQ.IsReady() && Player.Distance3D(targetObj) <= ((Mode == "Harass") ? Orbwalk.GetAutoAttackRange() + 50 : 800) && !Orbwalk.InAutoAttackRange(targetObj))
             {
-                if (IsHarass)
+                if (Mode == "Harass")
                 {
                     Orbwalk.SetAttack(false);
                     Player.IssueOrder(GameObjectOrder.AttackUnit, targetObj);
@@ -141,27 +150,35 @@ namespace MasterPlugin
                 }
                 else SkillQ.Cast(PacketCast());
             }
-            if (ItemBool("Combo", "E") && SkillE.IsReady() && !Player.HasBuff("GarenE") && !Player.HasBuff("GarenQBuff") && SkillE.InRange(targetObj.Position)) SkillE.Cast(PacketCast());
-            if (ItemBool("Combo", "W") && SkillW.IsReady() && Orbwalk.InAutoAttackRange(targetObj) && Player.HealthPercentage() <= ItemSlider("Combo", "WUnder")) SkillW.Cast(PacketCast());
-            if (ItemBool("Combo", "R") && ItemBool("Ultimate", targetObj.ChampionName) && SkillR.IsReady() && SkillR.InRange(targetObj.Position) && CanKill(targetObj, SkillR)) SkillR.CastOnUnit(targetObj, PacketCast());
-            if (ItemBool("Combo", "Item") && Items.CanUseItem(Rand) && Player.CountEnemysInRange(450) >= 1) Items.UseItem(Rand);
-            if (ItemBool("Combo", "Ignite")) CastIgnite(targetObj);
+            if (ItemBool(Mode, "E") && SkillE.IsReady() && !Player.HasBuff("GarenE") && !Player.HasBuff("GarenQBuff") && SkillE.InRange(targetObj.Position)) SkillE.Cast(PacketCast());
+            if (ItemBool(Mode, "W") && SkillW.IsReady() && Orbwalk.InAutoAttackRange(targetObj) && Player.HealthPercentage() <= ItemSlider(Mode, "WUnder")) SkillW.Cast(PacketCast());
+            if (ItemBool(Mode, "R") && ItemBool("Ultimate", targetObj.ChampionName) && Mode == "Combo" && SkillR.IsReady() && SkillR.InRange(targetObj.Position) && CanKill(targetObj, SkillR)) SkillR.CastOnUnit(targetObj, PacketCast());
+            if (ItemBool(Mode, "Item") && Mode == "Combo" && Items.CanUseItem(Randuin) && Player.CountEnemysInRange(450) >= 1) Items.UseItem(Randuin);
+            if (ItemBool(Mode, "Ignite") && Mode == "Combo") CastIgnite(targetObj);
         }
 
         private void LaneJungClear()
         {
-            foreach (var Obj in ObjectManager.Get<Obj_AI_Minion>().Where(i => IsValid(i, 450)).OrderBy(i => i.Health))
+            foreach (var Obj in ObjectManager.Get<Obj_AI_Minion>().Where(i => IsValid(i, 800)).OrderBy(i => i.Health))
             {
                 if (ItemBool("Clear", "Q") && SkillQ.IsReady())
                 {
-                    if (CanKill(Obj, SkillQ) && Player.Distance3D(Obj) <= Orbwalk.GetAutoAttackRange() + 50)
+                    switch (ItemList("Clear", "QMode"))
                     {
-                        Orbwalk.SetAttack(false);
-                        Player.IssueOrder(GameObjectOrder.AttackUnit, Obj);
-                        Orbwalk.SetAttack(true);
-                        break;
+                        case 0:
+                            SkillQ.Cast(PacketCast());
+                            break;
+                        case 1:
+                            if (CanKill(Obj, SkillQ) && Player.Distance3D(Obj) <= Orbwalk.GetAutoAttackRange() + 50)
+                            {
+                                Orbwalk.SetAttack(false);
+                                Player.IssueOrder(GameObjectOrder.AttackUnit, Obj);
+                                Orbwalk.SetAttack(true);
+                                break;
+                            }
+                            else if (Player.Distance(Obj) > 500) SkillQ.Cast(PacketCast());
+                            break;
                     }
-                    else if (Player.Distance(Obj) > 500) SkillQ.Cast(PacketCast());
                 }
                 if (ItemBool("Clear", "E") && SkillE.IsReady() && !Player.HasBuff("GarenE") && !Player.HasBuff("GarenQBuff") && SkillE.InRange(Obj.Position)) SkillE.Cast(PacketCast());
             }

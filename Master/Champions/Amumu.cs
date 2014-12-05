@@ -90,13 +90,9 @@ namespace MasterPlugin
         private void OnGameUpdate(EventArgs args)
         {
             if (Player.IsDead || MenuGUI.IsChatOpen || Player.IsChannelingImportantSpell() || Player.IsRecalling()) return;
-            if (Orbwalk.CurrentMode == Orbwalk.Mode.Combo)
+            if (Orbwalk.CurrentMode == Orbwalk.Mode.Combo || Orbwalk.CurrentMode == Orbwalk.Mode.Harass)
             {
-                NormalCombo();
-            }
-            else if (Orbwalk.CurrentMode == Orbwalk.Mode.Harass)
-            {
-                Harass();
+                NormalCombo(Orbwalk.CurrentMode.ToString());
             }
             else if (Orbwalk.CurrentMode == Orbwalk.Mode.LaneClear || Orbwalk.CurrentMode == Orbwalk.Mode.LaneFreeze) LaneJungClear();
         }
@@ -116,14 +112,14 @@ namespace MasterPlugin
             if (IsValid(gapcloser.Sender, SkillQ.Range) && SkillQ.IsReady() && Player.Distance3D(gapcloser.Sender) < 400) SkillQ.Cast(gapcloser.Sender.Position, PacketCast());
         }
 
-        private void NormalCombo()
+        private void NormalCombo(string Mode)
         {
-            if (ItemBool("Combo", "W") && SkillW.IsReady() && Player.HasBuff("AuraofDespair") && Player.CountEnemysInRange(500) == 0) SkillW.Cast(PacketCast());
+            if (ItemBool(Mode, "W") && SkillW.IsReady() && Player.HasBuff("AuraofDespair") && Player.CountEnemysInRange(500) == 0) SkillW.Cast(PacketCast());
             if (targetObj == null) return;
-            if (ItemBool("Combo", "Q") && SkillQ.IsReady())
+            if (ItemBool(Mode, "Q") && Mode == "Combo" && SkillQ.IsReady())
             {
-                var nearObj = ObjectManager.Get<Obj_AI_Base>().Where(i => IsValid(i, SkillQ.Range) && !(i is Obj_AI_Turret) && i.CountEnemysInRange((int)SkillR.Range - 40) >= ItemSlider("Combo", "RAbove") && !CanKill(i, SkillQ)).OrderBy(i => i.CountEnemysInRange((int)SkillR.Range));
-                if (ItemBool("Combo", "R") && SkillR.IsReady() && ItemList("Combo", "RMode") == 1 && nearObj.Count() > 0)
+                var nearObj = ObjectManager.Get<Obj_AI_Base>().Where(i => IsValid(i, SkillQ.Range) && !(i is Obj_AI_Turret) && i.CountEnemysInRange((int)SkillR.Range - 40) >= ItemSlider(Mode, "RAbove") && !CanKill(i, SkillQ)).OrderBy(i => i.CountEnemysInRange((int)SkillR.Range));
+                if (ItemBool(Mode, "R") && SkillR.IsReady() && ItemList(Mode, "RMode") == 1 && nearObj.Count() > 0)
                 {
                     foreach (var Obj in nearObj) SkillQ.CastIfHitchanceEquals(Obj, HitChance.VeryHigh, PacketCast());
                 }
@@ -136,9 +132,9 @@ namespace MasterPlugin
                     else SkillQ.CastIfHitchanceEquals(targetObj, HitChance.VeryHigh, PacketCast());
                 }
             }
-            if (ItemBool("Combo", "W") && SkillW.IsReady())
+            if (ItemBool(Mode, "W") && SkillW.IsReady())
             {
-                if (Player.Mana * 100 / Player.MaxMana >= ItemSlider("Combo", "WAbove"))
+                if (Player.ManaPercentage() >= ItemSlider(Mode, "WAbove"))
                 {
                     if (Player.Distance3D(targetObj) <= SkillW.Range + 35)
                     {
@@ -148,41 +144,22 @@ namespace MasterPlugin
                 }
                 else if (Player.HasBuff("AuraofDespair")) SkillW.Cast(PacketCast());
             }
-            if (ItemBool("Combo", "E") && SkillE.IsReady() && SkillE.InRange(targetObj.Position)) SkillE.Cast(PacketCast());
-            if (ItemBool("Combo", "R") && SkillR.IsReady())
+            if (ItemBool(Mode, "E") && SkillE.IsReady() && SkillE.InRange(targetObj.Position)) SkillE.Cast(PacketCast());
+            if (ItemBool(Mode, "R") && Mode == "Combo" && SkillR.IsReady())
             {
-                switch (ItemList("Combo", "RMode"))
+                switch (ItemList(Mode, "RMode"))
                 {
                     case 0:
                         if (SkillR.InRange(targetObj.Position) && CanKill(targetObj, SkillR)) SkillR.Cast(PacketCast());
                         break;
                     case 1:
                         var Obj = ObjectManager.Get<Obj_AI_Hero>().Where(i => IsValid(i, SkillR.Range));
-                        if (Obj.Count() > 0 && (Obj.Count() >= ItemSlider("Combo", "RAbove") || (Obj.Count() >= 2 && Obj.Count(i => CanKill(i, SkillR)) >= 1))) SkillR.Cast(PacketCast());
+                        if (Obj.Count() > 0 && (Obj.Count() >= ItemSlider(Mode, "RAbove") || (Obj.Count() >= 2 && Obj.Count(i => CanKill(i, SkillR)) >= 1))) SkillR.Cast(PacketCast());
                         break;
                 }
             }
-            if (ItemBool("Combo", "Item") && Items.CanUseItem(Rand) && Player.CountEnemysInRange(450) >= 1) Items.UseItem(Rand);
-            if (ItemBool("Combo", "Ignite")) CastIgnite(targetObj);
-        }
-
-        private void Harass()
-        {
-            if (ItemBool("Harass", "W") && SkillW.IsReady() && Player.HasBuff("AuraofDespair") && Player.CountEnemysInRange(500) == 0) SkillW.Cast(PacketCast());
-            if (targetObj == null) return;
-            if (ItemBool("Harass", "E") && SkillE.IsReady() && SkillE.InRange(targetObj.Position)) SkillE.Cast(PacketCast());
-            if (ItemBool("Harass", "W") && SkillW.IsReady())
-            {
-                if (Player.Mana * 100 / Player.MaxMana >= ItemSlider("Harass", "WAbove"))
-                {
-                    if (Player.Distance3D(targetObj) <= SkillW.Range + 35)
-                    {
-                        if (!Player.HasBuff("AuraofDespair")) SkillW.Cast(PacketCast());
-                    }
-                    else if (Player.HasBuff("AuraofDespair")) SkillW.Cast(PacketCast());
-                }
-                else if (Player.HasBuff("AuraofDespair")) SkillW.Cast(PacketCast());
-            }
+            if (ItemBool(Mode, "Item") && Mode == "Combo" && Items.CanUseItem(Randuin) && Player.CountEnemysInRange(450) >= 1) Items.UseItem(Randuin);
+            if (ItemBool(Mode, "Ignite") && Mode == "Combo") CastIgnite(targetObj);
         }
 
         private void LaneJungClear()
@@ -201,7 +178,7 @@ namespace MasterPlugin
                 if (ItemBool("Clear", "E") && SkillE.IsReady() && SkillE.InRange(Obj.Position)) SkillE.Cast(PacketCast());
                 if (ItemBool("Clear", "W") && SkillW.IsReady())
                 {
-                    if (Player.Mana * 100 / Player.MaxMana >= ItemSlider("Clear", "WAbove"))
+                    if (Player.ManaPercentage() >= ItemSlider("Clear", "WAbove"))
                     {
                         if (minionObj.Count(i => Player.Distance3D(i) <= SkillW.Range + 35) >= 2 || (Obj.MaxHealth >= 1200 && Player.Distance3D(Obj) <= SkillW.Range + 35))
                         {

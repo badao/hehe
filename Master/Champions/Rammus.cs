@@ -91,13 +91,9 @@ namespace MasterPlugin
         private void OnGameUpdate(EventArgs args)
         {
             if (Player.IsDead || MenuGUI.IsChatOpen || Player.IsChannelingImportantSpell() || Player.IsRecalling()) return;
-            if (Orbwalk.CurrentMode == Orbwalk.Mode.Combo)
+            if (Orbwalk.CurrentMode == Orbwalk.Mode.Combo || Orbwalk.CurrentMode == Orbwalk.Mode.Harass)
             {
-                NormalCombo();
-            }
-            else if (Orbwalk.CurrentMode == Orbwalk.Mode.Harass)
-            {
-                Harass();
+                NormalCombo(Orbwalk.CurrentMode.ToString());
             }
             else if (Orbwalk.CurrentMode == Orbwalk.Mode.LaneClear || Orbwalk.CurrentMode == Orbwalk.Mode.LaneFreeze)
             {
@@ -147,17 +143,17 @@ namespace MasterPlugin
             }
         }
 
-        private void NormalCombo()
+        private void NormalCombo(string Mode)
         {
             if (targetObj == null) return;
-            if (ItemBool("Combo", "Q") && SkillQ.IsReady() && Player.Distance3D(targetObj) <= 800 && !Player.HasBuff("PowerBall"))
+            if (ItemBool(Mode, "Q") && SkillQ.IsReady() && Player.Distance3D(targetObj) <= ((Mode == "Combo") ? 800 : Orbwalk.GetAutoAttackRange() + 50) && !Player.HasBuff("PowerBall"))
             {
-                if ((ItemBool("Combo", "E") && SkillE.IsReady() && !SkillE.InRange(targetObj.Position)) || !Player.HasBuff("DefensiveBallCurl")) SkillQ.Cast(PacketCast());
+                if ((ItemBool(Mode, "E") && SkillE.IsReady() && !SkillE.InRange(targetObj.Position)) || !Player.HasBuff("DefensiveBallCurl")) SkillQ.Cast(PacketCast());
             }
-            if (ItemBool("Combo", "W") && SkillW.IsReady() && Orbwalk.InAutoAttackRange(targetObj) && !Player.HasBuff("PowerBall")) SkillW.Cast(PacketCast());
-            if (ItemBool("Combo", "E") && SkillE.IsReady() && SkillE.InRange(targetObj.Position) && !Player.HasBuff("PowerBall"))
+            if (ItemBool(Mode, "W") && SkillW.IsReady() && Orbwalk.InAutoAttackRange(targetObj) && !Player.HasBuff("PowerBall")) SkillW.Cast(PacketCast());
+            if (ItemBool(Mode, "E") && SkillE.IsReady() && SkillE.InRange(targetObj.Position) && !Player.HasBuff("PowerBall"))
             {
-                switch (ItemList("Combo", "EMode"))
+                switch (ItemList(Mode, "EMode"))
                 {
                     case 0:
                         SkillE.CastOnUnit(targetObj, PacketCast());
@@ -167,42 +163,20 @@ namespace MasterPlugin
                         break;
                 }
             }
-            if (ItemBool("Combo", "R") && SkillR.IsReady())
+            if (ItemBool(Mode, "R") && Mode == "Combo" && SkillR.IsReady())
             {
-                switch (ItemList("Combo", "RMode"))
+                switch (ItemList(Mode, "RMode"))
                 {
                     case 0:
                         if (SkillR.InRange(targetObj.Position)) SkillR.Cast(PacketCast());
                         break;
                     case 1:
-                        if (Player.CountEnemysInRange((int)SkillR.Range) >= ItemSlider("Combo", "RCount")) SkillR.Cast(PacketCast());
+                        if (Player.CountEnemysInRange((int)SkillR.Range) >= ItemSlider(Mode, "RCount")) SkillR.Cast(PacketCast());
                         break;
                 }
             }
-            if (ItemBool("Combo", "Item") && Items.CanUseItem(Rand) && Player.CountEnemysInRange(450) >= 1) Items.UseItem(Rand);
-            if (ItemBool("Combo", "Ignite")) CastIgnite(targetObj);
-        }
-
-        private void Harass()
-        {
-            if (targetObj == null) return;
-            if (ItemBool("Harass", "Q") && SkillQ.IsReady() && Player.Distance3D(targetObj) <= Orbwalk.GetAutoAttackRange() + 50 && !Player.HasBuff("PowerBall"))
-            {
-                if ((ItemBool("Harass", "E") && SkillE.IsReady() && !SkillE.InRange(targetObj.Position)) || !Player.HasBuff("DefensiveBallCurl")) SkillQ.Cast(PacketCast());
-            }
-            if (ItemBool("Harass", "W") && SkillW.IsReady() && Orbwalk.InAutoAttackRange(targetObj) && !Player.HasBuff("PowerBall")) SkillW.Cast(PacketCast());
-            if (ItemBool("Harass", "E") && SkillE.IsReady() && SkillE.InRange(targetObj.Position) && !Player.HasBuff("PowerBall"))
-            {
-                switch (ItemList("Harass", "EMode"))
-                {
-                    case 0:
-                        SkillE.CastOnUnit(targetObj, PacketCast());
-                        break;
-                    case 1:
-                        if (Player.HasBuff("DefensiveBallCurl")) SkillE.CastOnUnit(targetObj, PacketCast());
-                        break;
-                }
-            }
+            if (ItemBool(Mode, "Item") && Mode == "Combo" && Items.CanUseItem(Randuin) && Player.CountEnemysInRange(450) >= 1) Items.UseItem(Randuin);
+            if (ItemBool(Mode, "Ignite") && Mode == "Combo") CastIgnite(targetObj);
         }
 
         private void LaneJungClear()
@@ -221,7 +195,7 @@ namespace MasterPlugin
                     if ((ItemBool("Clear", "E") && SkillE.IsReady() && !SkillE.InRange(Obj.Position)) || !Player.HasBuff("DefensiveBallCurl")) SkillQ.Cast(PacketCast());
                 }
                 if (ItemBool("Clear", "W") && SkillW.IsReady() && Orbwalk.InAutoAttackRange(Obj) && !Player.HasBuff("PowerBall")) SkillW.Cast(PacketCast());
-                if (ItemBool("Clear", "E") && SkillE.IsReady() && SkillE.InRange(Obj.Position) && !Player.HasBuff("PowerBall"))
+                if (ItemBool("Clear", "E") && SkillE.IsReady() && SkillE.InRange(Obj.Position) && !Player.HasBuff("PowerBall") && Obj.Team == GameObjectTeam.Neutral)
                 {
                     switch (ItemList("Clear", "EMode"))
                     {

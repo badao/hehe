@@ -23,7 +23,7 @@ namespace MasterPlugin
 
             var ChampMenu = new Menu(Name + " Plugin", Name + "_Plugin");
             {
-                var ComboMenu = new Menu("Combo/Harass", "Combo");
+                var ComboMenu = new Menu("Combo", "Combo");
                 {
                     ItemBool(ComboMenu, "Q", "Use Q");
                     ItemBool(ComboMenu, "W", "Use W");
@@ -32,6 +32,14 @@ namespace MasterPlugin
                     ItemBool(ComboMenu, "Item", "Use Item");
                     ItemBool(ComboMenu, "Ignite", "Auto Ignite If Killable");
                     ChampMenu.AddSubMenu(ComboMenu);
+                }
+                var HarassMenu = new Menu("Harass", "Harass");
+                {
+                    ItemBool(HarassMenu, "Q", "Use Q");
+                    ItemBool(HarassMenu, "W", "Use W");
+                    ItemSlider(HarassMenu, "WAbove", "-> If Hp Above", 20);
+                    ItemBool(HarassMenu, "E", "Use E");
+                    ChampMenu.AddSubMenu(HarassMenu);
                 }
                 var ClearMenu = new Menu("Lane/Jungle Clear", "Clear");
                 {
@@ -85,7 +93,7 @@ namespace MasterPlugin
             if (Player.IsDead || MenuGUI.IsChatOpen || Player.IsChannelingImportantSpell() || Player.IsRecalling()) return;
             if (Orbwalk.CurrentMode == Orbwalk.Mode.Combo || Orbwalk.CurrentMode == Orbwalk.Mode.Harass)
             {
-                NormalCombo();
+                NormalCombo(Orbwalk.CurrentMode.ToString());
             }
             else if (Orbwalk.CurrentMode == Orbwalk.Mode.LaneClear || Orbwalk.CurrentMode == Orbwalk.Mode.LaneFreeze)
             {
@@ -124,13 +132,13 @@ namespace MasterPlugin
             }
         }
 
-        private void NormalCombo()
+        private void NormalCombo(string Mode)
         {
-            if (ItemBool("Combo", "W") && SkillW.IsReady() && Player.HasBuff("BurningAgony") && Player.CountEnemysInRange(500) == 0) SkillW.Cast(PacketCast());
+            if (ItemBool(Mode, "W") && SkillW.IsReady() && Player.HasBuff("BurningAgony") && Player.CountEnemysInRange(500) == 0) SkillW.Cast(PacketCast());
             if (targetObj == null) return;
-            if (ItemBool("Combo", "W") && SkillW.IsReady())
+            if (ItemBool(Mode, "W") && SkillW.IsReady())
             {
-                if (Player.HealthPercentage() >= ItemSlider("Combo", "WAbove"))
+                if (Player.HealthPercentage() >= ItemSlider(Mode, "WAbove"))
                 {
                     if (Player.Distance3D(targetObj) <= SkillW.Range + 35)
                     {
@@ -140,7 +148,7 @@ namespace MasterPlugin
                 }
                 else if (Player.HasBuff("BurningAgony")) SkillW.Cast(PacketCast());
             }
-            if (ItemBool("Combo", "Q") && SkillQ.IsReady() && SkillQ.InRange(targetObj.Position))
+            if (ItemBool(Mode, "Q") && SkillQ.IsReady() && SkillQ.InRange(targetObj.Position))
             {
                 if (ItemBool("Misc", "SmiteCol"))
                 {
@@ -148,9 +156,9 @@ namespace MasterPlugin
                 }
                 else SkillQ.CastIfHitchanceEquals(targetObj, HitChance.VeryHigh, PacketCast());
             }
-            if (ItemBool("Combo", "E") && SkillE.IsReady() && Orbwalk.InAutoAttackRange(targetObj)) SkillE.Cast(PacketCast());
-            if (ItemBool("Combo", "Item") && Items.CanUseItem(Rand) && Player.CountEnemysInRange(450) >= 1) Items.UseItem(Rand);
-            if (ItemBool("Combo", "Ignite")) CastIgnite(targetObj);
+            if (ItemBool(Mode, "E") && SkillE.IsReady() && Orbwalk.InAutoAttackRange(targetObj)) SkillE.Cast(PacketCast());
+            if (ItemBool(Mode, "Item") && Mode == "Combo" && Items.CanUseItem(Randuin) && Player.CountEnemysInRange(450) >= 1) Items.UseItem(Randuin);
+            if (ItemBool(Mode, "Ignite") && Mode == "Combo") CastIgnite(targetObj);
         }
 
         private void LaneJungClear()

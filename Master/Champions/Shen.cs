@@ -24,6 +24,7 @@ namespace MasterPlugin
             SkillQ.SetTargetted(-0.5f, 1500);
             SkillE.SetSkillshot(-0.5f, 50, 0, false, SkillshotType.SkillshotLine);
 
+            Config.SubMenu("OW").SubMenu("Mode").AddItem(new MenuItem(Name + "_OW_FlashTaunt", "Flash Taunt").SetValue(new KeyBind("Z".ToCharArray()[0], KeyBindType.Press)));
             var ChampMenu = new Menu(Name + " Plugin", Name + "_Plugin");
             {
                 var ComboMenu = new Menu("Combo", "Combo");
@@ -85,27 +86,24 @@ namespace MasterPlugin
         {
             //Passive: Shen Passive Aura
             if (Player.IsDead || MenuGUI.IsChatOpen || Player.IsChannelingImportantSpell() || Player.IsRecalling()) return;
-            switch (Orbwalk.CurrentMode)
+            if (Orbwalk.CurrentMode == Orbwalk.Mode.Combo || Orbwalk.CurrentMode == Orbwalk.Mode.Harass)
             {
-                case Orbwalk.Mode.Combo:
-                    NormalCombo();
-                    break;
-                case Orbwalk.Mode.Harass:
-                    Harass();
-                    break;
-                case Orbwalk.Mode.LaneClear:
-                    LaneJungClear();
-                    break;
-                case Orbwalk.Mode.LaneFreeze:
-                    LaneJungClear();
-                    break;
-                case Orbwalk.Mode.LastHit:
-                    LastHit();
-                    break;
-                case Orbwalk.Mode.Flee:
-                    if (SkillE.IsReady()) SkillE.Cast(Game.CursorPos, PacketCast());
-                    break;
+                NormalCombo(Orbwalk.CurrentMode.ToString());
             }
+            else if (Orbwalk.CurrentMode == Orbwalk.Mode.LaneClear || Orbwalk.CurrentMode == Orbwalk.Mode.LaneFreeze)
+            {
+                LaneJungClear();
+            }
+            else if (Orbwalk.CurrentMode == Orbwalk.Mode.LastHit)
+            {
+                LastHit();
+            }
+            else if (Orbwalk.CurrentMode == Orbwalk.Mode.Flee && SkillE.IsReady()) SkillE.Cast(Game.CursorPos, PacketCast());
+            if (ItemActive("FlashTaunt"))
+            {
+                FlashTaunt();
+            }
+            else Orbwalk.CustomMode = false;
             if (ItemBool("Ultimate", "Alert")) UltimateAlert();
             if (ItemBool("Misc", "EUnderTower")) AutoEUnderTower();
         }
@@ -151,21 +149,19 @@ namespace MasterPlugin
             }
         }
 
-        private void NormalCombo()
+        private void NormalCombo(string Mode)
         {
             if (targetObj == null) return;
-            if (ItemBool("Combo", "E") && SkillE.IsReady() && SkillE.InRange(targetObj.Position)) SkillE.Cast(Player.Position.To2D().Extend(targetObj.Position.To2D(), targetObj.Distance3D(Player) + 200), PacketCast());
-            if (ItemBool("Combo", "Q") && SkillQ.IsReady() && SkillQ.InRange(targetObj.Position)) SkillQ.CastOnUnit(targetObj, PacketCast());
-            if (ItemBool("Combo", "W") && SkillW.IsReady() && Orbwalk.InAutoAttackRange(targetObj) && Player.HealthPercentage() <= ItemSlider("Combo", "WUnder")) SkillW.Cast(PacketCast());
-            if (ItemBool("Combo", "Item") && Items.CanUseItem(Rand) && Player.CountEnemysInRange(450) >= 1) Items.UseItem(Rand);
-            if (ItemBool("Combo", "Ignite")) CastIgnite(targetObj);
-        }
-
-        private void Harass()
-        {
-            if (targetObj == null) return;
-            if (ItemBool("Harass", "E") && SkillE.IsReady() && SkillE.InRange(targetObj.Position) && Player.HealthPercentage() >= ItemSlider("Harass", "EAbove")) SkillE.Cast(Player.Position.To2D().Extend(targetObj.Position.To2D(), targetObj.Distance3D(Player) + 200), PacketCast());
-            if (ItemBool("Harass", "Q") && SkillQ.IsReady() && SkillQ.InRange(targetObj.Position)) SkillQ.CastOnUnit(targetObj, PacketCast());
+            if (ItemBool(Mode, "Item") && Mode == "Combo")
+            {
+                if (Items.CanUseItem(Deathfire) && Player.Distance3D(targetObj) <= 750) Items.UseItem(Deathfire, targetObj);
+                if (Items.CanUseItem(Blackfire) && Player.Distance3D(targetObj) <= 750) Items.UseItem(Blackfire, targetObj);
+                if (Items.CanUseItem(Randuin) && Player.CountEnemysInRange(450) >= 1) Items.UseItem(Randuin);
+            }
+            if (ItemBool(Mode, "E") && SkillE.IsReady() && SkillE.InRange(targetObj.Position) && (Mode == "Combo" || Player.HealthPercentage() >= ItemSlider(Mode, "EAbove"))) SkillE.Cast(Player.Position.To2D().Extend(targetObj.Position.To2D(), targetObj.Distance3D(Player) + 200), PacketCast());
+            if (ItemBool(Mode, "Q") && SkillQ.IsReady() && SkillQ.InRange(targetObj.Position)) SkillQ.CastOnUnit(targetObj, PacketCast());
+            if (ItemBool(Mode, "W") && Mode == "Combo" && SkillW.IsReady() && Orbwalk.InAutoAttackRange(targetObj) && Player.HealthPercentage() <= ItemSlider(Mode, "WUnder")) SkillW.Cast(PacketCast());
+            if (ItemBool(Mode, "Ignite") && Mode == "Combo") CastIgnite(targetObj);
         }
 
         private void LaneJungClear()
@@ -183,6 +179,17 @@ namespace MasterPlugin
             foreach (var Obj in ObjectManager.Get<Obj_AI_Minion>().Where(i => IsValid(i, SkillQ.Range) && CanKill(i, SkillQ)).OrderBy(i => i.Health).OrderByDescending(i => i.Distance3D(Player))) SkillQ.CastOnUnit(Obj, PacketCast());
         }
 
+        private void FlashTaunt()
+        {
+            CustomOrbwalk(targetObj);
+            if (targetObj == null || !FlashReady() || !SkillE.IsReady()) return;
+            if (Player.Distance3D(targetObj) <= SkillE.Range + 390)
+            {
+                SkillE.Cast(targetObj.Position, PacketCast());
+                Utility.DelayAction.Add(300, () => CastFlash(targetObj.Position));
+            }
+        }
+
         private void UltimateAlert()
         {
             if (!SkillR.IsReady() || PingCasted) return;
@@ -191,7 +198,7 @@ namespace MasterPlugin
                 Game.PrintChat("<font color = \'{0}'>-></font> <font color = \'{1}'>{2}</font>: <font color = \'{3}'>In Dangerous</font>", Master.HtmlColor.BlueViolet, Master.HtmlColor.Gold, Obj.ChampionName, Master.HtmlColor.Cyan);
                 if (ItemBool("Ultimate", "Ping"))
                 {
-                    for (var i = 0; i < 5; i++) Packet.S2C.Ping.Encoded(new Packet.S2C.Ping.Struct(Obj.Position.X, Obj.Position.Y, Obj.NetworkId, 0, Packet.PingType.Fallback)).Process();
+                    for (var i = 0; i < 3; i++) Packet.S2C.Ping.Encoded(new Packet.S2C.Ping.Struct(Obj.Position.X, Obj.Position.Y, Obj.NetworkId, 0, Packet.PingType.Fallback)).Process();
                     PingCasted = true;
                     Utility.DelayAction.Add(5000, () => PingCasted = false);
                 }

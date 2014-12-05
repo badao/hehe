@@ -308,7 +308,7 @@ namespace MasterPlugin
 
         private void OnCreateObjMinion(GameObject sender, EventArgs args)
         {
-            if (sender == null || !sender.IsValid || sender.IsEnemy || Player.IsDead || !SkillW.IsReady() || SkillW.Instance.Name != "BlindMonkWOne" || !WardCasted) return;
+            if (!sender.IsValid<Obj_AI_Minion>() || sender.IsEnemy || Player.IsDead || !SkillW.IsReady() || SkillW.Instance.Name != "BlindMonkWOne" || !WardCasted) return;
             if ((Orbwalk.CurrentMode == Orbwalk.Mode.Flee || (Orbwalk.CurrentMode == Orbwalk.Mode.Combo && ItemBool("Combo", "W") && ItemBool("Combo", "WGap") && ItemBool("Combo", "WGapWard")) || (Orbwalk.CurrentMode == Orbwalk.Mode.Harass && ItemBool("Harass", "WBackWard")) || ItemActive("StarCombo") || ItemActive("InsecCombo")) && Player.Distance3D((Obj_AI_Minion)sender) <= SkillW.Range + sender.BoundingRadius && sender.Name.EndsWith("Ward"))
             {
                 SkillW.CastOnUnit((Obj_AI_Minion)sender, PacketCast());
@@ -683,11 +683,11 @@ namespace MasterPlugin
 
         private void UseItem(Obj_AI_Base Target, bool Farm = false)
         {
-            if (Items.CanUseItem(Bilge) && Player.Distance3D(Target) <= 450 && !Farm) Items.UseItem(Bilge, Target);
-            if (Items.CanUseItem(Blade) && Player.Distance3D(Target) <= 450 && !Farm) Items.UseItem(Blade, Target);
+            if (Items.CanUseItem(Bilgewater) && Player.Distance3D(Target) <= 450 && !Farm) Items.UseItem(Bilgewater, Target);
+            if (Items.CanUseItem(BladeRuined) && Player.Distance3D(Target) <= 450 && !Farm) Items.UseItem(BladeRuined, Target);
             if (Items.CanUseItem(Tiamat) && Farm ? Player.Distance3D(Target) <= 350 : Player.CountEnemysInRange(350) >= 1) Items.UseItem(Tiamat);
             if (Items.CanUseItem(Hydra) && Farm ? Player.Distance3D(Target) <= 350 : (Player.CountEnemysInRange(350) >= 2 || (Player.GetAutoAttackDamage(Target, true) < Target.Health && Player.CountEnemysInRange(350) == 1))) Items.UseItem(Hydra);
-            if (Items.CanUseItem(Rand) && Player.CountEnemysInRange(450) >= 1 && !Farm) Items.UseItem(Rand);
+            if (Items.CanUseItem(Randuin) && Player.CountEnemysInRange(450) >= 1 && !Farm) Items.UseItem(Randuin);
         }
 
         private double GetQ2Dmg(Obj_AI_Base Target, double Plus = 0)

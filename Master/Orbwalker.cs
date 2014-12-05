@@ -211,18 +211,18 @@ namespace MasterCommon
                     FireOnTargetSwitch((Obj_AI_Base)args.Target);
                     LastTarget = (Obj_AI_Base)args.Target;
                 }
-                if (sender.IsMelee()) Utility.DelayAction.Add((int)(sender.AttackCastDelay * 1000 + Game.Ping * 0.5) + 50, () => FireAfterAttack(sender, LastTarget));
+                if (sender.IsMelee()) Utility.DelayAction.Add((int)(sender.AttackCastDelay * 1000 + Game.Ping * 0.5 + 40), () => FireAfterAttack(sender, LastTarget));
                 FireOnAttack(sender, LastTarget);
             }
-            else FireOnAttack(sender, (Obj_AI_Base)args.Target);
+            FireOnAttack(sender, (Obj_AI_Base)args.Target);
         }
 
         private static void OnCreateObjMissile(GameObject sender, EventArgs args)
         {
             if (sender.IsMe && (sender as Obj_AI_Hero).IsMelee()) return;
-            if (sender == null || !sender.IsValid || !(sender is Obj_SpellMissile)) return;
+            if (!sender.IsValid<Obj_SpellMissile>()) return;
             var missile = (Obj_SpellMissile)sender;
-            if (missile.SpellCaster != null && missile.SpellCaster.IsValid && missile.SpellCaster is Obj_AI_Hero && IsAutoAttack(missile.SData.Name))
+            if (missile.SpellCaster.IsValid<Obj_AI_Hero>() && IsAutoAttack(missile.SData.Name))
             {
                 FireAfterAttack(missile.SpellCaster, LastTarget);
                 if (sender.IsMe) LastRealAttack = Environment.TickCount;
@@ -237,11 +237,15 @@ namespace MasterCommon
                 FireBeforeAttack(Target);
                 if (!DisableNextAttack)
                 {
-                    if (CurrentMode != Mode.Harass || !Target.IsMinion || Config.Item("OW_Harass_LastHit").GetValue<bool>())
-                    {
-                        Player.IssueOrder(GameObjectOrder.AttackUnit, Target);
-                        LastAttack = Environment.TickCount + Game.Ping / 2;
-                    }
+                    Player.IssueOrder(GameObjectOrder.AttackUnit, Target);
+                    if (LastTarget.IsValid && Target.IsValid && LastTarget.NetworkId != Target.NetworkId) LastAttack = Environment.TickCount + Game.Ping / 2;
+                    LastTarget = Target;
+                    return;
+                    //if (CurrentMode != Mode.Harass || !Target.IsMinion || Config.Item("OW_Harass_LastHit").GetValue<bool>())
+                    //{
+                    //    Player.IssueOrder(GameObjectOrder.AttackUnit, Target);
+                    //    LastAttack = Environment.TickCount + Game.Ping / 2;
+                    //}
                 }
             }
             if (!CanMove() || !IsAllowedToMove()) return;
@@ -254,26 +258,18 @@ namespace MasterCommon
             else MoveTo(Pos);
         }
 
+        private static readonly Random RandomDist = new Random(DateTime.Now.Millisecond);
         private static void MoveTo(Vector3 Pos)
         {
             if (Environment.TickCount - LastMove < Config.Item("OW_Misc_Humanizer").GetValue<Slider>().Value) return;
             LastMove = Environment.TickCount;
             if (Player.Distance(Pos) < Config.Item("OW_Misc_HoldZone").GetValue<Slider>().Value)
             {
-                if (Player.Path.Count() > 1) Player.IssueOrder(GameObjectOrder.HoldPosition, Player.Position);
+                if (Player.Path.Count() > 1) Player.IssueOrder(GameObjectOrder.HoldPosition, Player.ServerPosition);
                 return;
             }
-            Player.IssueOrder(GameObjectOrder.MoveTo, Player.ServerPosition + 300 * Vector3.Normalize(Pos - Player.ServerPosition));
-        }
-
-        private static bool IsAllowedToMove()
-        {
-            if (!Move || Config.Item("OW_Misc_AllMovementDisabled").GetValue<bool>()) return false;
-            if (CurrentMode == Mode.Combo && !Config.Item("OW_Combo_Move").GetValue<bool>()) return false;
-            if (CurrentMode == Mode.Harass && !Config.Item("OW_Harass_Move").GetValue<bool>()) return false;
-            if (CurrentMode == Mode.LaneClear && !Config.Item("OW_Clear_Move").GetValue<bool>()) return false;
-            if (CurrentMode == Mode.LaneFreeze && !Config.Item("OW_Freeze_Move").GetValue<bool>()) return false;
-            return CurrentMode != Mode.LastHit || Config.Item("OW_LastHit_Move").GetValue<bool>();
+            Player.IssueOrder(GameObjectOrder.MoveTo, Pos + RandomDist.NextFloat(400 * 0.8f, 400 * 1.2f) * Vector3.Normalize(Pos - Player.ServerPosition));
+            //Player.IssueOrder(GameObjectOrder.MoveTo, Player.ServerPosition + 300 * Vector3.Normalize(Pos - Player.ServerPosition));
         }
 
         private static bool IsAllowedToAttack()
@@ -284,6 +280,16 @@ namespace MasterCommon
             if (CurrentMode == Mode.LaneClear && !Config.Item("OW_Clear_Attack").GetValue<bool>()) return false;
             if (CurrentMode == Mode.LaneFreeze && !Config.Item("OW_Freeze_Attack").GetValue<bool>()) return false;
             return CurrentMode != Mode.LastHit || Config.Item("OW_LastHit_Attack").GetValue<bool>();
+        }
+
+        private static bool IsAllowedToMove()
+        {
+            if (!Move || Config.Item("OW_Misc_AllMovementDisabled").GetValue<bool>()) return false;
+            if (CurrentMode == Mode.Combo && !Config.Item("OW_Combo_Move").GetValue<bool>()) return false;
+            if (CurrentMode == Mode.Harass && !Config.Item("OW_Harass_Move").GetValue<bool>()) return false;
+            if (CurrentMode == Mode.LaneClear && !Config.Item("OW_Clear_Move").GetValue<bool>()) return false;
+            if (CurrentMode == Mode.LaneFreeze && !Config.Item("OW_Freeze_Move").GetValue<bool>()) return false;
+            return CurrentMode != Mode.LastHit || Config.Item("OW_LastHit_Move").GetValue<bool>();
         }
 
         public static Mode CurrentMode
@@ -486,8 +492,9 @@ namespace MasterCommon
 
         private static int FarmDelay(int Value = 0)
         {
-            if (Player.ChampionName == "Azir") Value += 125;
-            return Config.Item("OW_Misc_FarmDelay").GetValue<Slider>().Value + Value;
+            var Sub = Value;
+            if (Player.ChampionName == "Azir") Sub += 125;
+            return Config.Item("OW_Misc_FarmDelay").GetValue<Slider>().Value + Sub;
         }
 
         public static void SetAttack(bool Value)

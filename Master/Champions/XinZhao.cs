@@ -39,7 +39,6 @@ namespace MasterPlugin
                     ItemBool(HarassMenu, "Q", "Use Q");
                     ItemBool(HarassMenu, "W", "Use W");
                     ItemBool(HarassMenu, "E", "Use E");
-                    ItemBool(HarassMenu, "EFlee", "-> If Target Try To Flee");
                     ChampMenu.AddSubMenu(HarassMenu);
                 }
                 var ClearMenu = new Menu("Lane/Jungle Clear", "Clear");
@@ -91,13 +90,9 @@ namespace MasterPlugin
         private void OnGameUpdate(EventArgs args)
         {
             if (Player.IsDead || MenuGUI.IsChatOpen || Player.IsChannelingImportantSpell() || Player.IsRecalling()) return;
-            if (Orbwalk.CurrentMode == Orbwalk.Mode.Combo)
+            if (Orbwalk.CurrentMode == Orbwalk.Mode.Combo || Orbwalk.CurrentMode == Orbwalk.Mode.Harass)
             {
-                NormalCombo();
-            }
-            else if (Orbwalk.CurrentMode == Orbwalk.Mode.Harass)
-            {
-                Harass();
+                NormalCombo(Orbwalk.CurrentMode.ToString());
             }
             else if (Orbwalk.CurrentMode == Orbwalk.Mode.LaneClear || Orbwalk.CurrentMode == Orbwalk.Mode.LaneFreeze) LaneJungClear();
             if (ItemBool("Misc", "EKillSteal")) KillSteal();
@@ -123,31 +118,24 @@ namespace MasterPlugin
         private void AfterAttack(Obj_AI_Base unit, Obj_AI_Base target)
         {
             if (!unit.IsMe) return;
-            if (((ItemBool("Combo", "Q") && Orbwalk.CurrentMode == Orbwalk.Mode.Combo) || (ItemBool("Harass", "Q") && Orbwalk.CurrentMode == Orbwalk.Mode.Harass)) && IsValid(target, Orbwalk.GetAutoAttackRange() + 50) && SkillQ.IsReady()) SkillQ.Cast(PacketCast());
+            if ((Orbwalk.CurrentMode == Orbwalk.Mode.Combo || Orbwalk.CurrentMode == Orbwalk.Mode.Harass) && ItemBool(Orbwalk.CurrentMode.ToString(), "Q") && IsValid(target, Orbwalk.GetAutoAttackRange() + 50) && SkillQ.IsReady() && target.HasBuff("XinZhaoIntimidate")) SkillQ.Cast(PacketCast());
         }
 
-        private void NormalCombo()
+        private void NormalCombo(string Mode)
         {
             if (targetObj == null) return;
-            if (ItemBool("Combo", "R") && ItemBool("Ultimate", targetObj.ChampionName) && SkillR.IsReady() && SkillR.InRange(targetObj.Position))
+            if (ItemBool(Mode, "R") && ItemBool("Ultimate", targetObj.ChampionName) && Mode == "Combo" && SkillR.IsReady() && SkillR.InRange(targetObj.Position))
             {
                 if (CanKill(targetObj, SkillR))
                 {
                     SkillR.Cast(PacketCast());
                 }
-                else if (SkillR.GetHealthPrediction(targetObj) - SkillR.GetDamage(targetObj) + 5 <= SkillE.GetDamage(targetObj) + Player.GetAutoAttackDamage(targetObj, true) + ((ItemBool("Combo", "Q") && SkillQ.IsReady()) ? SkillQ.GetDamage(targetObj) * 3 : 0) && ItemBool("Combo", "E") && SkillE.IsReady() && Player.Mana >= SkillR.Instance.ManaCost + SkillE.Instance.ManaCost + ((ItemBool("Combo", "Q") && SkillQ.IsReady()) ? SkillQ.Instance.ManaCost : 0)) SkillR.Cast(PacketCast());
+                else if (SkillR.GetHealthPrediction(targetObj) - SkillR.GetDamage(targetObj) + 5 <= SkillE.GetDamage(targetObj) + Player.GetAutoAttackDamage(targetObj, true) + ((ItemBool(Mode, "Q") && SkillQ.IsReady()) ? SkillQ.GetDamage(targetObj) * 3 : 0) && ItemBool(Mode, "E") && SkillE.IsReady() && Player.Mana >= SkillR.Instance.ManaCost + SkillE.Instance.ManaCost + ((ItemBool(Mode, "Q") && SkillQ.IsReady()) ? SkillQ.Instance.ManaCost : 0)) SkillR.Cast(PacketCast());
             }
-            if (ItemBool("Combo", "E") && SkillE.IsReady() && SkillE.InRange(targetObj.Position) && (Player.Distance3D(targetObj) > 450 || CanKill(targetObj, SkillE))) SkillE.CastOnUnit(targetObj, PacketCast());
-            if (ItemBool("Combo", "W") && SkillW.IsReady() && Orbwalk.InAutoAttackRange(targetObj)) SkillW.Cast(PacketCast());
-            if (ItemBool("Combo", "Item")) UseItem(targetObj);
-            if (ItemBool("Combo", "Ignite")) CastIgnite(targetObj);
-        }
-
-        private void Harass()
-        {
-            if (targetObj == null) return;
-            if (ItemBool("Harass", "E") && SkillE.IsReady() && SkillE.InRange(targetObj.Position) && (CanKill(targetObj, SkillE) || (!ItemBool("Harass", "EFlee") && Player.Distance3D(targetObj) > Orbwalk.GetAutoAttackRange() + 50) || (ItemBool("Harass", "EFlee") && Player.IsFacing(targetObj) && !targetObj.IsFacing(Player) && Player.Distance3D(targetObj) > Orbwalk.GetAutoAttackRange() + 50))) SkillE.CastOnUnit(targetObj, PacketCast());
-            if (ItemBool("Harass", "W") && SkillW.IsReady() && Orbwalk.InAutoAttackRange(targetObj)) SkillW.Cast(PacketCast());
+            if (ItemBool(Mode, "E") && SkillE.IsReady() && SkillE.InRange(targetObj.Position) && (CanKill(targetObj, SkillE) || Player.Distance3D(targetObj) > Orbwalk.GetAutoAttackRange() + 50 || (Mode == "Combo" && Player.HealthPercentage() < targetObj.HealthPercentage()))) SkillE.CastOnUnit(targetObj, PacketCast());
+            if (ItemBool(Mode, "W") && SkillW.IsReady() && Orbwalk.InAutoAttackRange(targetObj)) SkillW.Cast(PacketCast());
+            if (ItemBool(Mode, "Item") && Mode == "Combo") UseItem(targetObj);
+            if (ItemBool(Mode, "Ignite") && Mode == "Combo") CastIgnite(targetObj);
         }
 
         private void LaneJungClear()
@@ -161,7 +149,7 @@ namespace MasterPlugin
                         (ItemBool("SmiteMob", "Krug") && Obj.Name.StartsWith("SRU_Krug")) || (ItemBool("SmiteMob", "Gromp") && Obj.Name.StartsWith("SRU_Gromp")) ||
                         (ItemBool("SmiteMob", "Raptor") && Obj.Name.StartsWith("SRU_Razorbeak")) || (ItemBool("SmiteMob", "Wolf") && Obj.Name.StartsWith("SRU_Murkwolf"))))) CastSmite(Obj);
                 }
-                if (ItemBool("Clear", "E") && SkillE.IsReady() && (Player.Distance3D(Obj) > 450 || CanKill(Obj, SkillE))) SkillE.CastOnUnit(Obj, PacketCast());
+                if (ItemBool("Clear", "E") && SkillE.IsReady() && (Player.Distance3D(Obj) > Orbwalk.GetAutoAttackRange() + 50 || CanKill(Obj, SkillE) || Obj.MaxHealth >= 1200)) SkillE.CastOnUnit(Obj, PacketCast());
                 if (ItemBool("Clear", "W") && SkillW.IsReady() && Orbwalk.InAutoAttackRange(Obj)) SkillW.Cast(PacketCast());
                 if (ItemBool("Clear", "Q") && SkillQ.IsReady() && Player.Distance3D(Obj) <= Orbwalk.GetAutoAttackRange() + 50) SkillQ.Cast(PacketCast());
                 if (ItemBool("Clear", "Item")) UseItem(Obj, true);
@@ -176,11 +164,11 @@ namespace MasterPlugin
 
         private void UseItem(Obj_AI_Base Target, bool Farm = false)
         {
-            if (Items.CanUseItem(Bilge) && Player.Distance3D(Target) <= 450 && !Farm) Items.UseItem(Bilge, Target);
-            if (Items.CanUseItem(Blade) && Player.Distance3D(Target) <= 450 && !Farm) Items.UseItem(Blade, Target);
+            if (Items.CanUseItem(Bilgewater) && Player.Distance3D(Target) <= 450 && !Farm) Items.UseItem(Bilgewater, Target);
+            if (Items.CanUseItem(BladeRuined) && Player.Distance3D(Target) <= 450 && !Farm) Items.UseItem(BladeRuined, Target);
             if (Items.CanUseItem(Tiamat) && Farm ? Player.Distance3D(Target) <= 350 : Player.CountEnemysInRange(350) >= 1) Items.UseItem(Tiamat);
             if (Items.CanUseItem(Hydra) && Farm ? Player.Distance3D(Target) <= 350 : (Player.CountEnemysInRange(350) >= 2 || (Player.GetAutoAttackDamage(Target, true) < Target.Health && Player.CountEnemysInRange(350) == 1))) Items.UseItem(Hydra);
-            if (Items.CanUseItem(Rand) && Player.CountEnemysInRange(450) >= 1 && !Farm) Items.UseItem(Rand);
+            if (Items.CanUseItem(Randuin) && Player.CountEnemysInRange(450) >= 1 && !Farm) Items.UseItem(Randuin);
             if (Items.CanUseItem(Youmuu) && Player.CountEnemysInRange(350) >= 1 && !Farm) Items.UseItem(Youmuu);
         }
     }

@@ -155,7 +155,7 @@ namespace MasterPlugin
             if (Player.IsDead) return;
             if (sender.IsMe)
             {
-                if (Orbwalk.IsAutoAttack(args.SData.Name) && IsValid((Obj_AI_Base)args.Target) && SkillW.IsReady() && Orbwalk.CurrentMode == Orbwalk.Mode.LastHit && SkillW.GetHealthPrediction((Obj_AI_Base)args.Target) + 5 <= GetBonusDmg((Obj_AI_Base)args.Target) && args.Target is Obj_AI_Minion) SkillW.Cast(PacketCast());
+                if (Orbwalk.IsAutoAttack(args.SData.Name) && IsValid((Obj_AI_Base)args.Target) && SkillW.IsReady() && Orbwalk.CurrentMode == Orbwalk.Mode.LastHit && ItemBool("Misc", "WLastHit") && SkillW.GetHealthPrediction((Obj_AI_Base)args.Target) + 5 <= GetBonusDmg((Obj_AI_Base)args.Target) && args.Target is Obj_AI_Minion) SkillW.Cast(PacketCast());
                 if (args.SData.Name == "JaxCounterStrike")
                 {
                     ECasted = true;
@@ -202,7 +202,7 @@ namespace MasterPlugin
 
         private void OnCreateObjMinion(GameObject sender, EventArgs args)
         {
-            if (sender == null || !sender.IsValid || sender.IsEnemy || Player.IsDead || !SkillQ.IsReady() || !WardCasted) return;
+            if (!sender.IsValid<Obj_AI_Minion>() || sender.IsEnemy || Player.IsDead || !SkillQ.IsReady() || !WardCasted) return;
             if (Orbwalk.CurrentMode == Orbwalk.Mode.Flee && Player.Distance3D((Obj_AI_Minion)sender) <= SkillQ.Range + sender.BoundingRadius && sender.Name.EndsWith("Ward"))
             {
                 SkillQ.CastOnUnit((Obj_AI_Minion)sender, PacketCast());
@@ -352,11 +352,11 @@ namespace MasterPlugin
 
         private void UseItem(Obj_AI_Base Target, bool IsFarm = false)
         {
-            if (Items.CanUseItem(Bilge) && Player.Distance3D(Target) <= 450 && !IsFarm) Items.UseItem(Bilge, Target);
-            if (Items.CanUseItem(Blade) && Player.Distance3D(Target) <= 450 && !IsFarm) Items.UseItem(Blade, Target);
+            if (Items.CanUseItem(Bilgewater) && Player.Distance3D(Target) <= 450 && !IsFarm) Items.UseItem(Bilgewater, Target);
+            if (Items.CanUseItem(BladeRuined) && Player.Distance3D(Target) <= 450 && !IsFarm) Items.UseItem(BladeRuined, Target);
             if (Items.CanUseItem(Tiamat) && IsFarm ? Player.Distance3D(Target) <= 350 : Player.CountEnemysInRange(350) >= 1) Items.UseItem(Tiamat);
             if (Items.CanUseItem(Hydra) && IsFarm ? Player.Distance3D(Target) <= 350 : (Player.CountEnemysInRange(350) >= 2 || (Player.GetAutoAttackDamage(Target, true) < Target.Health && Player.CountEnemysInRange(350) == 1))) Items.UseItem(Hydra);
-            if (Items.CanUseItem(Rand) && Player.CountEnemysInRange(450) >= 1 && !IsFarm) Items.UseItem(Rand);
+            if (Items.CanUseItem(Randuin) && Player.CountEnemysInRange(450) >= 1 && !IsFarm) Items.UseItem(Randuin);
         }
 
         private double GetBonusDmg(Obj_AI_Base Target)

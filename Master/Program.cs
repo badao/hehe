@@ -161,12 +161,12 @@ namespace Master
         public static Obj_AI_Hero Player = null, targetObj = null;
         public static Spell SkillQ, SkillW, SkillE, SkillR;
         private static SpellSlot FlashSlot, SmiteSlot, IgniteSlot;
-        public static Int32 Tiamat = 3077, Hydra = 3074, Bilge = 3144, Blade = 3153, Rand = 3143, Youmuu = 3142;
+        public static Int32 Tiamat = 3077, Hydra = 3074, Bilgewater = 3144, BladeRuined = 3153, Randuin = 3143, Youmuu = 3142, Deathfire = 3128, Blackfire = 3188;
         public static Menu Config;
         public static String Name;
         private static M_TargetSelector TS;
         private static string[] SmiteName = { "summonersmite", "s5_summonersmiteplayerganker", "s5_summonersmitequick", "s5_summonersmiteduel", "itemsmiteaoe" };
-        private static bool SkinCasted = false;
+        private static string[] ChampMultiSkin = { "Rammus", "Udyr" };
 
         private static void Main(string[] args)
         {
@@ -186,14 +186,14 @@ namespace Master
             {
                 if (Activator.CreateInstance(null, "MasterPlugin." + Name) != null)
                 {
-                    //var QData = Player.Spellbook.GetSpell(SpellSlot.Q);
-                    //var WData = Player.Spellbook.GetSpell(SpellSlot.W);
-                    //var EData = Player.Spellbook.GetSpell(SpellSlot.E);
-                    //var RData = Player.Spellbook.GetSpell(SpellSlot.R);
-                    //Game.PrintChat("{0}-{1}/{2}/{3}/{4}", QData.SData.CastRange[0], QData.SData.CastRangeDisplayOverride[0], QData.SData.SpellCastTime, QData.SData.LineWidth, QData.SData.MissileSpeed);
-                    //Game.PrintChat("{0}-{1}/{2}/{3}/{4}", WData.SData.CastRange[0], WData.SData.CastRangeDisplayOverride[0], WData.SData.SpellCastTime, WData.SData.LineWidth, WData.SData.MissileSpeed);
-                    //Game.PrintChat("{0}-{1}/{2}/{3}/{4}", EData.SData.CastRange[0], EData.SData.CastRangeDisplayOverride[0], EData.SData.SpellCastTime, EData.SData.LineWidth, EData.SData.MissileSpeed);
-                    //Game.PrintChat("{0}-{1}/{2}/{3}/{4}", RData.SData.CastRange[0], RData.SData.CastRangeDisplayOverride[0], RData.SData.SpellCastTime, RData.SData.LineWidth, RData.SData.MissileSpeed);
+                    var QData = Player.Spellbook.GetSpell(SpellSlot.Q);
+                    var WData = Player.Spellbook.GetSpell(SpellSlot.W);
+                    var EData = Player.Spellbook.GetSpell(SpellSlot.E);
+                    var RData = Player.Spellbook.GetSpell(SpellSlot.R);
+                    Game.PrintChat("{0}: {1}-{2}/{3}/{4}/{5}", QData.SData.Name, QData.SData.CastRange[0], QData.SData.CastRangeDisplayOverride[0], QData.SData.SpellCastTime, QData.SData.LineWidth, QData.SData.MissileSpeed);
+                    Game.PrintChat("{0}: {1}-{2}/{3}/{4}/{5}", WData.SData.Name, WData.SData.CastRange[0], WData.SData.CastRangeDisplayOverride[0], WData.SData.SpellCastTime, WData.SData.LineWidth, WData.SData.MissileSpeed);
+                    Game.PrintChat("{0}: {1}-{2}/{3}/{4}/{5}", EData.SData.Name, EData.SData.CastRange[0], EData.SData.CastRangeDisplayOverride[0], EData.SData.SpellCastTime, EData.SData.LineWidth, EData.SData.MissileSpeed);
+                    Game.PrintChat("{0}: {1}-{2}/{3}/{4}/{5}", RData.SData.Name, RData.SData.CastRange[0], RData.SData.CastRangeDisplayOverride[0], RData.SData.SpellCastTime, RData.SData.LineWidth, RData.SData.MissileSpeed);
                     ItemBool(Config.SubMenu(Name + "_Plugin").SubMenu("Misc"), "UsePacket", "Use Packet To Cast");
                     FlashSlot = Player.GetSpellSlot("summonerflash");
                     SmiteSlot = SmiteName.Any(i => Player.GetSpellSlot(i) != SpellSlot.Unknown) ? Player.GetSpellSlot(SmiteName.First(i => Player.GetSpellSlot(i) != SpellSlot.Unknown)) : SpellSlot.Unknown;
@@ -250,25 +250,25 @@ namespace Master
         public static void SkinChanger(object sender, OnValueChangeEventArgs e)
         {
             if (Config.SubMenu(Name + "_Plugin").Item(Name + "_Misc_CustomSkin") == null) return;
-            Utility.DelayAction.Add(35, () => Packet.S2C.UpdateModel.Encoded(new Packet.S2C.UpdateModel.Struct(Player.NetworkId, ItemSlider("Misc", "CustomSkin"), Player.BaseSkinName)).Process());
+            Utility.DelayAction.Add(35, () => Packet.S2C.UpdateModel.Encoded(new Packet.S2C.UpdateModel.Struct(Player.NetworkId, ItemSlider("Misc", "CustomSkin"), ChampMultiSkin.Contains(Name) ? Player.SkinName : Player.BaseSkinName)).Process());
         }
 
         private static void OnGameUpdate(EventArgs args)
         {
+            //UdyrPhoenixStance
+            //UdyrTigerPunch
             targetObj = TS.Target;
-            if (SkinCasted && Config.SubMenu(Name + "_Plugin").Item(Name + "_Misc_CustomSkin") != null)
-            {
-                Packet.S2C.UpdateModel.Encoded(new Packet.S2C.UpdateModel.Struct(Player.NetworkId, ItemSlider("Misc", "CustomSkin"), (Name == "Udyr") ? Player.SkinName : Player.BaseSkinName)).Process();
-                SkinCasted = false;
-            }
         }
 
         private static void OnGameProcessPacket(GamePacketEventArgs args)
         {
             if (args.Channel == PacketChannel.S2C && args.PacketData[0] == Packet.S2C.UpdateModel.Header)
             {
-                var SkinPacket = Packet.S2C.UpdateModel.Decoded(args.PacketData);
-                if (SkinPacket.NetworkId == Player.NetworkId) SkinCasted = true;
+                if (Packet.S2C.UpdateModel.Decoded(args.PacketData).NetworkId == Player.NetworkId && Config.SubMenu(Name + "_Plugin").Item(Name + "_Misc_CustomSkin") != null)
+                {
+                    args.Process = false;
+                    SkinChanger(null, null);
+                }
             }
         }
 
@@ -353,7 +353,7 @@ namespace Master
 
         public static bool CastIgnite(Obj_AI_Hero Target)
         {
-            if (!IgniteReady() || !IsValid(Target, 720) || Target.Health + 5 > Player.GetSummonerSpellDamage(Target, Damage.SummonerSpell.Ignite)) return false;
+            if (!IgniteReady() || !IsValid(Target, 600) || Target.Health + 5 > Player.GetSummonerSpellDamage(Target, Damage.SummonerSpell.Ignite)) return false;
             return Player.SummonerSpellbook.CastSpell(IgniteSlot, Target);
         }
 

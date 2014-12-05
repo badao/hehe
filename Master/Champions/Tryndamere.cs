@@ -84,24 +84,15 @@ namespace MasterPlugin
         private void OnGameUpdate(EventArgs args)
         {
             if (Player.IsDead || MenuGUI.IsChatOpen || Player.IsChannelingImportantSpell() || Player.IsRecalling()) return;
-            switch (Orbwalk.CurrentMode)
+            if (Orbwalk.CurrentMode == Orbwalk.Mode.Combo || Orbwalk.CurrentMode == Orbwalk.Mode.Harass)
             {
-                case Orbwalk.Mode.Combo:
-                    NormalCombo();
-                    break;
-                case Orbwalk.Mode.Harass:
-                    Harass();
-                    break;
-                case Orbwalk.Mode.LaneClear:
-                    LaneJungClear();
-                    break;
-                case Orbwalk.Mode.LaneFreeze:
-                    LaneJungClear();
-                    break;
-                case Orbwalk.Mode.Flee:
-                    if (SkillE.IsReady()) SkillE.Cast(Game.CursorPos, PacketCast());
-                    break;
+                NormalCombo(Orbwalk.CurrentMode.ToString());
             }
+            else if (Orbwalk.CurrentMode == Orbwalk.Mode.LaneClear || Orbwalk.CurrentMode == Orbwalk.Mode.LaneFreeze)
+            {
+                LaneJungClear();
+            }
+            else if (Orbwalk.CurrentMode == Orbwalk.Mode.Flee && SkillE.IsReady()) SkillE.Cast(Game.CursorPos, PacketCast());
             if (ItemBool("Misc", "EKillSteal")) KillSteal();
         }
 
@@ -158,35 +149,21 @@ namespace MasterPlugin
             }
         }
 
-        private void NormalCombo()
+        private void NormalCombo(string Mode)
         {
             if (targetObj == null) return;
-            if (ItemBool("Combo", "Q") && SkillQ.IsReady() && Player.HealthPercentage() <= ItemSlider("Combo", "QUnder") && Player.CountEnemysInRange(800) >= 1) SkillQ.Cast(PacketCast());
-            if (ItemBool("Combo", "W") && SkillW.IsReady() && SkillW.InRange(targetObj.Position))
+            if (ItemBool(Mode, "Q") && Mode == "Combo" && SkillQ.IsReady() && Player.HealthPercentage() <= ItemSlider(Mode, "QUnder") && Player.CountEnemysInRange(800) >= 1) SkillQ.Cast(PacketCast());
+            if (ItemBool(Mode, "W") && SkillW.IsReady() && SkillW.InRange(targetObj.Position))
             {
-                if (Utility.IsBothFacing(Player, targetObj, 300))
+                if (Utility.IsBothFacing(Player, targetObj, 35))
                 {
                     if (Player.GetAutoAttackDamage(targetObj, true) < targetObj.GetAutoAttackDamage(Player, true) || Player.Health < targetObj.Health) SkillW.Cast(PacketCast());
                 }
-                else if (Player.IsFacing(targetObj) && !targetObj.IsFacing(Player) && Player.Distance3D(targetObj) > Orbwalk.GetAutoAttackRange() + 100) SkillW.Cast(PacketCast());
+                else if (Player.IsFacing(targetObj, 35) && !targetObj.IsFacing(Player, 35) && Player.Distance3D(targetObj) > Orbwalk.GetAutoAttackRange() + 50) SkillW.Cast(PacketCast());
             }
-            if (ItemBool("Combo", "E") && SkillE.IsReady() && SkillE.InRange(targetObj.Position) && (CanKill(targetObj, SkillE) || Player.Distance3D(targetObj) > 450)) SkillE.Cast(Player.Position.To2D().Extend(targetObj.Position.To2D(), targetObj.Distance3D(Player) + 200), PacketCast());
-            if (ItemBool("Combo", "Item")) UseItem(targetObj);
-            if (ItemBool("Combo", "Ignite")) CastIgnite(targetObj);
-        }
-
-        private void Harass()
-        {
-            if (targetObj == null) return;
-            if (ItemBool("Harass", "W") && SkillW.IsReady() && SkillW.InRange(targetObj.Position))
-            {
-                if (Utility.IsBothFacing(Player, targetObj, 300))
-                {
-                    if (Player.GetAutoAttackDamage(targetObj, true) < targetObj.GetAutoAttackDamage(Player, true) || Player.Health < targetObj.Health) SkillW.Cast(PacketCast());
-                }
-                else if (Player.IsFacing(targetObj) && !targetObj.IsFacing(Player) && Player.Distance3D(targetObj) > Orbwalk.GetAutoAttackRange() + 100) SkillW.Cast(PacketCast());
-            }
-            if (ItemBool("Harass", "E") && SkillE.IsReady() && SkillE.InRange(targetObj.Position) && (CanKill(targetObj, SkillE) || (Player.Distance3D(targetObj) > 450 && Player.HealthPercentage() >= ItemSlider("Harass", "EAbove")))) SkillE.Cast(Player.Position.To2D().Extend(targetObj.Position.To2D(), targetObj.Distance3D(Player) + 200), PacketCast());
+            if (ItemBool(Mode, "E") && SkillE.IsReady() && SkillE.InRange(targetObj.Position) && (CanKill(targetObj, SkillE) || (Player.Distance3D(targetObj) > Orbwalk.GetAutoAttackRange() + 50 && (Mode == "Combo" || Player.HealthPercentage() >= ItemSlider(Mode, "EAbove"))))) SkillE.Cast(Player.Position.To2D().Extend(targetObj.Position.To2D(), targetObj.Distance3D(Player) + 200), PacketCast());
+            if (ItemBool(Mode, "Item") && Mode == "Combo") UseItem(targetObj);
+            if (ItemBool(Mode, "Ignite") && Mode == "Combo") CastIgnite(targetObj);
         }
 
         private void LaneJungClear()
@@ -219,11 +196,11 @@ namespace MasterPlugin
 
         private void UseItem(Obj_AI_Base Target, bool Farm = false)
         {
-            if (Items.CanUseItem(Bilge) && Player.Distance3D(Target) <= 450 && !Farm) Items.UseItem(Bilge, Target);
-            if (Items.CanUseItem(Blade) && Player.Distance3D(Target) <= 450 && !Farm) Items.UseItem(Blade, Target);
+            if (Items.CanUseItem(Bilgewater) && Player.Distance3D(Target) <= 450 && !Farm) Items.UseItem(Bilgewater, Target);
+            if (Items.CanUseItem(BladeRuined) && Player.Distance3D(Target) <= 450 && !Farm) Items.UseItem(BladeRuined, Target);
             if (Items.CanUseItem(Tiamat) && Farm ? Player.Distance3D(Target) <= 350 : Player.CountEnemysInRange(350) >= 1) Items.UseItem(Tiamat);
             if (Items.CanUseItem(Hydra) && Farm ? Player.Distance3D(Target) <= 350 : (Player.CountEnemysInRange(350) >= 2 || (Player.GetAutoAttackDamage(Target, true) < Target.Health && Player.CountEnemysInRange(350) == 1))) Items.UseItem(Hydra);
-            if (Items.CanUseItem(Rand) && Player.CountEnemysInRange(450) >= 1 && !Farm) Items.UseItem(Rand);
+            if (Items.CanUseItem(Randuin) && Player.CountEnemysInRange(450) >= 1 && !Farm) Items.UseItem(Randuin);
             if (Items.CanUseItem(Youmuu) && Player.CountEnemysInRange(350) >= 1 && !Farm) Items.UseItem(Youmuu);
         }
     }

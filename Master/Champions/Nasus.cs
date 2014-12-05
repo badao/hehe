@@ -38,6 +38,7 @@ namespace MasterPlugin
                 var HarassMenu = new Menu("Harass", "Harass");
                 {
                     ItemBool(HarassMenu, "Q", "Use Q");
+                    ItemBool(HarassMenu, "W", "Use W");
                     ItemBool(HarassMenu, "E", "Use E");
                     ChampMenu.AddSubMenu(HarassMenu);
                 }
@@ -90,7 +91,7 @@ namespace MasterPlugin
             if (Player.IsDead || MenuGUI.IsChatOpen || Player.IsChannelingImportantSpell() || Player.IsRecalling()) return;
             if (Orbwalk.CurrentMode == Orbwalk.Mode.Combo || Orbwalk.CurrentMode == Orbwalk.Mode.Harass)
             {
-                NormalCombo();
+                NormalCombo(Orbwalk.CurrentMode.ToString());
             }
             else if (Orbwalk.CurrentMode == Orbwalk.Mode.LaneClear || Orbwalk.CurrentMode == Orbwalk.Mode.LaneFreeze)
             {
@@ -114,11 +115,11 @@ namespace MasterPlugin
             {
                 var Obj = (Obj_AI_Base)args.Target;
                 var DmgAA = Player.GetAutoAttackDamage(Obj) * Math.Floor(SkillQ.Instance.Cooldown / (1 / (Player.PercentMultiplicativeAttackSpeedMod * 0.638)));
-                if (Orbwalk.CurrentMode == Orbwalk.Mode.LastHit && SkillQ.GetHealthPrediction(Obj) + 5 <= GetBonusDmg(Obj) && (args.Target is Obj_AI_Minion || args.Target is Obj_AI_Turret))
+                if (Orbwalk.CurrentMode == Orbwalk.Mode.LastHit && ItemBool("Misc", "QLastHit") && SkillQ.GetHealthPrediction(Obj) + 5 <= GetBonusDmg(Obj) && (args.Target is Obj_AI_Minion || args.Target is Obj_AI_Turret))
                 {
                     SkillQ.Cast(PacketCast());
                 }
-                else if (Orbwalk.CurrentMode != Orbwalk.Mode.None && Orbwalk.CurrentMode != Orbwalk.Mode.Flee && Orbwalk.CurrentMode != Orbwalk.Mode.LastHit && (args.Target is Obj_AI_Hero || args.Target is Obj_AI_Minion || args.Target is Obj_AI_Turret) && (Obj.Health + 5 <= GetBonusDmg(Obj) || Obj.Health + 5 > DmgAA + GetBonusDmg(Obj))) SkillQ.Cast(PacketCast());
+                else if ((((Orbwalk.CurrentMode == Orbwalk.Mode.LaneClear || Orbwalk.CurrentMode == Orbwalk.Mode.LaneFreeze) && ItemBool("Clear", "Q") && (args.Target is Obj_AI_Minion || args.Target is Obj_AI_Turret)) || ((Orbwalk.CurrentMode == Orbwalk.Mode.Combo || Orbwalk.CurrentMode == Orbwalk.Mode.Harass) && ItemBool(Orbwalk.CurrentMode.ToString(), "Q") && args.Target is Obj_AI_Hero)) && (SkillQ.GetHealthPrediction(Obj) + 5 <= GetBonusDmg(Obj) || (!(args.Target is Obj_AI_Turret) && SkillQ.GetHealthPrediction(Obj) + 5 > DmgAA + GetBonusDmg(Obj)))) SkillQ.Cast(PacketCast());
             }
             else if (sender.IsEnemy && ItemBool("Ultimate", "RSurvive") && SkillR.IsReady())
             {
@@ -139,12 +140,12 @@ namespace MasterPlugin
             }
         }
 
-        private void NormalCombo()
+        private void NormalCombo(string Mode)
         {
             if (targetObj == null) return;
-            if (ItemBool("Combo", "W") && SkillW.IsReady() && SkillW.InRange(targetObj.Position)) SkillW.CastOnUnit(targetObj, PacketCast());
-            if (ItemBool("Combo", "E") && SkillE.IsReady() && SkillE.InRange(targetObj.Position)) SkillE.Cast(targetObj.Position, PacketCast());
-            if (ItemBool("Combo", "Q") && SkillQ.IsReady() && Player.Distance3D(targetObj) <= Orbwalk.GetAutoAttackRange() + 50)
+            if (ItemBool(Mode, "W") && SkillW.IsReady() && SkillW.InRange(targetObj.Position) && (Mode == "Combo" || Player.Distance3D(targetObj) <= Orbwalk.GetAutoAttackRange() + 100)) SkillW.CastOnUnit(targetObj, PacketCast());
+            if (ItemBool(Mode, "E") && SkillE.IsReady() && SkillE.InRange(targetObj.Position) && (Mode == "Combo" || Player.Distance3D(targetObj) <= Orbwalk.GetAutoAttackRange() + 100)) SkillE.Cast(targetObj.Position, PacketCast());
+            if (ItemBool(Mode, "Q") && SkillQ.IsReady() && Player.Distance3D(targetObj) <= Orbwalk.GetAutoAttackRange() + 50)
             {
                 var DmgAA = Player.GetAutoAttackDamage(targetObj) * Math.Floor(SkillQ.Instance.Cooldown / (1 / (Player.PercentMultiplicativeAttackSpeedMod * 0.638)));
                 if (SkillQ.GetHealthPrediction(targetObj) + 5 <= GetBonusDmg(targetObj) || SkillQ.GetHealthPrediction(targetObj) + 5 > DmgAA + GetBonusDmg(targetObj))
@@ -154,8 +155,8 @@ namespace MasterPlugin
                     Orbwalk.SetAttack(true);
                 }
             }
-            if (ItemBool("Combo", "Item") && Items.CanUseItem(Rand) && Player.CountEnemysInRange(450) >= 1) Items.UseItem(Rand);
-            if (ItemBool("Combo", "Ignite")) CastIgnite(targetObj);
+            if (ItemBool(Mode, "Item") && Mode == "Combo" && Items.CanUseItem(Randuin) && Player.CountEnemysInRange(450) >= 1) Items.UseItem(Randuin);
+            if (ItemBool(Mode, "Ignite") && Mode == "Combo") CastIgnite(targetObj);
         }
 
         private void LaneJungClear()

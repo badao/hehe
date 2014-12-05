@@ -8,12 +8,12 @@ using SharpDX;
 
 using Orbwalk = MasterCommon.M_Orbwalker;
 
-namespace MasterPlugi
+namespace MasterPlugin
 {
     class Renekton : Master.Program
     {
         private Vector3 HarassBackPos = default(Vector3);
-        private bool WCasted = false, ECasted = false;
+        private bool ECasted = false;
         private int AACount = 0;
 
         public Renekton()
@@ -146,19 +146,14 @@ namespace MasterPlugi
                 if (Orbwalk.IsAutoAttack(args.SData.Name) && IsValid((Obj_AI_Base)args.Target) && SkillW.IsReady())
                 {
                     var Obj = (Obj_AI_Base)args.Target;
-                    if ((Orbwalk.CurrentMode == Orbwalk.Mode.LaneClear || Orbwalk.CurrentMode == Orbwalk.Mode.LaneFreeze) && args.Target is Obj_AI_Minion && (CanKill(Obj, SkillW, Player.Mana >= 50 ? 1 : 0) || Obj.MaxHealth >= 1200))
+                    if ((Orbwalk.CurrentMode == Orbwalk.Mode.LaneClear || Orbwalk.CurrentMode == Orbwalk.Mode.LaneFreeze) && ItemBool("Clear", "W") && args.Target is Obj_AI_Minion && (CanKill(Obj, SkillW, Player.Mana >= 50 ? 1 : 0) || Obj.MaxHealth >= 1200))
                     {
                         SkillW.Cast(PacketCast());
                     }
-                    else if ((Orbwalk.CurrentMode == Orbwalk.Mode.Combo || Orbwalk.CurrentMode == Orbwalk.Mode.Harass) && args.Target is Obj_AI_Hero) SkillW.Cast(PacketCast());
+                    else if ((Orbwalk.CurrentMode == Orbwalk.Mode.Combo || Orbwalk.CurrentMode == Orbwalk.Mode.Harass) && ItemBool(Orbwalk.CurrentMode.ToString(), "W") && args.Target is Obj_AI_Hero) SkillW.Cast(PacketCast());
                 }
                 if (args.SData.Name == "RenektonCleave") AACount = 0;
-                if (args.SData.Name == "RenektonPreExecute")
-                {
-                    AACount = 0;
-                    WCasted = true;
-                    Utility.DelayAction.Add(1000, () => WCasted = false);
-                }
+                if (args.SData.Name == "RenektonPreExecute") AACount = 0;
                 if (args.SData.Name == "RenektonSliceAndDice")
                 {
                     ECasted = true;
@@ -189,12 +184,8 @@ namespace MasterPlugi
         private void AfterAttack(Obj_AI_Base unit, Obj_AI_Base target)
         {
             if (!unit.IsMe) return;
-            if (WCasted) WCasted = false;
             AACount += 1;
-            if (Orbwalk.CurrentMode == Orbwalk.Mode.Combo || Orbwalk.CurrentMode == Orbwalk.Mode.Harass)
-            {
-                if (ItemBool("Misc", "WCancel") && target.HasBuff("Stun") && target is Obj_AI_Hero) UseItem(target, true);
-            }
+            if ((Orbwalk.CurrentMode == Orbwalk.Mode.Combo || Orbwalk.CurrentMode == Orbwalk.Mode.Harass) && ItemBool(Orbwalk.CurrentMode.ToString(), "W") && ItemBool("Misc", "WCancel") && target.Buffs.Any(i => i.SourceName == Name && i.DisplayName == "Stun") && target is Obj_AI_Hero) UseItem(target, true);
         }
 
         private void NormalCombo()
@@ -277,7 +268,7 @@ namespace MasterPlugi
         {
             if (Items.CanUseItem(Tiamat) && IsFarm ? Player.Distance3D(Target) <= 350 : Player.CountEnemysInRange(350) >= 1) Items.UseItem(Tiamat);
             if (Items.CanUseItem(Hydra) && IsFarm ? Player.Distance3D(Target) <= 350 : (Player.CountEnemysInRange(350) >= 2 || (Player.GetAutoAttackDamage(Target, true) < Target.Health && Player.CountEnemysInRange(350) == 1))) Items.UseItem(Hydra);
-            if (Items.CanUseItem(Rand) && Player.CountEnemysInRange(450) >= 1 && !IsFarm) Items.UseItem(Rand);
+            if (Items.CanUseItem(Randuin) && Player.CountEnemysInRange(450) >= 1 && !IsFarm) Items.UseItem(Randuin);
         }
     }
 }
