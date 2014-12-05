@@ -186,14 +186,14 @@ namespace Master
             {
                 if (Activator.CreateInstance(null, "MasterPlugin." + Name) != null)
                 {
-                    var QData = Player.Spellbook.GetSpell(SpellSlot.Q);
-                    var WData = Player.Spellbook.GetSpell(SpellSlot.W);
-                    var EData = Player.Spellbook.GetSpell(SpellSlot.E);
-                    var RData = Player.Spellbook.GetSpell(SpellSlot.R);
-                    Game.PrintChat("{0}: {1}-{2}/{3}/{4}/{5}", QData.SData.Name, QData.SData.CastRange[0], QData.SData.CastRangeDisplayOverride[0], QData.SData.SpellCastTime, QData.SData.LineWidth, QData.SData.MissileSpeed);
-                    Game.PrintChat("{0}: {1}-{2}/{3}/{4}/{5}", WData.SData.Name, WData.SData.CastRange[0], WData.SData.CastRangeDisplayOverride[0], WData.SData.SpellCastTime, WData.SData.LineWidth, WData.SData.MissileSpeed);
-                    Game.PrintChat("{0}: {1}-{2}/{3}/{4}/{5}", EData.SData.Name, EData.SData.CastRange[0], EData.SData.CastRangeDisplayOverride[0], EData.SData.SpellCastTime, EData.SData.LineWidth, EData.SData.MissileSpeed);
-                    Game.PrintChat("{0}: {1}-{2}/{3}/{4}/{5}", RData.SData.Name, RData.SData.CastRange[0], RData.SData.CastRangeDisplayOverride[0], RData.SData.SpellCastTime, RData.SData.LineWidth, RData.SData.MissileSpeed);
+                    //var QData = Player.Spellbook.GetSpell(SpellSlot.Q);
+                    //var WData = Player.Spellbook.GetSpell(SpellSlot.W);
+                    //var EData = Player.Spellbook.GetSpell(SpellSlot.E);
+                    //var RData = Player.Spellbook.GetSpell(SpellSlot.R);
+                    //Game.PrintChat("{0}: {1}-{2}/{3}/{4}/{5}", QData.SData.Name, QData.SData.CastRange[0], QData.SData.CastRangeDisplayOverride[0], QData.SData.SpellCastTime, QData.SData.LineWidth, QData.SData.MissileSpeed);
+                    //Game.PrintChat("{0}: {1}-{2}/{3}/{4}/{5}", WData.SData.Name, WData.SData.CastRange[0], WData.SData.CastRangeDisplayOverride[0], WData.SData.SpellCastTime, WData.SData.LineWidth, WData.SData.MissileSpeed);
+                    //Game.PrintChat("{0}: {1}-{2}/{3}/{4}/{5}", EData.SData.Name, EData.SData.CastRange[0], EData.SData.CastRangeDisplayOverride[0], EData.SData.SpellCastTime, EData.SData.LineWidth, EData.SData.MissileSpeed);
+                    //Game.PrintChat("{0}: {1}-{2}/{3}/{4}/{5}", RData.SData.Name, RData.SData.CastRange[0], RData.SData.CastRangeDisplayOverride[0], RData.SData.SpellCastTime, RData.SData.LineWidth, RData.SData.MissileSpeed);
                     ItemBool(Config.SubMenu(Name + "_Plugin").SubMenu("Misc"), "UsePacket", "Use Packet To Cast");
                     FlashSlot = Player.GetSpellSlot("summonerflash");
                     SmiteSlot = SmiteName.Any(i => Player.GetSpellSlot(i) != SpellSlot.Unknown) ? Player.GetSpellSlot(SmiteName.First(i => Player.GetSpellSlot(i) != SpellSlot.Unknown)) : SpellSlot.Unknown;
