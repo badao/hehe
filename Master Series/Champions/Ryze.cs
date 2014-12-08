@@ -153,6 +153,7 @@ namespace Master.Champions
 
         private void NormalCombo(string Mode)
         {
+            if (Mode == "Chase") CustomOrbwalk(targetObj);
             if (targetObj == null) return;
             if ((Mode == "Chase" || (Mode != "Chase" && ItemBool(Mode, "Q"))) && SkillQ.IsReady() && SkillQ.InRange(targetObj.Position) && CanKill(targetObj, SkillQ)) SkillQ.CastOnUnit(targetObj, PacketCast());
             if ((Mode == "Chase" || (Mode != "Chase" && ItemBool(Mode, "E"))) && SkillE.IsReady() && SkillE.InRange(targetObj.Position) && CanKill(targetObj, SkillE)) SkillE.CastOnUnit(targetObj, PacketCast());
