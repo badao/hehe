@@ -128,6 +128,7 @@ namespace Master.Champions
                     ItemBool(MiscMenu, "WJPink", "Ward Jump Use Pink Ward", false);
                     ItemBool(MiscMenu, "QLastHit", "Use Q To Last Hit", false);
                     ItemBool(MiscMenu, "RInterrupt", "Use R To Interrupt");
+                    ItemBool(MiscMenu, "InterruptGap", "-> Ward Jump If No Ally Near", false);
                     ItemBool(MiscMenu, "WSurvive", "Try Use W To Survive");
                     ItemBool(MiscMenu, "SmiteCol", "Auto Smite Collision");
                     ItemSlider(MiscMenu, "CustomSkin", "Skin Changer", 5, 0, 6).ValueChanged += SkinChanger;
@@ -255,7 +256,7 @@ namespace Master.Champions
                 {
                     foreach (var Obj in nearObj) SkillW.CastOnUnit(Obj, PacketCast());
                 }
-                else if (IsValid(unit, SkillW.Range) && (GetWardSlot() != null || GetWardSlot().Stacks > 0 || WardCasted)) WardJump(unit.Position);
+                else if (ItemBool("Misc", "InterruptGap") && IsValid(unit, SkillW.Range) && (GetWardSlot() != null || GetWardSlot().Stacks > 0 || WardCasted)) WardJump(unit.Position);
             }
             if (IsValid(unit, SkillR.Range)) SkillR.CastOnUnit(unit, PacketCast());
         }
