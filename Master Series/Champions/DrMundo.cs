@@ -6,11 +6,11 @@ using LeagueSharp;
 using LeagueSharp.Common;
 using SharpDX;
 
-using Orbwalk = MasterCommon.M_Orbwalker;
+using Orbwalk = Master.Common.M_Orbwalker;
 
-namespace MasterPlugin
+namespace Master.Champions
 {
-    class DrMundo : Master.Program
+    class DrMundo : Program
     {
         public DrMundo()
         {
@@ -21,7 +21,7 @@ namespace MasterPlugin
             SkillQ.SetSkillshot(-0.5f, 75, 1500, true, SkillshotType.SkillshotLine);
             SkillW.SetSkillshot(-0.3864f, 0, 20, false, SkillshotType.SkillshotCircle);
 
-            var ChampMenu = new Menu(Name + " Plugin", Name + "_Plugin");
+            var ChampMenu = new Menu("Plugin", Name + "_Plugin");
             {
                 var ComboMenu = new Menu("Combo", "Combo");
                 {
@@ -157,8 +157,8 @@ namespace MasterPlugin
                 else SkillQ.CastIfHitchanceEquals(targetObj, HitChance.VeryHigh, PacketCast());
             }
             if (ItemBool(Mode, "E") && SkillE.IsReady() && Orbwalk.InAutoAttackRange(targetObj)) SkillE.Cast(PacketCast());
-            if (ItemBool(Mode, "Item") && Mode == "Combo" && Items.CanUseItem(Randuin) && Player.CountEnemysInRange(450) >= 1) Items.UseItem(Randuin);
-            if (ItemBool(Mode, "Ignite") && Mode == "Combo") CastIgnite(targetObj);
+            if (Mode == "Combo" && ItemBool(Mode, "Item") && Items.CanUseItem(Randuin) && Player.CountEnemysInRange(450) >= 1) Items.UseItem(Randuin);
+            if (Mode == "Combo" && ItemBool(Mode, "Ignite")) CastIgnite(targetObj);
         }
 
         private void LaneJungClear()

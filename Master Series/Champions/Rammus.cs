@@ -6,11 +6,11 @@ using LeagueSharp;
 using LeagueSharp.Common;
 using SharpDX;
 
-using Orbwalk = MasterCommon.M_Orbwalker;
+using Orbwalk = Master.Common.M_Orbwalker;
 
-namespace MasterPlugin
+namespace Master.Champions
 {
-    class Rammus : Master.Program
+    class Rammus : Program
     {
         public Rammus()
         {
@@ -22,7 +22,7 @@ namespace MasterPlugin
             SkillE.SetTargetted(-0.5f, 0);
             SkillR.SetSkillshot(-0.5f, 0, 0, false, SkillshotType.SkillshotCircle);
 
-            var ChampMenu = new Menu(Name + " Plugin", Name + "_Plugin");
+            var ChampMenu = new Menu("Plugin", Name + "_Plugin");
             {
                 var ComboMenu = new Menu("Combo", "Combo");
                 {
@@ -111,14 +111,14 @@ namespace MasterPlugin
 
         private void OnEnemyGapcloser(ActiveGapcloser gapcloser)
         {
-            if (!ItemBool("Misc", "QAntiGap") || Player.IsDead) return;
-            if (IsValid(gapcloser.Sender, Orbwalk.GetAutoAttackRange() + 100) && SkillQ.IsReady() && !Player.HasBuff("PowerBall")) SkillQ.Cast(PacketCast());
+            if (!ItemBool("Misc", "QAntiGap") || Player.IsDead || !SkillQ.IsReady()) return;
+            if (IsValid(gapcloser.Sender, Orbwalk.GetAutoAttackRange() + 100) && !Player.HasBuff("PowerBall")) SkillQ.Cast(PacketCast());
         }
 
         private void OnPossibleToInterrupt(Obj_AI_Base unit, InterruptableSpell spell)
         {
-            if (!ItemBool("Misc", "EInterrupt") || Player.IsDead) return;
-            if (IsValid(unit, SkillE.Range) && SkillE.IsReady()) SkillE.CastOnUnit(unit, PacketCast());
+            if (!ItemBool("Misc", "EInterrupt") || Player.IsDead || !SkillE.IsReady()) return;
+            if (IsValid(unit, SkillE.Range)) SkillE.CastOnUnit(unit, PacketCast());
         }
 
         private void OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
@@ -163,7 +163,7 @@ namespace MasterPlugin
                         break;
                 }
             }
-            if (ItemBool(Mode, "R") && Mode == "Combo" && SkillR.IsReady())
+            if (Mode == "Combo" && ItemBool(Mode, "R") && SkillR.IsReady())
             {
                 switch (ItemList(Mode, "RMode"))
                 {
@@ -175,8 +175,8 @@ namespace MasterPlugin
                         break;
                 }
             }
-            if (ItemBool(Mode, "Item") && Mode == "Combo" && Items.CanUseItem(Randuin) && Player.CountEnemysInRange(450) >= 1) Items.UseItem(Randuin);
-            if (ItemBool(Mode, "Ignite") && Mode == "Combo") CastIgnite(targetObj);
+            if (Mode == "Combo" && ItemBool(Mode, "Item") && Items.CanUseItem(Randuin) && Player.CountEnemysInRange(450) >= 1) Items.UseItem(Randuin);
+            if (Mode == "Combo" && ItemBool(Mode, "Ignite")) CastIgnite(targetObj);
         }
 
         private void LaneJungClear()

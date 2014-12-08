@@ -6,11 +6,11 @@ using LeagueSharp;
 using LeagueSharp.Common;
 using SharpDX;
 
-using Orbwalk = MasterCommon.M_Orbwalker;
+using Orbwalk = Master.Common.M_Orbwalker;
 
-namespace MasterPlugin
+namespace Master.Champions
 {
-    class LeeSin : Master.Program
+    class LeeSin : Program
     {
         private Obj_AI_Base allyObj = null;
         private bool WardCasted = false, JumpCasted = false, KickCasted = false, FlyCasted = false, FarmCasted = false, InsecJumpCasted = false, QCasted = false, WCasted = false, ECasted = false, RCasted = false;
@@ -42,7 +42,7 @@ namespace MasterPlugin
             Config.SubMenu("OW").SubMenu("Mode").AddItem(new MenuItem(Name + "_OW_StarCombo", "Star Combo").SetValue(new KeyBind("X".ToCharArray()[0], KeyBindType.Press)));
             Config.SubMenu("OW").SubMenu("Mode").AddItem(new MenuItem(Name + "_OW_InsecCombo", "Insec").SetValue(new KeyBind("T".ToCharArray()[0], KeyBindType.Press)));
             Config.SubMenu("OW").SubMenu("Mode").AddItem(new MenuItem(Name + "_OW_KSMob", "Kill Steal Mob").SetValue(new KeyBind("Z".ToCharArray()[0], KeyBindType.Press)));
-            var ChampMenu = new Menu(Name + " Plugin", Name + "_Plugin");
+            var ChampMenu = new Menu("Plugin", Name + "_Plugin");
             {
                 var ComboMenu = new Menu("Combo", "Combo");
                 {
@@ -89,17 +89,17 @@ namespace MasterPlugin
                 }
                 var InsecMenu = new Menu("Insec", "Insec");
                 {
-                    var InsecNear = new Menu("Near Ally Config", "InsecNear");
+                    var InsecNearMenu = new Menu("Near Ally Config", "InsecNear");
                     {
-                        ItemBool(InsecNear, "ToChamp", "To Champion");
-                        ItemSlider(InsecNear, "ToChampHp", "-> If Hp Above", 20);
-                        ItemSlider(InsecNear, "ToChampR", "-> If In", 1100, 500, 1600);
-                        ItemBool(InsecNear, "DrawToChamp", "-> Draw Range", false);
-                        ItemBool(InsecNear, "ToTower", "To Tower");
-                        ItemBool(InsecNear, "ToMinion", "To Minion");
-                        ItemSlider(InsecNear, "ToMinionR", "-> If In", 1100, 500, 1600);
-                        ItemBool(InsecNear, "DrawToMinion", "-> Draw Range", false);
-                        InsecMenu.AddSubMenu(InsecNear);
+                        ItemBool(InsecNearMenu, "ToChamp", "To Champion");
+                        ItemSlider(InsecNearMenu, "ToChampHp", "-> If Hp Above", 20);
+                        ItemSlider(InsecNearMenu, "ToChampR", "-> If In", 1100, 500, 1600);
+                        ItemBool(InsecNearMenu, "DrawToChamp", "-> Draw Range", false);
+                        ItemBool(InsecNearMenu, "ToTower", "To Tower");
+                        ItemBool(InsecNearMenu, "ToMinion", "To Minion");
+                        ItemSlider(InsecNearMenu, "ToMinionR", "-> If In", 1100, 500, 1600);
+                        ItemBool(InsecNearMenu, "DrawToMinion", "-> Draw Range", false);
+                        InsecMenu.AddSubMenu(InsecNearMenu);
                     }
                     ItemList(InsecMenu, "Mode", "Mode", new[] { "Near Ally", "Selected Ally", "Mouse Position" });
                     ItemBool(InsecMenu, "Flash", "Flash If Ward Jump Not Ready", false);
@@ -108,13 +108,26 @@ namespace MasterPlugin
                 }
                 var UltiMenu = new Menu("Ultimate", "Ultimate");
                 {
-                    foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => i.IsEnemy)) ItemBool(UltiMenu, Obj.ChampionName, "Use R On " + Obj.ChampionName);
+                    var KillableMenu = new Menu("Killable", "Killable");
+                    {
+                        foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => i.IsEnemy)) ItemBool(KillableMenu, Obj.ChampionName, "Use R On " + Obj.ChampionName);
+                        UltiMenu.AddSubMenu(KillableMenu);
+                    }
+                    var InterruptMenu = new Menu("Interrupt", "Interrupt");
+                    {
+                        foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => i.IsEnemy))
+                        {
+                            foreach (var Spell in Interrupter.Spells.Where(i => i.ChampionName == Obj.ChampionName)) ItemBool(InterruptMenu, Obj.ChampionName + "_" + Spell.Slot.ToString(), "Spell " + Spell.Slot.ToString() + " Of " + Obj.ChampionName);
+                        }
+                        UltiMenu.AddSubMenu(InterruptMenu);
+                    }
                     ChampMenu.AddSubMenu(UltiMenu);
                 }
                 var MiscMenu = new Menu("Misc", "Misc");
                 {
                     ItemBool(MiscMenu, "WJPink", "Ward Jump Use Pink Ward", false);
                     ItemBool(MiscMenu, "QLastHit", "Use Q To Last Hit", false);
+                    ItemBool(MiscMenu, "RInterrupt", "Use R To Interrupt");
                     ItemBool(MiscMenu, "WSurvive", "Try Use W To Survive");
                     ItemBool(MiscMenu, "SmiteCol", "Auto Smite Collision");
                     ItemSlider(MiscMenu, "CustomSkin", "Skin Changer", 5, 0, 6).ValueChanged += SkinChanger;
@@ -133,6 +146,7 @@ namespace MasterPlugin
             }
             Game.OnGameUpdate += OnGameUpdate;
             Drawing.OnDraw += OnDraw;
+            Interrupter.OnPossibleToInterrupt += OnPossibleToInterrupt;
             Obj_AI_Base.OnProcessSpellCast += OnProcessSpellCast;
             Game.OnWndProc += OnWndProc;
             Obj_AI_Minion.OnCreate += OnCreateObjMinion;
@@ -171,7 +185,6 @@ namespace MasterPlugin
                     break;
             }
             if (Orbwalk.CurrentMode != Orbwalk.Mode.Harass) CurHarassStage = HarassStage.Nothing;
-            Orbwalk.CustomMode = false;
             if (ItemActive("StarCombo")) StarCombo();
             if (ItemActive("InsecCombo"))
             {
@@ -222,7 +235,7 @@ namespace MasterPlugin
                         else if (Obj.HasBuff("BlindMonkSonicWave")) dmgTotal += SkillQ.GetDamage(Obj, 1);
                     }
                     if (SkillE.IsReady() && SkillE.Instance.Name == "BlindMonkEOne") dmgTotal += SkillE.GetDamage(Obj);
-                    if (SkillR.IsReady() && ItemBool("Ultimate", Obj.ChampionName)) dmgTotal += SkillR.GetDamage(Obj);
+                    if (SkillR.IsReady() && ItemBool("Killable", Obj.ChampionName)) dmgTotal += SkillR.GetDamage(Obj);
                     if (Obj.Health + 5 <= dmgTotal)
                     {
                         var posText = Drawing.WorldToScreen(Obj.Position);
@@ -230,6 +243,21 @@ namespace MasterPlugin
                     }
                 }
             }
+        }
+
+        private void OnPossibleToInterrupt(Obj_AI_Base unit, InterruptableSpell spell)
+        {
+            if (!ItemBool("Misc", "RInterrupt") || !ItemBool("Interrupt", (unit as Obj_AI_Hero).ChampionName + "_" + spell.Slot.ToString()) || Player.IsDead || !SkillR.IsReady()) return;
+            if (!SkillR.InRange(unit.Position) && SkillW.IsReady() && SkillW.Instance.Name == "BlindMonkWOne")
+            {
+                var nearObj = ObjectManager.Get<Obj_AI_Base>().Where(i => IsValid(i, SkillW.Range + i.BoundingRadius, false) && !(i is Obj_AI_Turret) && i.Distance3D(unit) <= SkillR.Range).OrderBy(i => i.Distance3D(unit));
+                if (nearObj.Count() > 0 && !JumpCasted)
+                {
+                    foreach (var Obj in nearObj) SkillW.CastOnUnit(Obj, PacketCast());
+                }
+                else if (IsValid(unit, SkillW.Range) && (GetWardSlot() != null || GetWardSlot().Stacks > 0 || WardCasted)) WardJump(unit.Position);
+            }
+            if (IsValid(unit, SkillR.Range)) SkillR.CastOnUnit(unit, PacketCast());
         }
 
         private void OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
@@ -271,7 +299,7 @@ namespace MasterPlugin
                         FlyCasted = true;
                         Utility.DelayAction.Add(1000, () => FlyCasted = false);
                     }
-                    else if (args.SData.Name == "BlindMonkWOne" && !WardCasted) Utility.DelayAction.Add((int)((Player.Position.Distance(GetInsecPos()) - args.Target.Position.Distance(GetInsecPos())) / SkillW.Speed * 1000 + 200), () => CastFlash(GetInsecPos()));
+                    if (args.SData.Name == "BlindMonkWOne" && !WardCasted) Utility.DelayAction.Add((int)((Player.Position.Distance(GetInsecPos()) - args.Target.Position.Distance(GetInsecPos())) / SkillW.Speed * 1000 + 200), () => CastFlash(GetInsecPos()));
                 }
             }
             else if (sender.IsEnemy && ItemBool("Misc", "WSurvive") && SkillW.IsReady() && SkillW.Instance.Name == "BlindMonkWOne")
@@ -343,7 +371,7 @@ namespace MasterPlugin
                     if (Player.Distance3D(targetObj) > 500 || CanKill(targetObj, SkillQ2, 1) || (targetObj.HasBuff("BlindMonkTempest") && SkillE.InRange(targetObj.Position) && !Orbwalk.InAutoAttackRange(targetObj)) || !QCasted) SkillQ.Cast(PacketCast());
                 }
             }
-            if (ItemBool("Combo", "R") && ItemBool("Ultimate", targetObj.ChampionName) && SkillR.IsReady() && SkillR.InRange(targetObj.Position))
+            if (ItemBool("Combo", "R") && ItemBool("Killable", targetObj.ChampionName) && SkillR.IsReady() && SkillR.InRange(targetObj.Position))
             {
                 if (CanKill(targetObj, SkillR) || (SkillR.GetHealthPrediction(targetObj) - SkillR.GetDamage(targetObj) + 5 <= GetQ2Dmg(targetObj, SkillR.GetDamage(targetObj)) && ItemBool("Combo", "Q") && SkillQ.IsReady() && targetObj.HasBuff("BlindMonkSonicWave"))) SkillR.CastOnUnit(targetObj, PacketCast());
             }
@@ -629,31 +657,53 @@ namespace MasterPlugin
 
         private void KillStealMob()
         {
-            var Obj = ObjectManager.Get<Obj_AI_Minion>().Where(i => IsValid(i, SkillQ2.Range) && i.Team == GameObjectTeam.Neutral).FirstOrDefault(i => new string[] { "SRU_Baron", "SRU_Dragon", "SRU_Blue", "SRU_Red" }.Any(a => i.Name.StartsWith(a) && !i.Name.StartsWith(a + "Mini")));
-            CustomOrbwalk(Obj);
-            if (Obj == null) return;
-            if (SkillQ.IsReady() && SkillQ.GetHealthPrediction(Obj) - (SkillQ.Instance.Name == "BlindMonkQOne" ? SkillQ.GetDamage(Obj) : 0) - (SmiteReady() ? Player.GetSummonerSpellDamage(Obj, Damage.SummonerSpell.Smite) : 0) + 5 <= GetQ2Dmg(Obj, ((SkillQ.Instance.Name == "BlindMonkQOne") ? SkillQ.GetDamage(Obj) : 0) + (SmiteReady() ? Player.GetSummonerSpellDamage(Obj, Damage.SummonerSpell.Smite) : 0)))
+            var Mob = ObjectManager.Get<Obj_AI_Minion>().FirstOrDefault(i => IsValid(i, SkillQ2.Range) && i.Team == GameObjectTeam.Neutral && new string[] { "SRU_Baron", "SRU_Dragon", "SRU_Blue", "SRU_Red" }.Any(a => i.Name.StartsWith(a) && !i.Name.StartsWith(a + "Mini")));
+            CustomOrbwalk(Mob);
+            if (Mob == null) return;
+            if (SmiteReady()) CastSmite(Mob);
+            if (SkillQ.IsReady())
             {
-                if (SkillQ.Instance.Name == "BlindMonkQOne" && SkillQ.InRange(Obj.Position))
+                if (SkillQ.Instance.Name == "BlindMonkQOne" && SkillQ.InRange(Mob.Position))
                 {
-                    SkillQ.CastIfHitchanceEquals(Obj, HitChance.Medium, PacketCast());
+                    var nearObj = ObjectManager.Get<Obj_AI_Base>().Where(i => IsValid(i, SkillQ.Range) && !(i is Obj_AI_Turret) && i.Distance3D(Mob) <= 760 && !CanKill(i, SkillQ)).OrderBy(i => i.Distance3D(Mob));
+                    if (nearObj.Count() > 0 && SmiteReady() && SkillQ2.GetHealthPrediction(Mob) + 5 <= Player.GetSummonerSpellDamage(Mob, Damage.SummonerSpell.Smite))
+                    {
+                        foreach (var Obj in nearObj) SkillQ.CastIfHitchanceEquals(Obj, HitChance.VeryHigh, PacketCast());
+                    }
+                    else if (SkillQ.GetHealthPrediction(Mob) - SkillQ.GetDamage(Mob) - (SmiteReady() ? Player.GetSummonerSpellDamage(Mob, Damage.SummonerSpell.Smite) : 0) + 5 <= GetQ2Dmg(Mob, SkillQ.GetDamage(Mob) + (SmiteReady() ? Player.GetSummonerSpellDamage(Mob, Damage.SummonerSpell.Smite) : 0))) SkillQ.CastIfHitchanceEquals(Mob, HitChance.VeryHigh, PacketCast());
                 }
-                else if (Obj.HasBuff("BlindMonkSonicWave"))
+                else if (Mob.HasBuff("BlindMonkSonicWave") && SkillQ2.GetHealthPrediction(Mob) - (SmiteReady() ? Player.GetSummonerSpellDamage(Mob, Damage.SummonerSpell.Smite) : 0) + 5 <= GetQ2Dmg(Mob, SmiteReady() ? Player.GetSummonerSpellDamage(Mob, Damage.SummonerSpell.Smite) : 0))
                 {
                     SkillQ.Cast(PacketCast());
-                    if (SmiteReady()) Utility.DelayAction.Add((int)((Player.Distance3D(Obj) - 760) / SkillQ.Speed * 1000 + 300), () => CastSmite(Obj, false));
+                    if (SmiteReady()) Utility.DelayAction.Add((int)((Player.Distance3D(Mob) - 760) / SkillQ.Speed * 1000 + 300), () => CastSmite(Mob, false));
+                }
+                else if (ObjectManager.Get<Obj_AI_Base>().FirstOrDefault(i => i.HasBuff("BlindMonkSonicWave") && IsValid(i, SkillQ2.Range) && i.Distance3D(Mob) <= 760) != null && SmiteReady() && SkillQ2.GetHealthPrediction(Mob) + 5 <= Player.GetSummonerSpellDamage(Mob, Damage.SummonerSpell.Smite))
+                {
+                    SkillQ.Cast(PacketCast());
+                    Utility.DelayAction.Add((int)((Player.Distance3D(Mob) - 760) / SkillQ.Speed * 1000 + 300), () => CastSmite(Mob));
                 }
             }
-            var nearObj = ObjectManager.Get<Obj_AI_Base>().FirstOrDefault(i => IsValid(i, SkillQ2.Range) && !(i is Obj_AI_Turret) && i.HasBuff("BlindMonkSonicWave") && i.Distance3D(Obj) <= 760);
-            if (SkillQ.IsReady() && SkillQ.Instance.Name != "BlindMonkQOne" && SmiteReady() && SkillQ.GetHealthPrediction(Obj) + 100 <= Player.GetSummonerSpellDamage(Obj, Damage.SummonerSpell.Smite) && nearObj != null)
-            {
-                SkillQ.Cast(PacketCast());
-                Utility.DelayAction.Add((int)((Player.Distance3D(nearObj) - 760) / SkillQ.Speed * 1000 + 300), () => CastSmite(Obj));
-            }
-            if (SmiteReady()) CastSmite(Obj);
+            //var nearObj = ObjectManager.Get<Obj_AI_Base>().FirstOrDefault(i => IsValid(i, SkillQ2.Range) && !(i is Obj_AI_Turret) && i.HasBuff("BlindMonkSonicWave") && i.Distance3D(Obj) <= 760);
+            //if (SkillQ.IsReady() && SkillQ.Instance.Name != "BlindMonkQOne" && SmiteReady() && SkillQ.GetHealthPrediction(Obj) + 5 <= Player.GetSummonerSpellDamage(Obj, Damage.SummonerSpell.Smite) && nearObj != null)
+            //{
+            //    SkillQ.Cast(PacketCast());
+            //    Utility.DelayAction.Add((int)((Player.Distance3D(nearObj) - 760) / SkillQ.Speed * 1000 + 300), () => CastSmite(Obj));
+            //}
+            //if (SkillQ.IsReady() && SkillQ.GetHealthPrediction(Obj) - (SkillQ.Instance.Name == "BlindMonkQOne" ? SkillQ.GetDamage(Obj) : 0) - (SmiteReady() ? Player.GetSummonerSpellDamage(Obj, Damage.SummonerSpell.Smite) : 0) + 5 <= GetQ2Dmg(Obj, ((SkillQ.Instance.Name == "BlindMonkQOne") ? SkillQ.GetDamage(Obj) : 0) + (SmiteReady() ? Player.GetSummonerSpellDamage(Obj, Damage.SummonerSpell.Smite) : 0)))
+            //{
+            //    if (SkillQ.Instance.Name == "BlindMonkQOne" && SkillQ.InRange(Obj.Position))
+            //    {
+            //        SkillQ.CastIfHitchanceEquals(Obj, HitChance.Medium, PacketCast());
+            //    }
+            //    else if (Obj.HasBuff("BlindMonkSonicWave"))
+            //    {
+            //        SkillQ.Cast(PacketCast());
+            //        if (SmiteReady()) Utility.DelayAction.Add((int)((Player.Distance3D(Obj) - 760) / SkillQ.Speed * 1000 + 300), () => CastSmite(Obj, false));
+            //    }
+            //}
         }
 
-        private Vector3 GetInsecPos(bool Drawing = false)
+        private Vector3 GetInsecPos(bool IsDraw = false)
         {
             if (!SkillR.IsReady()) return default(Vector3);
             switch (ItemList("Insec", "Mode"))
@@ -667,16 +717,16 @@ namespace MasterPlugin
                         var Pos = default(Vector2);
                         foreach (var Obj in ChampList) Pos += Obj.Position.To2D();
                         Pos = new Vector2(Pos.X / ChampList.Count, Pos.Y / ChampList.Count);
-                        return Drawing ? Pos.To3D() : Pos.Extend(targetObj.Position.To2D(), targetObj.Position.To2D().Distance(Pos) + 230).To3D();
+                        return IsDraw ? Pos.To3D() : Pos.Extend(targetObj.Position.To2D(), targetObj.Position.To2D().Distance(Pos) + 300).To3D();
                     }
-                    if (MinionObj != null && ItemBool("InsecNear", "ToMinion")) return Drawing ? MinionObj.Position : MinionObj.Position.To2D().Extend(targetObj.Position.To2D(), targetObj.Distance3D(MinionObj) + 230).To3D();
-                    if (TowerObj != null && ItemBool("InsecNear", "ToTower")) return Drawing ? TowerObj.Position : TowerObj.Position.To2D().Extend(targetObj.Position.To2D(), targetObj.Distance3D(TowerObj) + 230).To3D();
+                    if (MinionObj != null && ItemBool("InsecNear", "ToMinion")) return IsDraw ? MinionObj.Position : MinionObj.Position.To2D().Extend(targetObj.Position.To2D(), targetObj.Distance3D(MinionObj) + 300).To3D();
+                    if (TowerObj != null && ItemBool("InsecNear", "ToTower")) return IsDraw ? TowerObj.Position : TowerObj.Position.To2D().Extend(targetObj.Position.To2D(), targetObj.Distance3D(TowerObj) + 300).To3D();
                     break;
                 case 1:
-                    if (allyObj != null) return Drawing ? allyObj.Position : allyObj.Position.To2D().Extend(targetObj.Position.To2D(), targetObj.Distance3D(allyObj) + 230).To3D();
+                    if (allyObj != null) return IsDraw ? allyObj.Position : allyObj.Position.To2D().Extend(targetObj.Position.To2D(), targetObj.Distance3D(allyObj) + 300).To3D();
                     break;
                 case 2:
-                    return Drawing ? Game.CursorPos : Game.CursorPos.To2D().Extend(targetObj.Position.To2D(), targetObj.Position.Distance(Game.CursorPos) + 230).To3D();
+                    return IsDraw ? Game.CursorPos : Game.CursorPos.To2D().Extend(targetObj.Position.To2D(), targetObj.Position.Distance(Game.CursorPos) + 300).To3D();
             }
             return default(Vector3);
         }

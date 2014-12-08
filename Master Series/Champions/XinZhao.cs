@@ -6,11 +6,11 @@ using LeagueSharp;
 using LeagueSharp.Common;
 using SharpDX;
 
-using Orbwalk = MasterCommon.M_Orbwalker;
+using Orbwalk = Master.Common.M_Orbwalker;
 
-namespace MasterPlugin
+namespace Master.Champions
 {
-    class XinZhao : Master.Program
+    class XinZhao : Program
     {
         public XinZhao()
         {
@@ -22,7 +22,7 @@ namespace MasterPlugin
             SkillE.SetTargetted(-0.5f, 20);
             SkillR.SetSkillshot(-0.5f, 0, 347.8f, false, SkillshotType.SkillshotCircle);
 
-            var ChampMenu = new Menu(Name + " Plugin", Name + "_Plugin");
+            var ChampMenu = new Menu("Plugin", Name + "_Plugin");
             {
                 var ComboMenu = new Menu("Combo", "Combo");
                 {
@@ -63,13 +63,25 @@ namespace MasterPlugin
                 }
                 var UltiMenu = new Menu("Ultimate", "Ultimate");
                 {
-                    foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => i.IsEnemy)) ItemBool(UltiMenu, Obj.ChampionName, "Use R On " + Obj.ChampionName);
+                    var KillableMenu = new Menu("Killable", "Killable");
+                    {
+                        foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => i.IsEnemy)) ItemBool(KillableMenu, Obj.ChampionName, "Use R On " + Obj.ChampionName);
+                        UltiMenu.AddSubMenu(KillableMenu);
+                    }
+                    var InterruptMenu = new Menu("Interrupt", "Interrupt");
+                    {
+                        foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => i.IsEnemy))
+                        {
+                            foreach (var Spell in Interrupter.Spells.Where(i => i.ChampionName == Obj.ChampionName)) ItemBool(InterruptMenu, Obj.ChampionName + "_" + Spell.Slot.ToString(), "Spell " + Spell.Slot.ToString() + " Of " + Obj.ChampionName);
+                        }
+                        UltiMenu.AddSubMenu(InterruptMenu);
+                    }
                     ChampMenu.AddSubMenu(UltiMenu);
                 }
                 var MiscMenu = new Menu("Misc", "Misc");
                 {
-                    ItemBool(MiscMenu, "RInterrupt", "Use R To Interrupt");
                     ItemBool(MiscMenu, "EKillSteal", "Use E To Kill Steal");
+                    ItemBool(MiscMenu, "RInterrupt", "Use R To Interrupt");
                     ItemSlider(MiscMenu, "CustomSkin", "Skin Changer", 5, 0, 5).ValueChanged += SkinChanger;
                     ChampMenu.AddSubMenu(MiscMenu);
                 }
@@ -107,24 +119,24 @@ namespace MasterPlugin
 
         private void OnPossibleToInterrupt(Obj_AI_Base unit, InterruptableSpell spell)
         {
-            if (!ItemBool("Misc", "RInterrupt") || Player.IsDead) return;
-            if (!IsValid(unit, SkillR.Range) && SkillR.IsReady() && SkillE.IsReady() && Player.Mana >= SkillE.Instance.ManaCost + SkillR.Instance.ManaCost)
+            if (!ItemBool("Misc", "RInterrupt") || !ItemBool("Interrupt", (unit as Obj_AI_Hero).ChampionName + "_" + spell.Slot.ToString()) || Player.IsDead || !SkillR.IsReady()) return;
+            if (!SkillR.InRange(unit.Position) && SkillE.IsReady() && Player.Mana >= SkillE.Instance.ManaCost + SkillR.Instance.ManaCost)
             {
                 foreach (var Obj in ObjectManager.Get<Obj_AI_Base>().Where(i => IsValid(i, SkillE.Range) && !(i is Obj_AI_Turret) && i != unit && i.Distance3D(unit) <= SkillR.Range - 30)) SkillE.CastOnUnit(Obj, PacketCast());
             }
-            if (IsValid(unit, SkillR.Range) && SkillR.IsReady() && !unit.HasBuff("XinZhaoIntimidate")) SkillR.Cast(PacketCast());
+            if (IsValid(unit, SkillR.Range) && !unit.HasBuff("XinZhaoIntimidate")) SkillR.Cast(PacketCast());
         }
 
-        private void AfterAttack(Obj_AI_Base unit, Obj_AI_Base target)
+        private void AfterAttack(Obj_AI_Base Unit, Obj_AI_Base Target)
         {
-            if (!unit.IsMe) return;
-            if ((Orbwalk.CurrentMode == Orbwalk.Mode.Combo || Orbwalk.CurrentMode == Orbwalk.Mode.Harass) && ItemBool(Orbwalk.CurrentMode.ToString(), "Q") && IsValid(target, Orbwalk.GetAutoAttackRange() + 50) && SkillQ.IsReady() && target.HasBuff("XinZhaoIntimidate")) SkillQ.Cast(PacketCast());
+            if (!Unit.IsMe) return;
+            if ((Orbwalk.CurrentMode == Orbwalk.Mode.Combo || Orbwalk.CurrentMode == Orbwalk.Mode.Harass) && ItemBool(Orbwalk.CurrentMode.ToString(), "Q") && IsValid(Target, Orbwalk.GetAutoAttackRange() + 50) && SkillQ.IsReady() && Target.HasBuff("XinZhaoIntimidate")) SkillQ.Cast(PacketCast());
         }
 
         private void NormalCombo(string Mode)
         {
             if (targetObj == null) return;
-            if (ItemBool(Mode, "R") && ItemBool("Ultimate", targetObj.ChampionName) && Mode == "Combo" && SkillR.IsReady() && SkillR.InRange(targetObj.Position))
+            if (Mode == "Combo" && ItemBool(Mode, "R") && ItemBool("Ultimate", targetObj.ChampionName) && SkillR.IsReady() && SkillR.InRange(targetObj.Position))
             {
                 if (CanKill(targetObj, SkillR))
                 {
@@ -134,8 +146,8 @@ namespace MasterPlugin
             }
             if (ItemBool(Mode, "E") && SkillE.IsReady() && SkillE.InRange(targetObj.Position) && (CanKill(targetObj, SkillE) || Player.Distance3D(targetObj) > Orbwalk.GetAutoAttackRange() + 50 || (Mode == "Combo" && Player.HealthPercentage() < targetObj.HealthPercentage()))) SkillE.CastOnUnit(targetObj, PacketCast());
             if (ItemBool(Mode, "W") && SkillW.IsReady() && Orbwalk.InAutoAttackRange(targetObj)) SkillW.Cast(PacketCast());
-            if (ItemBool(Mode, "Item") && Mode == "Combo") UseItem(targetObj);
-            if (ItemBool(Mode, "Ignite") && Mode == "Combo") CastIgnite(targetObj);
+            if (Mode == "Combo" && ItemBool(Mode, "Item")) UseItem(targetObj);
+            if (Mode == "Combo" && ItemBool(Mode, "Ignite")) CastIgnite(targetObj);
         }
 
         private void LaneJungClear()

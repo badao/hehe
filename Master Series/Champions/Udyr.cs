@@ -4,11 +4,11 @@ using System.Linq;
 using LeagueSharp;
 using LeagueSharp.Common;
 
-using Orbwalk = MasterCommon.M_Orbwalker;
+using Orbwalk = Master.Common.M_Orbwalker;
 
-namespace MasterPlugin
+namespace Master.Champions
 {
-    class Udyr : Master.Program
+    class Udyr : Program
     {
         private enum Stance
         {
@@ -29,7 +29,7 @@ namespace MasterPlugin
             SkillR = new Spell(SpellSlot.R, 325);
 
             Config.SubMenu("OW").SubMenu("Mode").AddItem(new MenuItem(Name + "_OW_StunCycle", "Stun Cycle").SetValue(new KeyBind("Z".ToCharArray()[0], KeyBindType.Press)));
-            var ChampMenu = new Menu(Name + " Plugin", Name + "_Plugin");
+            var ChampMenu = new Menu("Plugin", Name + "_Plugin");
             {
                 var ComboMenu = new Menu("Combo", "Combo");
                 {
@@ -105,17 +105,13 @@ namespace MasterPlugin
                 LaneJungClear();
             }
             else if (Orbwalk.CurrentMode == Orbwalk.Mode.Flee) Flee();
-            if (ItemActive("StunCycle"))
-            {
-                StunCycle();
-            }
-            else Orbwalk.CustomMode = false;
+            if (ItemActive("StunCycle")) StunCycle();
         }
 
         private void OnEnemyGapcloser(ActiveGapcloser gapcloser)
         {
-            if (!ItemBool("Misc", "EAntiGap") || Player.IsDead) return;
-            if (IsValid(gapcloser.Sender, Orbwalk.GetAutoAttackRange() + 100) && !gapcloser.Sender.HasBuff("UdyrBearStunCheck") && (SkillE.IsReady() || CurStance == Stance.Bear))
+            if (!ItemBool("Misc", "EAntiGap") || Player.IsDead || CurStance != Stance.Bear || (!SkillE.IsReady() && CurStance != Stance.Bear)) return;
+            if (IsValid(gapcloser.Sender, Orbwalk.GetAutoAttackRange() + 100) && !gapcloser.Sender.HasBuff("UdyrBearStunCheck"))
             {
                 if (CurStance != Stance.Bear) SkillE.Cast(PacketCast());
                 if (CurStance == Stance.Bear) Player.IssueOrder(GameObjectOrder.AttackUnit, gapcloser.Sender);
@@ -124,8 +120,8 @@ namespace MasterPlugin
 
         private void OnPossibleToInterrupt(Obj_AI_Base unit, InterruptableSpell spell)
         {
-            if (!ItemBool("Misc", "EInterrupt") || Player.IsDead) return;
-            if (IsValid(unit, SkillE.Range) && !unit.HasBuff("UdyrBearStunCheck") && (SkillE.IsReady() || CurStance == Stance.Bear))
+            if (!ItemBool("Misc", "EInterrupt") || Player.IsDead || CurStance != Stance.Bear || (!SkillE.IsReady() && CurStance != Stance.Bear)) return;
+            if (IsValid(unit, SkillE.Range) && !unit.HasBuff("UdyrBearStunCheck"))
             {
                 if (CurStance != Stance.Bear) SkillE.Cast(PacketCast());
                 if (CurStance == Stance.Bear) Player.IssueOrder(GameObjectOrder.AttackUnit, unit);
@@ -189,9 +185,9 @@ namespace MasterPlugin
             if (Player.Position.Distance(sender.Position) <= 450 && (sender.Name == "udyr_tiger_claw_tar.troy" || sender.Name == "Udyr_Spirit_Tiger_Claw_tar.troy")) TigerActive = false;
         }
 
-        private void AfterAttack(Obj_AI_Base unit, Obj_AI_Base target)
+        private void AfterAttack(Obj_AI_Base Unit, Obj_AI_Base Target)
         {
-            if (!unit.IsMe) return;
+            if (!Unit.IsMe) return;
             if (CurStance == Stance.Tiger || CurStance == Stance.Phoenix) AACount += 1;
         }
 
@@ -212,8 +208,8 @@ namespace MasterPlugin
                     else if (SkillQ.Level == 0 && SkillR.Level == 0) SkillW.Cast(PacketCast());
                 }
             }
-            if (ItemBool(Mode, "Item") && Mode == "Combo") UseItem(targetObj);
-            if (ItemBool(Mode, "Ignite") && Mode == "Combo") CastIgnite(targetObj);
+            if (Mode == "Combo" && ItemBool(Mode, "Item")) UseItem(targetObj);
+            if (Mode == "Combo" && ItemBool(Mode, "Ignite")) CastIgnite(targetObj);
         }
 
         private void LaneJungClear()

@@ -7,8 +7,8 @@
     <ProjectGuid>{9CE477EF-4393-4273-BBD2-9D82DFEE23E2}</ProjectGuid>
     <OutputType>Exe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>Master</RootNamespace>
-    <AssemblyName>Master</AssemblyName>
+    <RootNamespace>MasterSeries</RootNamespace>
+    <AssemblyName>Master Series</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <PreBuildEvent />
@@ -78,7 +78,9 @@
     <Compile Include="Champions\Nasus.cs" />
     <Compile Include="Champions\Rammus.cs" />
     <Compile Include="Champions\Renekton.cs" />
+    <Compile Include="Champions\Ryze.cs" />
     <Compile Include="Champions\Shen.cs" />
+    <Compile Include="Champions\Talon.cs" />
     <Compile Include="Champions\Tryndamere.cs" />
     <Compile Include="Champions\Udyr.cs" />
     <Compile Include="Champions\XinZhao.cs" />

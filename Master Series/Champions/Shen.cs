@@ -7,11 +7,11 @@ using LeagueSharp;
 using LeagueSharp.Common;
 using SharpDX;
 
-using Orbwalk = MasterCommon.M_Orbwalker;
+using Orbwalk = Master.Common.M_Orbwalker;
 
-namespace MasterPlugin
+namespace Master.Champions
 {
-    class Shen : Master.Program
+    class Shen : Program
     {
         private bool PingCasted = false;
 
@@ -25,7 +25,7 @@ namespace MasterPlugin
             SkillE.SetSkillshot(-0.5f, 50, 0, false, SkillshotType.SkillshotLine);
 
             Config.SubMenu("OW").SubMenu("Mode").AddItem(new MenuItem(Name + "_OW_FlashTaunt", "Flash Taunt").SetValue(new KeyBind("Z".ToCharArray()[0], KeyBindType.Press)));
-            var ChampMenu = new Menu(Name + " Plugin", Name + "_Plugin");
+            var ChampMenu = new Menu("Plugin", Name + "_Plugin");
             {
                 var ComboMenu = new Menu("Combo", "Combo");
                 {
@@ -99,11 +99,7 @@ namespace MasterPlugin
                 LastHit();
             }
             else if (Orbwalk.CurrentMode == Orbwalk.Mode.Flee && SkillE.IsReady()) SkillE.Cast(Game.CursorPos, PacketCast());
-            if (ItemActive("FlashTaunt"))
-            {
-                FlashTaunt();
-            }
-            else Orbwalk.CustomMode = false;
+            if (ItemActive("FlashTaunt")) FlashTaunt();
             if (ItemBool("Ultimate", "Alert")) UltimateAlert();
             if (ItemBool("Misc", "EUnderTower")) AutoEUnderTower();
         }
@@ -117,14 +113,14 @@ namespace MasterPlugin
 
         private void OnEnemyGapcloser(ActiveGapcloser gapcloser)
         {
-            if (!ItemBool("Misc", "EAntiGap") || Player.IsDead) return;
-            if (IsValid(gapcloser.Sender, Orbwalk.GetAutoAttackRange() + 100) && SkillE.IsReady()) SkillE.Cast(Player.Position.To2D().Extend(gapcloser.Sender.Position.To2D(), gapcloser.Sender.Distance3D(Player) + 200), PacketCast());
+            if (!ItemBool("Misc", "EAntiGap") || Player.IsDead || !SkillE.IsReady()) return;
+            if (IsValid(gapcloser.Sender, Orbwalk.GetAutoAttackRange() + 100)) SkillE.Cast(Player.Position.To2D().Extend(gapcloser.Sender.Position.To2D(), gapcloser.Sender.Distance3D(Player) + 200), PacketCast());
         }
 
         private void OnPossibleToInterrupt(Obj_AI_Base unit, InterruptableSpell spell)
         {
-            if (!ItemBool("Misc", "EInterrupt") || Player.IsDead) return;
-            if (IsValid(unit, SkillE.Range) && SkillE.IsReady()) SkillE.Cast(Player.Position.To2D().Extend(unit.Position.To2D(), unit.Distance3D(Player) + 200), PacketCast());
+            if (!ItemBool("Misc", "EInterrupt") || Player.IsDead || !SkillE.IsReady()) return;
+            if (IsValid(unit, SkillE.Range)) SkillE.Cast(Player.Position.To2D().Extend(unit.Position.To2D(), unit.Distance3D(Player) + 200), PacketCast());
         }
 
         private void OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
@@ -152,16 +148,16 @@ namespace MasterPlugin
         private void NormalCombo(string Mode)
         {
             if (targetObj == null) return;
-            if (ItemBool(Mode, "Item") && Mode == "Combo")
+            if (Mode == "Combo" && ItemBool(Mode, "Item"))
             {
                 if (Items.CanUseItem(Deathfire) && Player.Distance3D(targetObj) <= 750) Items.UseItem(Deathfire, targetObj);
                 if (Items.CanUseItem(Blackfire) && Player.Distance3D(targetObj) <= 750) Items.UseItem(Blackfire, targetObj);
                 if (Items.CanUseItem(Randuin) && Player.CountEnemysInRange(450) >= 1) Items.UseItem(Randuin);
             }
-            if (ItemBool(Mode, "E") && SkillE.IsReady() && SkillE.InRange(targetObj.Position) && (Mode == "Combo" || Player.HealthPercentage() >= ItemSlider(Mode, "EAbove"))) SkillE.Cast(Player.Position.To2D().Extend(targetObj.Position.To2D(), targetObj.Distance3D(Player) + 200), PacketCast());
+            if (ItemBool(Mode, "E") && SkillE.IsReady() && SkillE.InRange(targetObj.Position) && (Mode == "Combo" || (Mode == "Harass" && Player.HealthPercentage() >= ItemSlider(Mode, "EAbove")))) SkillE.Cast(Player.Position.To2D().Extend(targetObj.Position.To2D(), targetObj.Distance3D(Player) + 200), PacketCast());
             if (ItemBool(Mode, "Q") && SkillQ.IsReady() && SkillQ.InRange(targetObj.Position)) SkillQ.CastOnUnit(targetObj, PacketCast());
-            if (ItemBool(Mode, "W") && Mode == "Combo" && SkillW.IsReady() && Orbwalk.InAutoAttackRange(targetObj) && Player.HealthPercentage() <= ItemSlider(Mode, "WUnder")) SkillW.Cast(PacketCast());
-            if (ItemBool(Mode, "Ignite") && Mode == "Combo") CastIgnite(targetObj);
+            if (Mode == "Combo" && ItemBool(Mode, "W") && SkillW.IsReady() && Orbwalk.InAutoAttackRange(targetObj) && Player.HealthPercentage() <= ItemSlider(Mode, "WUnder")) SkillW.Cast(PacketCast());
+            if (Mode == "Combo" && ItemBool(Mode, "Ignite")) CastIgnite(targetObj);
         }
 
         private void LaneJungClear()

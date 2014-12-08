@@ -6,7 +6,7 @@ using LeagueSharp;
 using LeagueSharp.Common;
 using SharpDX;
 
-using Orbwalk = MasterCommon.M_Orbwalker;
+using Orbwalk = Master.Common.M_Orbwalker;
 
 namespace Master
 {
@@ -95,7 +95,7 @@ namespace Master
             {
                 ComboEQFlash();
             }
-            else Orbwalk.CustomMode = false;
+            //else Orbwalk.CustomMode = false;
             if (Config.Item("killstealQ").GetValue<bool>()) KillSteal();
         }
 

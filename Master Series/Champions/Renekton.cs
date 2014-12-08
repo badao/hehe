@@ -6,11 +6,11 @@ using LeagueSharp;
 using LeagueSharp.Common;
 using SharpDX;
 
-using Orbwalk = MasterCommon.M_Orbwalker;
+using Orbwalk = Master.Common.M_Orbwalker;
 
-namespace MasterPlugin
+namespace Master.Champions
 {
-    class Renekton : Master.Program
+    class Renekton : Program
     {
         private Vector3 HarassBackPos = default(Vector3);
         private bool ECasted = false;
@@ -26,7 +26,7 @@ namespace MasterPlugin
             SkillW.SetSkillshot(0.0435f, 0, 0, false, SkillshotType.SkillshotCircle);
             SkillE.SetSkillshot(-0.5f, 50, 20, false, SkillshotType.SkillshotLine);
 
-            var ChampMenu = new Menu(Name + " Plugin", Name + "_Plugin");
+            var ChampMenu = new Menu("Plugin", Name + "_Plugin");
             {
                 var ComboMenu = new Menu("Combo", "Combo");
                 {
@@ -119,8 +119,8 @@ namespace MasterPlugin
 
         private void OnEnemyGapcloser(ActiveGapcloser gapcloser)
         {
-            if (!ItemBool("Misc", "WAntiGap") || Player.IsDead) return;
-            if (IsValid(gapcloser.Sender, Orbwalk.GetAutoAttackRange() + 50) && (SkillW.IsReady() || Player.HasBuff("RenektonExecuteReady")))
+            if (!ItemBool("Misc", "WAntiGap") || Player.IsDead || !SkillW.IsReady() || !Player.HasBuff("RenektonExecuteReady")) return;
+            if (IsValid(gapcloser.Sender, Orbwalk.GetAutoAttackRange() + 50))
             {
                 if (SkillW.IsReady()) SkillW.Cast(PacketCast());
                 if (Player.HasBuff("RenektonExecuteReady")) Player.IssueOrder(GameObjectOrder.AttackUnit, gapcloser.Sender);
@@ -129,9 +129,9 @@ namespace MasterPlugin
 
         private void OnPossibleToInterrupt(Obj_AI_Base unit, InterruptableSpell spell)
         {
-            if (!ItemBool("Misc", "WInterrupt") || Player.IsDead) return;
-            if ((SkillW.IsReady() || Player.HasBuff("RenektonExecuteReady")) && SkillE.IsReady() && !SkillW.InRange(unit.Position) && IsValid(unit, SkillE.Range)) SkillE.Cast(unit.Position + Vector3.Normalize(unit.Position - Player.Position) * 200, PacketCast());
-            if (IsValid(unit, Orbwalk.GetAutoAttackRange() + 50) && (SkillW.IsReady() || Player.HasBuff("RenektonExecuteReady")))
+            if (!ItemBool("Misc", "WInterrupt") || Player.IsDead || !SkillW.IsReady() || !Player.HasBuff("RenektonExecuteReady")) return;
+            if (SkillE.IsReady() && !SkillW.InRange(unit.Position) && IsValid(unit, SkillE.Range)) SkillE.Cast(unit.Position + Vector3.Normalize(unit.Position - Player.Position) * 200, PacketCast());
+            if (IsValid(unit, Orbwalk.GetAutoAttackRange() + 50))
             {
                 if (SkillW.IsReady()) SkillW.Cast(PacketCast());
                 if (Player.HasBuff("RenektonExecuteReady")) Player.IssueOrder(GameObjectOrder.AttackUnit, unit);
@@ -181,11 +181,11 @@ namespace MasterPlugin
             }
         }
 
-        private void AfterAttack(Obj_AI_Base unit, Obj_AI_Base target)
+        private void AfterAttack(Obj_AI_Base Unit, Obj_AI_Base Target)
         {
-            if (!unit.IsMe) return;
-            AACount += 1;
-            if ((Orbwalk.CurrentMode == Orbwalk.Mode.Combo || Orbwalk.CurrentMode == Orbwalk.Mode.Harass) && ItemBool(Orbwalk.CurrentMode.ToString(), "W") && ItemBool("Misc", "WCancel") && target.Buffs.Any(i => i.SourceName == Name && i.DisplayName == "Stun") && target is Obj_AI_Hero) UseItem(target, true);
+            if (!Unit.IsMe) return;
+            if ((Orbwalk.CurrentMode == Orbwalk.Mode.Harass && Target is Obj_AI_Hero) || ((Orbwalk.CurrentMode == Orbwalk.Mode.LaneClear || Orbwalk.CurrentMode == Orbwalk.Mode.LaneFreeze) && Target is Obj_AI_Minion)) AACount += 1;
+            if ((Orbwalk.CurrentMode == Orbwalk.Mode.Combo || Orbwalk.CurrentMode == Orbwalk.Mode.Harass) && ItemBool(Orbwalk.CurrentMode.ToString(), "W") && ItemBool("Misc", "WCancel") && Target.Buffs.Any(i => i.SourceName == Name && i.DisplayName == "Stun") && Target is Obj_AI_Hero) UseItem(Target, true);
         }
 
         private void NormalCombo()

@@ -6,11 +6,11 @@ using LeagueSharp;
 using LeagueSharp.Common;
 using SharpDX;
 
-using Orbwalk = MasterCommon.M_Orbwalker;
+using Orbwalk = Master.Common.M_Orbwalker;
 
-namespace MasterPlugin
+namespace Master.Champions
 {
-    class Tryndamere : Master.Program
+    class Tryndamere : Program
     {
         public Tryndamere()
         {
@@ -21,7 +21,7 @@ namespace MasterPlugin
             SkillW.SetSkillshot(-0.5f, 0, 500, false, SkillshotType.SkillshotCircle);
             SkillE.SetSkillshot(0, 160, 700, false, SkillshotType.SkillshotLine);
 
-            var ChampMenu = new Menu(Name + " Plugin", Name + "_Plugin");
+            var ChampMenu = new Menu("Plugin", Name + "_Plugin");
             {
                 var ComboMenu = new Menu("Combo", "Combo");
                 {
@@ -152,18 +152,18 @@ namespace MasterPlugin
         private void NormalCombo(string Mode)
         {
             if (targetObj == null) return;
-            if (ItemBool(Mode, "Q") && Mode == "Combo" && SkillQ.IsReady() && Player.HealthPercentage() <= ItemSlider(Mode, "QUnder") && Player.CountEnemysInRange(800) >= 1) SkillQ.Cast(PacketCast());
+            if (Mode == "Combo" && ItemBool(Mode, "Q") && SkillQ.IsReady() && Player.HealthPercentage() <= ItemSlider(Mode, "QUnder") && Player.CountEnemysInRange(800) >= 1) SkillQ.Cast(PacketCast());
             if (ItemBool(Mode, "W") && SkillW.IsReady() && SkillW.InRange(targetObj.Position))
             {
-                if (Utility.IsBothFacing(Player, targetObj, 35))
+                if (targetObj.IsFacing(Player) && (Player.GetAutoAttackDamage(targetObj, true) < targetObj.GetAutoAttackDamage(Player, true) || Player.Health < targetObj.Health))
                 {
-                    if (Player.GetAutoAttackDamage(targetObj, true) < targetObj.GetAutoAttackDamage(Player, true) || Player.Health < targetObj.Health) SkillW.Cast(PacketCast());
+                    SkillW.Cast(PacketCast());
                 }
-                else if (Player.IsFacing(targetObj, 35) && !targetObj.IsFacing(Player, 35) && Player.Distance3D(targetObj) > Orbwalk.GetAutoAttackRange() + 50) SkillW.Cast(PacketCast());
+                else if (!targetObj.IsFacing(Player) && Player.Distance3D(targetObj) > Orbwalk.GetAutoAttackRange() + 50) SkillW.Cast(PacketCast());
             }
-            if (ItemBool(Mode, "E") && SkillE.IsReady() && SkillE.InRange(targetObj.Position) && (CanKill(targetObj, SkillE) || (Player.Distance3D(targetObj) > Orbwalk.GetAutoAttackRange() + 50 && (Mode == "Combo" || Player.HealthPercentage() >= ItemSlider(Mode, "EAbove"))))) SkillE.Cast(Player.Position.To2D().Extend(targetObj.Position.To2D(), targetObj.Distance3D(Player) + 200), PacketCast());
-            if (ItemBool(Mode, "Item") && Mode == "Combo") UseItem(targetObj);
-            if (ItemBool(Mode, "Ignite") && Mode == "Combo") CastIgnite(targetObj);
+            if (ItemBool(Mode, "E") && SkillE.IsReady() && SkillE.InRange(targetObj.Position) && (CanKill(targetObj, SkillE) || (Player.Distance3D(targetObj) > Orbwalk.GetAutoAttackRange() + 50 && (Mode == "Combo" || (Mode == "Harass" && Player.HealthPercentage() >= ItemSlider(Mode, "EAbove")))))) SkillE.Cast(Player.Position.To2D().Extend(targetObj.Position.To2D(), targetObj.Distance3D(Player) + 200), PacketCast());
+            if (Mode == "Combo" && ItemBool(Mode, "Item")) UseItem(targetObj);
+            if (Mode == "Combo" && ItemBool(Mode, "Ignite")) CastIgnite(targetObj);
         }
 
         private void LaneJungClear()

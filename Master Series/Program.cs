@@ -7,8 +7,8 @@ using LeagueSharp;
 using LeagueSharp.Common;
 using SharpDX;
 
-using MasterCommon;
-using Orbwalk = MasterCommon.M_Orbwalker;
+using Master.Common;
+using Orbwalk = Master.Common.M_Orbwalker;
 
 namespace Master
 {
@@ -184,7 +184,7 @@ namespace Master
             Orbwalk.AddToMenu(Config);
             try
             {
-                if (Activator.CreateInstance(null, "MasterPlugin." + Name) != null)
+                if (Activator.CreateInstance(null, "Master.Champions." + Name) != null)
                 {
                     //var QData = Player.Spellbook.GetSpell(SpellSlot.Q);
                     //var WData = Player.Spellbook.GetSpell(SpellSlot.W);
@@ -212,6 +212,11 @@ namespace Master
             Config.AddToMainMenu();
         }
 
+        public static MenuItem ItemActive(Menu SubMenu, string Item, string Display, string Key)
+        {
+            return SubMenu.AddItem(new MenuItem(Name + "_" + SubMenu.Name + "_" + Item, Display).SetValue(new KeyBind(Key.ToCharArray()[0], KeyBindType.Toggle)));
+        }
+
         public static MenuItem ItemBool(Menu SubMenu, string Item, string Display, bool State = true)
         {
             return SubMenu.AddItem(new MenuItem(Name + "_" + SubMenu.Name + "_" + Item, Display).SetValue(State));
@@ -230,6 +235,11 @@ namespace Master
         public static bool ItemActive(string Item)
         {
             return Config.SubMenu("OW").SubMenu("Mode").Item(Name + "_OW_" + Item).GetValue<KeyBind>().Active;
+        }
+
+        public static bool ItemActive(string SubMenu, string Item)
+        {
+            return Config.SubMenu(Name + "_Plugin").Item(Name + "_" + SubMenu + "_" + Item).GetValue<KeyBind>().Active;
         }
 
         public static bool ItemBool(string SubMenu, string Item)
@@ -287,7 +297,6 @@ namespace Master
 
         public static void CustomOrbwalk(Obj_AI_Base Target)
         {
-            Orbwalk.CustomMode = true;
             Orbwalk.Orbwalk(Game.CursorPos, Orbwalk.InAutoAttackRange(Target) ? Target : null);
         }
 

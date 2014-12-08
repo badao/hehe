@@ -6,11 +6,11 @@ using LeagueSharp;
 using LeagueSharp.Common;
 using SharpDX;
 
-using Orbwalk = MasterCommon.M_Orbwalker;
+using Orbwalk = Master.Common.M_Orbwalker;
 
-namespace MasterPlugin
+namespace Master.Champions
 {
-    class Amumu : Master.Program
+    class Amumu : Program
     {
         public Amumu()
         {
@@ -23,7 +23,7 @@ namespace MasterPlugin
             SkillE.SetSkillshot(-0.5f, 0, 0, false, SkillshotType.SkillshotCircle);
             SkillR.SetSkillshot(-0.5f, 0, 20, false, SkillshotType.SkillshotCircle);
 
-            var ChampMenu = new Menu(Name + " Plugin", Name + "_Plugin");
+            var ChampMenu = new Menu("Plugin", Name + "_Plugin");
             {
                 var ComboMenu = new Menu("Combo", "Combo");
                 {
@@ -108,15 +108,15 @@ namespace MasterPlugin
 
         private void OnEnemyGapcloser(ActiveGapcloser gapcloser)
         {
-            if (!ItemBool("Misc", "QAntiGap") || Player.IsDead) return;
-            if (IsValid(gapcloser.Sender, SkillQ.Range) && SkillQ.IsReady() && Player.Distance3D(gapcloser.Sender) < 400) SkillQ.Cast(gapcloser.Sender.Position, PacketCast());
+            if (!ItemBool("Misc", "QAntiGap") || Player.IsDead || !SkillQ.IsReady()) return;
+            if (IsValid(gapcloser.Sender, SkillQ.Range) && Player.Distance3D(gapcloser.Sender) < 400) SkillQ.Cast(gapcloser.Sender.Position, PacketCast());
         }
 
         private void NormalCombo(string Mode)
         {
             if (ItemBool(Mode, "W") && SkillW.IsReady() && Player.HasBuff("AuraofDespair") && Player.CountEnemysInRange(500) == 0) SkillW.Cast(PacketCast());
             if (targetObj == null) return;
-            if (ItemBool(Mode, "Q") && Mode == "Combo" && SkillQ.IsReady())
+            if (Mode == "Combo" && ItemBool(Mode, "Q") && SkillQ.IsReady())
             {
                 var nearObj = ObjectManager.Get<Obj_AI_Base>().Where(i => IsValid(i, SkillQ.Range) && !(i is Obj_AI_Turret) && i.CountEnemysInRange((int)SkillR.Range - 40) >= ItemSlider(Mode, "RAbove") && !CanKill(i, SkillQ)).OrderBy(i => i.CountEnemysInRange((int)SkillR.Range));
                 if (ItemBool(Mode, "R") && SkillR.IsReady() && ItemList(Mode, "RMode") == 1 && nearObj.Count() > 0)
@@ -145,7 +145,7 @@ namespace MasterPlugin
                 else if (Player.HasBuff("AuraofDespair")) SkillW.Cast(PacketCast());
             }
             if (ItemBool(Mode, "E") && SkillE.IsReady() && SkillE.InRange(targetObj.Position)) SkillE.Cast(PacketCast());
-            if (ItemBool(Mode, "R") && Mode == "Combo" && SkillR.IsReady())
+            if (Mode == "Combo" && ItemBool(Mode, "R") && SkillR.IsReady())
             {
                 switch (ItemList(Mode, "RMode"))
                 {
@@ -158,8 +158,8 @@ namespace MasterPlugin
                         break;
                 }
             }
-            if (ItemBool(Mode, "Item") && Mode == "Combo" && Items.CanUseItem(Randuin) && Player.CountEnemysInRange(450) >= 1) Items.UseItem(Randuin);
-            if (ItemBool(Mode, "Ignite") && Mode == "Combo") CastIgnite(targetObj);
+            if (Mode == "Combo" && ItemBool(Mode, "Item") && Items.CanUseItem(Randuin) && Player.CountEnemysInRange(450) >= 1) Items.UseItem(Randuin);
+            if (Mode == "Combo" && ItemBool(Mode, "Ignite")) CastIgnite(targetObj);
         }
 
         private void LaneJungClear()

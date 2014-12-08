@@ -6,11 +6,11 @@ using LeagueSharp;
 using LeagueSharp.Common;
 using SharpDX;
 
-using Orbwalk = MasterCommon.M_Orbwalker;
+using Orbwalk = Master.Common.M_Orbwalker;
 
-namespace MasterPlugin
+namespace Master.Champions
 {
-    class Jax : Master.Program
+    class Jax : Program
     {
         private Int32 Sheen = 3057, Trinity = 3078;
         private bool WardCasted = false, ECasted = false;
@@ -26,7 +26,7 @@ namespace MasterPlugin
             SkillW.SetSkillshot(0.0435f, 0, 0, false, SkillshotType.SkillshotCircle);
             SkillE.SetSkillshot(0, 0, 1450, false, SkillshotType.SkillshotCircle);
 
-            var ChampMenu = new Menu(Name + " Plugin", Name + "_Plugin");
+            var ChampMenu = new Menu("Plugin", Name + "_Plugin");
             {
                 var ComboMenu = new Menu("Combo", "Combo");
                 {
@@ -139,15 +139,15 @@ namespace MasterPlugin
 
         private void OnEnemyGapcloser(ActiveGapcloser gapcloser)
         {
-            if (!ItemBool("Misc", "EAntiGap") || Player.IsDead) return;
-            if (IsValid(gapcloser.Sender, SkillE.Range + 10) && SkillE.IsReady()) SkillE.Cast(PacketCast());
+            if (!ItemBool("Misc", "EAntiGap") || Player.IsDead || !SkillE.IsReady()) return;
+            if (IsValid(gapcloser.Sender, SkillE.Range + 10)) SkillE.Cast(PacketCast());
         }
 
         private void OnPossibleToInterrupt(Obj_AI_Base unit, InterruptableSpell spell)
         {
-            if (!ItemBool("Misc", "EInterrupt") || Player.IsDead) return;
-            if (Player.Mana >= SkillQ.Instance.ManaCost + SkillE.Instance.ManaCost && !SkillE.InRange(unit.Position) && IsValid(unit, SkillQ.Range)) SkillQ.CastOnUnit(unit, PacketCast());
-            if (IsValid(unit, SkillE.Range) && SkillE.IsReady()) SkillE.Cast(PacketCast());
+            if (!ItemBool("Misc", "EInterrupt") || Player.IsDead || !SkillE.IsReady()) return;
+            if (Player.Mana >= SkillQ.Instance.ManaCost + SkillE.Instance.ManaCost && !SkillE.InRange(unit.Position) && IsValid(unit, SkillQ.Range) && SkillQ.IsReady()) SkillQ.CastOnUnit(unit, PacketCast());
+            if (IsValid(unit, SkillE.Range)) SkillE.Cast(PacketCast());
         }
 
         private void OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
@@ -210,11 +210,11 @@ namespace MasterPlugin
             }
         }
 
-        private void AfterAttack(Obj_AI_Base unit, Obj_AI_Base target)
+        private void AfterAttack(Obj_AI_Base Unit, Obj_AI_Base Target)
         {
-            if (!unit.IsMe) return;
+            if (!Unit.IsMe) return;
             RCount += 1;
-            if (SkillW.IsReady() && IsValid(target, Orbwalk.GetAutoAttackRange() + 50))
+            if (SkillW.IsReady() && IsValid(Target, Orbwalk.GetAutoAttackRange() + 50))
             {
                 switch (Orbwalk.CurrentMode)
                 {

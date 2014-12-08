@@ -6,11 +6,11 @@ using LeagueSharp;
 using LeagueSharp.Common;
 using SharpDX;
 
-using Orbwalk = MasterCommon.M_Orbwalker;
+using Orbwalk = Master.Common.M_Orbwalker;
 
-namespace MasterPlugin
+namespace Master.Champions
 {
-    class Nasus : Master.Program
+    class Nasus : Program
     {
         private Int32 Sheen = 3057, Iceborn = 3025, Trinity = 3078;
 
@@ -24,7 +24,7 @@ namespace MasterPlugin
             SkillW.SetTargetted(-0.5f, 0);
             SkillE.SetSkillshot(-0.5f, 0, 20, false, SkillshotType.SkillshotCircle);
 
-            var ChampMenu = new Menu(Name + " Plugin", Name + "_Plugin");
+            var ChampMenu = new Menu("Plugin", Name + "_Plugin");
             {
                 var ComboMenu = new Menu("Combo", "Combo");
                 {
@@ -143,8 +143,8 @@ namespace MasterPlugin
         private void NormalCombo(string Mode)
         {
             if (targetObj == null) return;
-            if (ItemBool(Mode, "W") && SkillW.IsReady() && SkillW.InRange(targetObj.Position) && (Mode == "Combo" || Player.Distance3D(targetObj) <= Orbwalk.GetAutoAttackRange() + 100)) SkillW.CastOnUnit(targetObj, PacketCast());
-            if (ItemBool(Mode, "E") && SkillE.IsReady() && SkillE.InRange(targetObj.Position) && (Mode == "Combo" || Player.Distance3D(targetObj) <= Orbwalk.GetAutoAttackRange() + 100)) SkillE.Cast(targetObj.Position, PacketCast());
+            if (ItemBool(Mode, "W") && SkillW.IsReady() && SkillW.InRange(targetObj.Position) && (Mode == "Combo" || (Mode == "Harass" && Player.Distance3D(targetObj) <= Orbwalk.GetAutoAttackRange() + 100))) SkillW.CastOnUnit(targetObj, PacketCast());
+            if (ItemBool(Mode, "E") && SkillE.IsReady() && SkillE.InRange(targetObj.Position) && (Mode == "Combo" || (Mode == "Harass" && Player.Distance3D(targetObj) <= Orbwalk.GetAutoAttackRange() + 100))) SkillE.Cast(targetObj.Position, PacketCast());
             if (ItemBool(Mode, "Q") && SkillQ.IsReady() && Player.Distance3D(targetObj) <= Orbwalk.GetAutoAttackRange() + 50)
             {
                 var DmgAA = Player.GetAutoAttackDamage(targetObj) * Math.Floor(SkillQ.Instance.Cooldown / (1 / (Player.PercentMultiplicativeAttackSpeedMod * 0.638)));
@@ -155,8 +155,8 @@ namespace MasterPlugin
                     Orbwalk.SetAttack(true);
                 }
             }
-            if (ItemBool(Mode, "Item") && Mode == "Combo" && Items.CanUseItem(Randuin) && Player.CountEnemysInRange(450) >= 1) Items.UseItem(Randuin);
-            if (ItemBool(Mode, "Ignite") && Mode == "Combo") CastIgnite(targetObj);
+            if (Mode == "Combo" && ItemBool(Mode, "Item") && Items.CanUseItem(Randuin) && Player.CountEnemysInRange(450) >= 1) Items.UseItem(Randuin);
+            if (Mode == "Combo" && ItemBool(Mode, "Ignite")) CastIgnite(targetObj);
         }
 
         private void LaneJungClear()

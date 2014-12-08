@@ -5,7 +5,7 @@ using Color = System.Drawing.Color;
 using LeagueSharp;
 using LeagueSharp.Common;
 
-namespace MasterCommon
+namespace Master.Common
 {
     class M_TargetSelector
     {
@@ -79,7 +79,7 @@ namespace MasterCommon
         private void OnGameUpdate(EventArgs args)
         {
             Target = GetTarget();
-            MasterCommon.M_Orbwalker.ForcedTarget = Config.SubMenu("TS").Item("TS_Focus").GetValue<bool>() ? Target : null;
+            M_Orbwalker.ForcedTarget = Config.SubMenu("TS").Item("TS_Focus").GetValue<bool>() ? Target : null;
         }
 
         private void OnDraw(EventArgs args)
@@ -93,21 +93,21 @@ namespace MasterCommon
             if (args.WParam != 1 || MenuGUI.IsChatOpen || Player.Spellbook.SelectedSpellSlot != SpellSlot.Unknown) return;
             newTarget = null;
             if (Player.IsDead) return;
-            if (Master.Program.IsValid((Obj_AI_Hero)Hud.SelectedUnit, 230, true, Game.CursorPos))
+            if (Program.IsValid((Obj_AI_Hero)Hud.SelectedUnit, 230, true, Game.CursorPos))
             {
                 newTarget = (Obj_AI_Hero)Hud.SelectedUnit;
-                if (Config.SubMenu("TS").Item("TS_Print").GetValue<bool>()) Game.PrintChat("<font color = \'{0}'>-></font> New Target: <font color = \'{1}'>{2}</font>", Master.HtmlColor.BlueViolet, Master.HtmlColor.Gold, newTarget.ChampionName);
+                if (Config.SubMenu("TS").Item("TS_Print").GetValue<bool>()) Game.PrintChat("<font color = \'{0}'>-></font> New Target: <font color = \'{1}'>{2}</font>", HtmlColor.BlueViolet, HtmlColor.Gold, newTarget.ChampionName);
             }
         }
 
         private Obj_AI_Hero GetTarget()
         {
-            if (Master.Program.IsValid(newTarget, Range)) return newTarget;
+            if (Program.IsValid(newTarget, Range)) return newTarget;
             Obj_AI_Hero bestTarget = null;
             if (Config.SubMenu("TS").Item("TS_Mode").GetValue<StringList>().SelectedIndex == 0)
             {
                 float bestRatio = 0;
-                foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => Master.Program.IsValid(i, Range)))
+                foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => Program.IsValid(i, Range)))
                 {
                     float Prior = 1;
                     switch (Config.SubMenu("TS").Item("TS_Prior" + Obj.ChampionName).GetValue<Slider>().Value)
@@ -135,7 +135,7 @@ namespace MasterCommon
             }
             else
             {
-                foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => Master.Program.IsValid(i, Range)))
+                foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => Program.IsValid(i, Range)))
                 {
                     if (bestTarget == null)
                     {
