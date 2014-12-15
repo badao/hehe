@@ -7,10 +7,10 @@ using LeagueSharp;
 using LeagueSharp.Common;
 using SharpDX;
 
-using Master.Common;
-using Orbwalk = Master.Common.M_Orbwalker;
+using MasterSeries.Common;
+using Orbwalk = MasterSeries.Common.M_Orbwalker;
 
-namespace Master
+namespace MasterSeries
 {
     public class HtmlColor
     {
@@ -159,9 +159,9 @@ namespace Master
     class Program
     {
         public static Obj_AI_Hero Player = null, targetObj = null;
-        public static Spell SkillQ, SkillW, SkillE, SkillR;
+        public static Spell Q, W, E, R;
         private static SpellSlot FlashSlot, SmiteSlot, IgniteSlot;
-        public static Int32 Tiamat = 3077, Hydra = 3074, Bilgewater = 3144, BladeRuined = 3153, Randuin = 3143, Youmuu = 3142, Deathfire = 3128, Blackfire = 3188;
+        public static int Tiamat = 3077, Hydra = 3074, Bilgewater = 3144, BladeRuined = 3153, Randuin = 3143, Youmuu = 3142, Deathfire = 3128, Blackfire = 3188;
         public static Menu Config;
         public static String Name;
         private static M_TargetSelector TS;
@@ -184,17 +184,17 @@ namespace Master
             Orbwalk.AddToMenu(Config);
             try
             {
-                if (Activator.CreateInstance(null, "Master.Champions." + Name) != null)
+                if (Activator.CreateInstance(null, "MasterSeries.Champions." + Name) != null)
                 {
-                    //var QData = Player.Spellbook.GetSpell(SpellSlot.Q);
-                    //var WData = Player.Spellbook.GetSpell(SpellSlot.W);
-                    //var EData = Player.Spellbook.GetSpell(SpellSlot.E);
-                    //var RData = Player.Spellbook.GetSpell(SpellSlot.R);
-                    //Game.PrintChat("{0}: {1}-{2}/{3}/{4}/{5}", QData.SData.Name, QData.SData.CastRange[0], QData.SData.CastRangeDisplayOverride[0], QData.SData.SpellCastTime, QData.SData.LineWidth, QData.SData.MissileSpeed);
-                    //Game.PrintChat("{0}: {1}-{2}/{3}/{4}/{5}", WData.SData.Name, WData.SData.CastRange[0], WData.SData.CastRangeDisplayOverride[0], WData.SData.SpellCastTime, WData.SData.LineWidth, WData.SData.MissileSpeed);
-                    //Game.PrintChat("{0}: {1}-{2}/{3}/{4}/{5}", EData.SData.Name, EData.SData.CastRange[0], EData.SData.CastRangeDisplayOverride[0], EData.SData.SpellCastTime, EData.SData.LineWidth, EData.SData.MissileSpeed);
-                    //Game.PrintChat("{0}: {1}-{2}/{3}/{4}/{5}", RData.SData.Name, RData.SData.CastRange[0], RData.SData.CastRangeDisplayOverride[0], RData.SData.SpellCastTime, RData.SData.LineWidth, RData.SData.MissileSpeed);
-                    ItemBool(Config.SubMenu(Name + "_Plugin").SubMenu("Misc"), "UsePacket", "Use Packet To Cast");
+                    var QData = Player.Spellbook.GetSpell(SpellSlot.Q);
+                    var WData = Player.Spellbook.GetSpell(SpellSlot.W);
+                    var EData = Player.Spellbook.GetSpell(SpellSlot.E);
+                    var RData = Player.Spellbook.GetSpell(SpellSlot.R);
+                    Game.PrintChat("{0}: {1}-{2}/{3}/{4}/{5}", QData.SData.Name, QData.SData.CastRange[0], QData.SData.CastRangeDisplayOverride[0], QData.SData.SpellCastTime, QData.SData.LineWidth, QData.SData.MissileSpeed);
+                    Game.PrintChat("{0}: {1}-{2}/{3}/{4}/{5}", WData.SData.Name, WData.SData.CastRange[0], WData.SData.CastRangeDisplayOverride[0], WData.SData.SpellCastTime, WData.SData.LineWidth, WData.SData.MissileSpeed);
+                    Game.PrintChat("{0}: {1}-{2}/{3}/{4}/{5}", EData.SData.Name, EData.SData.CastRange[0], EData.SData.CastRangeDisplayOverride[0], EData.SData.SpellCastTime, EData.SData.LineWidth, EData.SData.MissileSpeed);
+                    Game.PrintChat("{0}: {1}-{2}/{3}/{4}/{5}", RData.SData.Name, RData.SData.CastRange[0], RData.SData.CastRangeDisplayOverride[0], RData.SData.SpellCastTime, RData.SData.LineWidth, RData.SData.MissileSpeed);
+                    ItemBool(Config.SubMenu(Name + "Plugin").SubMenu("Misc"), "UsePacket", "Use Packet To Cast");
                     FlashSlot = Player.GetSpellSlot("summonerflash");
                     SmiteSlot = SmiteName.Any(i => Player.GetSpellSlot(i) != SpellSlot.Unknown) ? Player.GetSpellSlot(SmiteName.First(i => Player.GetSpellSlot(i) != SpellSlot.Unknown)) : SpellSlot.Unknown;
                     IgniteSlot = Player.GetSpellSlot("summonerdot");
@@ -208,58 +208,59 @@ namespace Master
             {
                 Game.PrintChat("<font color = \'{0}'>-></font> <font color = \'{1}'>{2}</font>: <font color = \'{3}'>Currently not supported !</font>", HtmlColor.BlueViolet, HtmlColor.Gold, Name, HtmlColor.Cyan);
             }
-            Config.AddItem(new MenuItem("Info", "Credits: Brian"));
+            Config.AddItem(new MenuItem("Author", "Credits: Brian"));
+            Config.AddItem(new MenuItem("Paypal", "Donate: dcbrian01@gmail.com"));
             Config.AddToMainMenu();
         }
 
-        public static MenuItem ItemActive(Menu SubMenu, string Item, string Display, string Key)
+        public static MenuItem ItemActive(Menu SubMenu, string Item, string Display, string Key, bool State = false)
         {
-            return SubMenu.AddItem(new MenuItem(Name + "_" + SubMenu.Name + "_" + Item, Display).SetValue(new KeyBind(Key.ToCharArray()[0], KeyBindType.Toggle)));
+            return SubMenu.AddItem(new MenuItem(SubMenu.Name + Item, Display, true).SetValue(new KeyBind(Key.ToCharArray()[0], KeyBindType.Press, State)));
         }
 
         public static MenuItem ItemBool(Menu SubMenu, string Item, string Display, bool State = true)
         {
-            return SubMenu.AddItem(new MenuItem(Name + "_" + SubMenu.Name + "_" + Item, Display).SetValue(State));
+            return SubMenu.AddItem(new MenuItem(SubMenu.Name + Item, Display, true).SetValue(State));
         }
 
         public static MenuItem ItemSlider(Menu SubMenu, string Item, string Display, int Cur, int Min = 1, int Max = 100)
         {
-            return SubMenu.AddItem(new MenuItem(Name + "_" + SubMenu.Name + "_" + Item, Display).SetValue(new Slider(Cur, Min, Max)));
+            return SubMenu.AddItem(new MenuItem(SubMenu.Name + Item, Display, true).SetValue(new Slider(Cur, Min, Max)));
         }
 
-        public static MenuItem ItemList(Menu SubMenu, string Item, string Display, string[] Text)
+        public static MenuItem ItemList(Menu SubMenu, string Item, string Display, string[] Text, int DefaultIndex = 0)
         {
-            return SubMenu.AddItem(new MenuItem(Name + "_" + SubMenu.Name + "_" + Item, Display).SetValue(new StringList(Text)));
+            return SubMenu.AddItem(new MenuItem(SubMenu.Name + Item, Display, true).SetValue(new StringList(Text, DefaultIndex)));
         }
 
         public static bool ItemActive(string Item)
         {
-            return Config.SubMenu("OW").SubMenu("Mode").Item(Name + "_OW_" + Item).GetValue<KeyBind>().Active;
+            return Config.SubMenu("OW").SubMenu("Mode").Item("OW" + Item, true).GetValue<KeyBind>().Active;
         }
 
         public static bool ItemActive(string SubMenu, string Item)
         {
-            return Config.SubMenu(Name + "_Plugin").Item(Name + "_" + SubMenu + "_" + Item).GetValue<KeyBind>().Active;
+            return Config.SubMenu(Name + "Plugin").Item(SubMenu + Item, true).GetValue<KeyBind>().Active;
         }
 
         public static bool ItemBool(string SubMenu, string Item)
         {
-            return Config.SubMenu(Name + "_Plugin").Item(Name + "_" + SubMenu + "_" + Item).GetValue<bool>();
+            return Config.SubMenu(Name + "Plugin").Item(SubMenu + Item, true).GetValue<bool>();
         }
 
-        public static Int32 ItemSlider(string SubMenu, string Item)
+        public static int ItemSlider(string SubMenu, string Item)
         {
-            return Config.SubMenu(Name + "_Plugin").Item(Name + "_" + SubMenu + "_" + Item).GetValue<Slider>().Value;
+            return Config.SubMenu(Name + "Plugin").Item(SubMenu + Item, true).GetValue<Slider>().Value;
         }
 
-        public static Int32 ItemList(string SubMenu, string Item)
+        public static int ItemList(string SubMenu, string Item)
         {
-            return Config.SubMenu(Name + "_Plugin").Item(Name + "_" + SubMenu + "_" + Item).GetValue<StringList>().SelectedIndex;
+            return Config.SubMenu(Name + "Plugin").Item(SubMenu + Item, true).GetValue<StringList>().SelectedIndex;
         }
 
         public static void SkinChanger(object sender, OnValueChangeEventArgs e)
         {
-            if (Config.SubMenu(Name + "_Plugin").Item(Name + "_Misc_CustomSkin") == null) return;
+            if (Config.SubMenu(Name + "Plugin").Item("MiscCustomSkin", true) == null) return;
             Utility.DelayAction.Add(35, () => Packet.S2C.UpdateModel.Encoded(new Packet.S2C.UpdateModel.Struct(Player.NetworkId, ItemSlider("Misc", "CustomSkin"), ChampMultiSkin.Contains(Name) ? Player.SkinName : Player.BaseSkinName)).Process());
         }
 
@@ -274,7 +275,7 @@ namespace Master
         {
             if (args.Channel == PacketChannel.S2C && args.PacketData[0] == Packet.S2C.UpdateModel.Header)
             {
-                if (Packet.S2C.UpdateModel.Decoded(args.PacketData).NetworkId == Player.NetworkId && Config.SubMenu(Name + "_Plugin").Item(Name + "_Misc_CustomSkin") != null)
+                if (Packet.S2C.UpdateModel.Decoded(args.PacketData).NetworkId == Player.NetworkId && Config.SubMenu(Name + "Plugin").Item("MiscCustomSkin", true) != null)
                 {
                     args.Process = false;
                     SkinChanger(null, null);
@@ -302,28 +303,16 @@ namespace Master
 
         public static bool CanKill(Obj_AI_Base Target, Spell Skill, int Stage = 0)
         {
-            return Skill.GetHealthPrediction(Target) + 10 <= Skill.GetDamage(Target, Stage);
-        }
-
-        public static List<Obj_AI_Base> CheckingCollision(Obj_AI_Base From, Obj_AI_Base Target, Spell Skill, bool Mid = true, bool OnlyHero = false)
-        {
-            var ListCol = new List<Obj_AI_Base>();
-            foreach (var Obj in ObjectManager.Get<Obj_AI_Base>().Where(i => IsValid(i, Skill.Range) && Skill.GetPrediction(i).Hitchance >= HitChance.Medium && ((!OnlyHero && !(i is Obj_AI_Turret)) || (OnlyHero && i is Obj_AI_Hero)) && i != Target))
-            {
-                //if ((Mid ? Obj : Target).Position.To2D().Distance(From.Position.To2D(), (Mid ? Target : Obj).Position.To2D(), true) <= Skill.Width + (Mid ? Obj : Target).BoundingRadius) ListCol.Add(Obj);
-                var Segment = (Mid ? Obj : Target).Position.To2D().ProjectOn(From.Position.To2D(), (Mid ? Target : Obj).Position.To2D());
-                if (Segment.IsOnSegment && Obj.Position.Distance(new Vector3(Segment.SegmentPoint.X, Obj.Position.Y, Segment.SegmentPoint.Y)) <= Skill.Width + Obj.BoundingRadius) ListCol.Add(Obj);
-            }
-            return ListCol.Distinct().ToList();
+            return Skill.GetHealthPrediction(Target) + 5 <= Skill.GetDamage(Target, Stage);
         }
 
         public static bool SmiteCollision(Obj_AI_Hero Target, Spell Skill)
         {
             if (!SmiteReady()) return false;
-            var Col = CheckingCollision(Player, Target, Skill);
-            if (Skill.InRange(Target.Position) && Col.Count == 1)
+            var ListCol = Skill.GetPrediction(Target).CollisionObjects.Where(i => IsValid(i, Skill.Range) && Skill.WillHit(i.Position, Target.Position, (int)i.BoundingRadius));
+            if (Skill.InRange(Target.Position) && ListCol.Count() == 1)
             {
-                if (Col.First().IsMinion && CastSmite(Col.First()))
+                if (ListCol.First() is Obj_AI_Minion && CastSmite(ListCol.First()))
                 {
                     Skill.Cast(Target.Position, PacketCast());
                     return true;
@@ -369,17 +358,17 @@ namespace Master
         public static InventorySlot GetWardSlot()
         {
             InventorySlot Ward = null;
-            Int32[] WardPink = { 3362, 2043 };
-            Int32[] WardGreen = { 3340, 3361, 2049, 2045, 2044 };
+            int[] WardPink = { 3362, 2043 };
+            int[] WardGreen = { 3340, 3361, 2049, 2045, 2044 };
             if (ItemBool("Misc", "WJPink")) foreach (var Id in WardPink.Where(i => Items.CanUseItem(i))) Ward = Player.InventoryItems.First(i => i.Id == (ItemId)Id);
             foreach (var Id in WardGreen.Where(i => Items.CanUseItem(i))) Ward = Player.InventoryItems.First(i => i.Id == (ItemId)Id);
             return Ward;
         }
 
-        public static float GetWardRange(ItemId ID)
+        public static float GetWardRange()
         {
-            Int32[] TricketWard = { 3340, 3361, 3362 };
-            return 600 * (Player.Masteries.Any(i => i.Page == MasteryPage.Utility && i.Id == 68 && i.Points == 1) && TricketWard.Contains((Int32)ID) ? 1.15f : 1);
+            int[] TricketWard = { 3340, 3361, 3362 };
+            return 600 * (Player.Masteries.Any(i => i.Page == MasteryPage.Utility && i.Id == 68 && i.Points == 1) && GetWardSlot() != null && TricketWard.Contains((int)GetWardSlot().Id) ? 1.15f : 1);
         }
     }
 }

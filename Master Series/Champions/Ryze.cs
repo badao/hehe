@@ -6,29 +6,29 @@ using LeagueSharp;
 using LeagueSharp.Common;
 using SharpDX;
 
-using Orbwalk = Master.Common.M_Orbwalker;
+using Orbwalk = MasterSeries.Common.M_Orbwalker;
 
-namespace Master.Champions
+namespace MasterSeries.Champions
 {
     class Ryze : Program
     {
         public Ryze()
         {
-            SkillQ = new Spell(SpellSlot.Q, 625);
-            SkillW = new Spell(SpellSlot.W, 600);
-            SkillE = new Spell(SpellSlot.E, 600);
-            SkillR = new Spell(SpellSlot.R, 200);
-            SkillQ.SetTargetted(0, 1400);
-            SkillW.SetTargetted(0, 500);
-            SkillE.SetTargetted(0, 1000);
+            Q = new Spell(SpellSlot.Q, 625);
+            W = new Spell(SpellSlot.W, 600);
+            E = new Spell(SpellSlot.E, 600);
+            R = new Spell(SpellSlot.R, 200);
+            Q.SetTargetted(0, 1400);
+            W.SetTargetted(0, 500);
+            E.SetTargetted(0, 1000);
 
-            Config.SubMenu("OW").SubMenu("Mode").AddItem(new MenuItem(Name + "_OW_Chase", "Chase").SetValue(new KeyBind("Z".ToCharArray()[0], KeyBindType.Press)));
-            var ChampMenu = new Menu("Plugin", Name + "_Plugin");
+            Config.SubMenu("OW").SubMenu("Mode").AddItem(new MenuItem("OWChase", "Chase", true).SetValue(new KeyBind("Z".ToCharArray()[0], KeyBindType.Press)));
+            var ChampMenu = new Menu("Plugin", Name + "Plugin");
             {
                 var ComboMenu = new Menu("Combo", "Combo");
                 {
                     ItemBool(ComboMenu, "Q", "Use Q");
-                    ItemSlider(ComboMenu, "QDelay", "-> Stop All If Will Ready In ? ms", 500, 300, 700);
+                    ItemSlider(ComboMenu, "QDelay", "-> Stop All If Q Will Ready In (ms)", 500, 300, 700);
                     ItemBool(ComboMenu, "W", "Use W");
                     ItemBool(ComboMenu, "E", "Use E");
                     ItemBool(ComboMenu, "R", "Use R");
@@ -99,21 +99,21 @@ namespace Master.Champions
         private void OnDraw(EventArgs args)
         {
             if (Player.IsDead) return;
-            if (ItemBool("Draw", "Q") && SkillQ.Level > 0) Utility.DrawCircle(Player.Position, SkillQ.Range, SkillQ.IsReady() ? Color.Green : Color.Red);
-            if (ItemBool("Draw", "W") && SkillW.Level > 0) Utility.DrawCircle(Player.Position, SkillW.Range, SkillW.IsReady() ? Color.Green : Color.Red);
-            if (ItemBool("Draw", "E") && SkillE.Level > 0) Utility.DrawCircle(Player.Position, SkillE.Range, SkillE.IsReady() ? Color.Green : Color.Red);
+            if (ItemBool("Draw", "Q") && Q.Level > 0) Utility.DrawCircle(Player.Position, Q.Range, Q.IsReady() ? Color.Green : Color.Red);
+            if (ItemBool("Draw", "W") && W.Level > 0) Utility.DrawCircle(Player.Position, W.Range, W.IsReady() ? Color.Green : Color.Red);
+            if (ItemBool("Draw", "E") && E.Level > 0) Utility.DrawCircle(Player.Position, E.Range, E.IsReady() ? Color.Green : Color.Red);
         }
 
         private void OnEnemyGapcloser(ActiveGapcloser gapcloser)
         {
-            if (!ItemBool("Misc", "WAntiGap") || Player.IsDead || !SkillW.IsReady()) return;
-            if (IsValid(gapcloser.Sender, SkillW.Range - 200)) SkillW.CastOnUnit(gapcloser.Sender, PacketCast());
+            if (!ItemBool("Misc", "WAntiGap") || Player.IsDead || !W.IsReady()) return;
+            if (IsValid(gapcloser.Sender, W.Range - 200)) W.CastOnUnit(gapcloser.Sender, PacketCast());
         }
 
         private void OnPossibleToInterrupt(Obj_AI_Base unit, InterruptableSpell spell)
         {
-            if (!ItemBool("Misc", "WInterrupt") || Player.IsDead || !SkillW.IsReady()) return;
-            if (IsValid(unit, SkillW.Range)) SkillW.CastOnUnit(unit, PacketCast());
+            if (!ItemBool("Misc", "WInterrupt") || Player.IsDead || !W.IsReady()) return;
+            if (IsValid(unit, W.Range)) W.CastOnUnit(unit, PacketCast());
         }
 
         private void OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
@@ -142,47 +142,47 @@ namespace Master.Champions
         {
             if (Orbwalk.CurrentMode == Orbwalk.Mode.Combo || Orbwalk.CurrentMode == Orbwalk.Mode.Harass)
             {
-                if ((ItemBool(Orbwalk.CurrentMode.ToString(), "Q") && SkillQ.IsReady() && SkillQ.InRange(Args.Target.Position)) || (ItemBool(Orbwalk.CurrentMode.ToString(), "W") && SkillW.IsReady() && SkillW.InRange(Args.Target.Position)) || (ItemBool(Orbwalk.CurrentMode.ToString(), "E") && SkillE.IsReady() && SkillE.InRange(Args.Target.Position))) Args.Process = false;
+                if ((ItemBool(Orbwalk.CurrentMode.ToString(), "Q") && Q.IsReady() && Q.InRange(Args.Target.Position)) || (ItemBool(Orbwalk.CurrentMode.ToString(), "W") && W.IsReady() && W.InRange(Args.Target.Position)) || (ItemBool(Orbwalk.CurrentMode.ToString(), "E") && E.IsReady() && E.InRange(Args.Target.Position))) Args.Process = false;
             }
             else if (Orbwalk.CurrentMode == Orbwalk.Mode.LaneClear || Orbwalk.CurrentMode == Orbwalk.Mode.LaneFreeze)
             {
-                if ((ItemBool("Clear", "Q") && SkillQ.IsReady() && SkillQ.InRange(Args.Target.Position)) || (ItemBool("Clear", "W") && SkillW.IsReady() && SkillW.InRange(Args.Target.Position)) || (ItemBool("Clear", "E") && SkillE.IsReady() && SkillE.InRange(Args.Target.Position))) Args.Process = false;
+                if ((ItemBool("Clear", "Q") && Q.IsReady() && Q.InRange(Args.Target.Position)) || (ItemBool("Clear", "W") && W.IsReady() && W.InRange(Args.Target.Position)) || (ItemBool("Clear", "E") && E.IsReady() && E.InRange(Args.Target.Position))) Args.Process = false;
             }
-            else if (Orbwalk.CurrentMode == Orbwalk.Mode.LastHit && ItemBool("Misc", "QLastHit") && SkillQ.IsReady() && SkillQ.InRange(Args.Target.Position)) Args.Process = false;
+            else if (Orbwalk.CurrentMode == Orbwalk.Mode.LastHit && ItemBool("Misc", "QLastHit") && Q.IsReady() && Q.InRange(Args.Target.Position)) Args.Process = false;
         }
 
         private void NormalCombo(string Mode)
         {
             if (Mode == "Chase") CustomOrbwalk(targetObj);
             if (targetObj == null) return;
-            if ((Mode == "Chase" || (Mode != "Chase" && ItemBool(Mode, "Q"))) && SkillQ.IsReady() && SkillQ.InRange(targetObj.Position) && CanKill(targetObj, SkillQ)) SkillQ.CastOnUnit(targetObj, PacketCast());
-            if ((Mode == "Chase" || (Mode != "Chase" && ItemBool(Mode, "E"))) && SkillE.IsReady() && SkillE.InRange(targetObj.Position) && CanKill(targetObj, SkillE)) SkillE.CastOnUnit(targetObj, PacketCast());
-            if ((Mode == "Chase" || (Mode != "Chase" && ItemBool(Mode, "W"))) && SkillW.IsReady() && SkillW.InRange(targetObj.Position) && (CanKill(targetObj, SkillW) || (Player.Distance3D(targetObj) > SkillW.Range - 20 && !targetObj.IsFacing(Player)))) SkillW.CastOnUnit(targetObj, PacketCast());
+            if ((Mode == "Chase" || (Mode != "Chase" && ItemBool(Mode, "Q"))) && Q.IsReady() && Q.InRange(targetObj.Position) && CanKill(targetObj, Q)) Q.CastOnUnit(targetObj, PacketCast());
+            if ((Mode == "Chase" || (Mode != "Chase" && ItemBool(Mode, "E"))) && E.IsReady() && E.InRange(targetObj.Position) && CanKill(targetObj, E)) E.CastOnUnit(targetObj, PacketCast());
+            if ((Mode == "Chase" || (Mode != "Chase" && ItemBool(Mode, "W"))) && W.IsReady() && W.InRange(targetObj.Position) && (CanKill(targetObj, W) || (Player.Distance3D(targetObj) > W.Range - 20 && !targetObj.IsFacing(Player)))) W.CastOnUnit(targetObj, PacketCast());
             switch (Mode)
             {
                 case "Harass":
-                    if (ItemBool(Mode, "Q") && SkillQ.IsReady() && SkillQ.InRange(targetObj.Position)) SkillQ.CastOnUnit(targetObj, PacketCast());
-                    if (ItemBool(Mode, "W") && SkillW.IsReady() && SkillW.InRange(targetObj.Position)) SkillW.CastOnUnit(targetObj, PacketCast());
-                    if (ItemBool(Mode, "E") && SkillE.IsReady() && SkillE.InRange(targetObj.Position)) SkillE.CastOnUnit(targetObj, PacketCast());
+                    if (ItemBool(Mode, "Q") && Q.IsReady() && Q.InRange(targetObj.Position)) Q.CastOnUnit(targetObj, PacketCast());
+                    if (ItemBool(Mode, "W") && W.IsReady() && W.InRange(targetObj.Position)) W.CastOnUnit(targetObj, PacketCast());
+                    if (ItemBool(Mode, "E") && E.IsReady() && E.InRange(targetObj.Position)) E.CastOnUnit(targetObj, PacketCast());
                     break;
                 case "Combo":
-                    if (ItemBool(Mode, "Ignite")) CastIgnite(targetObj);
-                    if (ItemBool(Mode, "Q") && SkillQ.IsReady() && SkillQ.InRange(targetObj.Position)) SkillQ.CastOnUnit(targetObj, PacketCast());
-                    if (!ItemBool(Mode, "Q") || (ItemBool(Mode, "Q") && !SkillQ.IsReady()))
+                    if (ItemBool(Mode, "Ignite") && IgniteReady()) CastIgnite(targetObj);
+                    if (ItemBool(Mode, "Q") && Q.IsReady() && Q.InRange(targetObj.Position)) Q.CastOnUnit(targetObj, PacketCast());
+                    if (!ItemBool(Mode, "Q") || (ItemBool(Mode, "Q") && !Q.IsReady()))
                     {
-                        if (ItemBool(Mode, "Q") && SkillQ.IsReady(ItemSlider(Mode, "QDelay")) && Math.Abs(Player.PercentCooldownMod) >= 0.2) return;
-                        if (ItemBool(Mode, "R") && SkillR.IsReady() && (Math.Abs(Player.PercentCooldownMod) < 0.2 || (Math.Abs(Player.PercentCooldownMod) >= 0.2 && Player.LastCastedSpellName() == "Overload")) && (Player.HealthPercentage() <= 40 || Player.CountEnemysInRange((int)SkillQ.Range + 200) == 1 || Player.CountEnemysInRange((int)SkillQ.Range + 300) >= 2)) SkillR.Cast(PacketCast());
-                        if ((!ItemBool(Mode, "R") || (ItemBool(Mode, "R") && !SkillR.IsReady())) && ItemBool(Mode, "W") && SkillW.IsReady() && SkillW.InRange(targetObj.Position) && (Math.Abs(Player.PercentCooldownMod) < 0.2 || (Math.Abs(Player.PercentCooldownMod) >= 0.2 && (Player.LastCastedSpellName() == "Overload" || (ItemBool(Mode, "R") && !SkillR.IsReady() && Player.LastCastedSpellName() == "DesperatePower" && Player.HasBuff("DesperatePower")))))) SkillW.CastOnUnit(targetObj, PacketCast());
-                        if ((!ItemBool(Mode, "R") || (ItemBool(Mode, "R") && !SkillR.IsReady())) && (!ItemBool(Mode, "W") || (ItemBool(Mode, "W") && !SkillW.IsReady())) && ItemBool(Mode, "E") && SkillE.IsReady() && SkillE.InRange(targetObj.Position) && (Math.Abs(Player.PercentCooldownMod) < 0.2 || (Math.Abs(Player.PercentCooldownMod) >= 0.2 && Player.LastCastedSpellName() == "Overload"))) SkillE.CastOnUnit(targetObj, PacketCast());
+                        if (ItemBool(Mode, "Q") && Q.IsReady(ItemSlider(Mode, "QDelay")) && Math.Abs(Player.PercentCooldownMod) >= 0.2) return;
+                        if (ItemBool(Mode, "R") && R.IsReady() && (Math.Abs(Player.PercentCooldownMod) < 0.2 || (Math.Abs(Player.PercentCooldownMod) >= 0.2 && Player.LastCastedSpellName() == "Overload")) && (Player.HealthPercentage() <= 40 || Player.CountEnemysInRange((int)Q.Range + 200) == 1 || Player.CountEnemysInRange((int)Q.Range + 300) >= 2)) R.Cast(PacketCast());
+                        if ((!ItemBool(Mode, "R") || (ItemBool(Mode, "R") && !R.IsReady())) && ItemBool(Mode, "W") && W.IsReady() && W.InRange(targetObj.Position) && (Math.Abs(Player.PercentCooldownMod) < 0.2 || (Math.Abs(Player.PercentCooldownMod) >= 0.2 && (Player.LastCastedSpellName() == "Overload" || (ItemBool(Mode, "R") && !R.IsReady() && Player.LastCastedSpellName() == "DesperatePower" && Player.HasBuff("DesperatePower")))))) W.CastOnUnit(targetObj, PacketCast());
+                        if ((!ItemBool(Mode, "R") || (ItemBool(Mode, "R") && !R.IsReady())) && (!ItemBool(Mode, "W") || (ItemBool(Mode, "W") && !W.IsReady())) && ItemBool(Mode, "E") && E.IsReady() && E.InRange(targetObj.Position) && (Math.Abs(Player.PercentCooldownMod) < 0.2 || (Math.Abs(Player.PercentCooldownMod) >= 0.2 && Player.LastCastedSpellName() == "Overload"))) E.CastOnUnit(targetObj, PacketCast());
                     }
                     break;
                 case "Chase":
-                    if (SkillW.IsReady() && SkillW.InRange(targetObj.Position)) SkillW.CastOnUnit(targetObj, PacketCast());
-                    if (!SkillW.IsReady() || targetObj.HasBuff("Rune Prison"))
+                    if (W.IsReady() && W.InRange(targetObj.Position)) W.CastOnUnit(targetObj, PacketCast());
+                    if (!W.IsReady() || targetObj.HasBuff("Rune Prison"))
                     {
-                        if (SkillQ.IsReady() && SkillQ.InRange(targetObj.Position)) SkillQ.CastOnUnit(targetObj, PacketCast());
-                        if (SkillR.IsReady() && (Math.Abs(Player.PercentCooldownMod) < 0.2 || (Math.Abs(Player.PercentCooldownMod) >= 0.2 && Player.LastCastedSpellName() == "Overload")) && (Player.HealthPercentage() <= 40 || Player.CountEnemysInRange((int)SkillQ.Range + 200) == 1 || Player.CountEnemysInRange((int)SkillQ.Range + 300) >= 2)) SkillR.Cast(PacketCast());
-                        if (!SkillR.IsReady() && SkillE.IsReady() && SkillE.InRange(targetObj.Position) && (Math.Abs(Player.PercentCooldownMod) < 0.2 || (Math.Abs(Player.PercentCooldownMod) >= 0.2 && (Player.LastCastedSpellName() == "Overload" || (!SkillR.IsReady() && Player.LastCastedSpellName() == "DesperatePower" && Player.HasBuff("DesperatePower")))))) SkillE.CastOnUnit(targetObj, PacketCast());
+                        if (Q.IsReady() && Q.InRange(targetObj.Position)) Q.CastOnUnit(targetObj, PacketCast());
+                        if (R.IsReady() && (Math.Abs(Player.PercentCooldownMod) < 0.2 || (Math.Abs(Player.PercentCooldownMod) >= 0.2 && Player.LastCastedSpellName() == "Overload")) && (Player.HealthPercentage() <= 40 || Player.CountEnemysInRange((int)Q.Range + 200) == 1 || Player.CountEnemysInRange((int)Q.Range + 300) >= 2)) R.Cast(PacketCast());
+                        if (!R.IsReady() && E.IsReady() && E.InRange(targetObj.Position) && (Math.Abs(Player.PercentCooldownMod) < 0.2 || (Math.Abs(Player.PercentCooldownMod) >= 0.2 && (Player.LastCastedSpellName() == "Overload" || (!R.IsReady() && Player.LastCastedSpellName() == "DesperatePower" && Player.HasBuff("DesperatePower")))))) E.CastOnUnit(targetObj, PacketCast());
                     }
                     break;
             }
@@ -190,28 +190,28 @@ namespace Master.Champions
 
         private void LaneJungClear()
         {
-            foreach (var Obj in ObjectManager.Get<Obj_AI_Minion>().Where(i => IsValid(i, SkillQ.Range)).OrderBy(i => i.Health))
+            foreach (var Obj in ObjectManager.Get<Obj_AI_Minion>().Where(i => IsValid(i, Q.Range)).OrderBy(i => i.Health))
             {
-                if (ItemBool("Clear", "Q") && SkillQ.IsReady() && (CanKill(Obj, SkillQ) || Obj.MaxHealth >= 1200 || SkillQ.GetHealthPrediction(Obj) + 5 > SkillQ.GetDamage(Obj) * 2)) SkillQ.CastOnUnit(Obj, PacketCast());
-                if (ItemBool("Clear", "W") && SkillW.IsReady() && SkillW.InRange(Obj.Position) && (CanKill(Obj, SkillW) || Obj.MaxHealth >= 1200 || SkillW.GetHealthPrediction(Obj) + 5 > SkillW.GetDamage(Obj) * 2)) SkillW.CastOnUnit(Obj, PacketCast());
-                if (ItemBool("Clear", "E") && SkillE.IsReady() && SkillE.InRange(Obj.Position) && (CanKill(Obj, SkillE) || Obj.MaxHealth >= 1200 || SkillE.GetHealthPrediction(Obj) + 5 > SkillE.GetDamage(Obj) * 2)) SkillE.CastOnUnit(Obj, PacketCast());
+                if (ItemBool("Clear", "Q") && Q.IsReady() && (CanKill(Obj, Q) || Obj.MaxHealth >= 1200 || Q.GetHealthPrediction(Obj) + 5 > Q.GetDamage(Obj) * 2)) Q.CastOnUnit(Obj, PacketCast());
+                if (ItemBool("Clear", "W") && W.IsReady() && W.InRange(Obj.Position) && (CanKill(Obj, W) || Obj.MaxHealth >= 1200 || W.GetHealthPrediction(Obj) + 5 > W.GetDamage(Obj) * 2)) W.CastOnUnit(Obj, PacketCast());
+                if (ItemBool("Clear", "E") && E.IsReady() && E.InRange(Obj.Position) && (CanKill(Obj, E) || Obj.MaxHealth >= 1200 || E.GetHealthPrediction(Obj) + 5 > E.GetDamage(Obj) * 2)) E.CastOnUnit(Obj, PacketCast());
             }
         }
 
         private void LastHit()
         {
-            if (!ItemBool("Misc", "QLastHit") || !SkillQ.IsReady()) return;
-            foreach (var Obj in ObjectManager.Get<Obj_AI_Minion>().Where(i => IsValid(i, (ItemBool("Misc", "Exploit") && SkillW.IsReady()) ? SkillW.Range : SkillQ.Range) && CanKill(i, SkillQ)).OrderBy(i => i.Health).OrderByDescending(i => i.Distance3D(Player)))
+            if (!ItemBool("Misc", "QLastHit") || !Q.IsReady()) return;
+            foreach (var Obj in ObjectManager.Get<Obj_AI_Minion>().Where(i => IsValid(i, (ItemBool("Misc", "Exploit") && W.IsReady()) ? W.Range : Q.Range) && CanKill(i, Q)).OrderBy(i => i.Health).OrderByDescending(i => i.Distance3D(Player)))
             {
-                SkillQ.CastOnUnit(Obj, PacketCast());
-                if (ItemBool("Misc", "Exploit") && SkillW.IsReady()) Utility.DelayAction.Add((int)(Player.Distance3D(Obj) / SkillQ.Speed * 1000 - 400), () => SkillW.CastOnUnit(Obj, PacketCast()));
+                Q.CastOnUnit(Obj, PacketCast());
+                if (ItemBool("Misc", "Exploit") && W.IsReady()) Utility.DelayAction.Add((int)(Player.Distance3D(Obj) / Q.Speed * 1000 - 400), () => W.CastOnUnit(Obj, PacketCast()));
             }
         }
 
         private void KillSteal()
         {
-            if (!SkillQ.IsReady()) return;
-            foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => IsValid(i, SkillQ.Range) && CanKill(i, SkillQ) && i != targetObj).OrderBy(i => i.Health).OrderBy(i => i.Distance3D(Player))) SkillQ.CastOnUnit(Obj, PacketCast());
+            if (!Q.IsReady()) return;
+            foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => IsValid(i, Q.Range) && CanKill(i, Q) && i != targetObj).OrderBy(i => i.Health).OrderBy(i => i.Distance3D(Player))) Q.CastOnUnit(Obj, PacketCast());
         }
     }
 }

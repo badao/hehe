@@ -75,6 +75,8 @@
     <Compile Include="Champions\JarvanIV.cs" />
     <Compile Include="Champions\Jax.cs" />
     <Compile Include="Champions\LeeSin.cs" />
+    <Compile Include="Champions\Lucian.cs" />
+    <Compile Include="Champions\Maokai.cs" />
     <Compile Include="Champions\Nasus.cs" />
     <Compile Include="Champions\Rammus.cs" />
     <Compile Include="Champions\Renekton.cs" />
@@ -83,6 +85,7 @@
     <Compile Include="Champions\Talon.cs" />
     <Compile Include="Champions\Tryndamere.cs" />
     <Compile Include="Champions\Udyr.cs" />
+    <Compile Include="Champions\Warwick.cs" />
     <Compile Include="Champions\XinZhao.cs" />
     <Compile Include="Orbwalker.cs" />
     <Compile Include="Program.cs" />

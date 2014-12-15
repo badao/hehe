@@ -6,23 +6,23 @@ using LeagueSharp;
 using LeagueSharp.Common;
 using SharpDX;
 
-using Orbwalk = Master.Common.M_Orbwalker;
+using Orbwalk = MasterSeries.Common.M_Orbwalker;
 
-namespace Master.Champions
+namespace MasterSeries.Champions
 {
     class XinZhao : Program
     {
         public XinZhao()
         {
-            SkillQ = new Spell(SpellSlot.Q, 375);
-            SkillW = new Spell(SpellSlot.W, 20);
-            SkillE = new Spell(SpellSlot.E, 650);
-            SkillR = new Spell(SpellSlot.R, 500);
-            SkillQ.SetSkillshot(-0.5f, 0, 0, false, SkillshotType.SkillshotCircle);
-            SkillE.SetTargetted(-0.5f, 20);
-            SkillR.SetSkillshot(-0.5f, 0, 347.8f, false, SkillshotType.SkillshotCircle);
+            Q = new Spell(SpellSlot.Q, 375);
+            W = new Spell(SpellSlot.W, 20);
+            E = new Spell(SpellSlot.E, 650);
+            R = new Spell(SpellSlot.R, 500);
+            Q.SetSkillshot(-0.5f, 0, 0, false, SkillshotType.SkillshotCircle);
+            E.SetTargetted(-0.5f, 20);
+            R.SetSkillshot(-0.5f, 0, 347.8f, false, SkillshotType.SkillshotCircle);
 
-            var ChampMenu = new Menu("Plugin", Name + "_Plugin");
+            var ChampMenu = new Menu("Plugin", Name + "Plugin");
             {
                 var ComboMenu = new Menu("Combo", "Combo");
                 {
@@ -113,46 +113,46 @@ namespace Master.Champions
         private void OnDraw(EventArgs args)
         {
             if (Player.IsDead) return;
-            if (ItemBool("Draw", "E") && SkillE.Level > 0) Utility.DrawCircle(Player.Position, SkillE.Range, SkillE.IsReady() ? Color.Green : Color.Red);
-            if (ItemBool("Draw", "R") && SkillR.Level > 0) Utility.DrawCircle(Player.Position, SkillR.Range, SkillR.IsReady() ? Color.Green : Color.Red);
+            if (ItemBool("Draw", "E") && E.Level > 0) Utility.DrawCircle(Player.Position, E.Range, E.IsReady() ? Color.Green : Color.Red);
+            if (ItemBool("Draw", "R") && R.Level > 0) Utility.DrawCircle(Player.Position, R.Range, R.IsReady() ? Color.Green : Color.Red);
         }
 
         private void OnPossibleToInterrupt(Obj_AI_Base unit, InterruptableSpell spell)
         {
-            if (!ItemBool("Misc", "RInterrupt") || !ItemBool("Interrupt", (unit as Obj_AI_Hero).ChampionName + "_" + spell.Slot.ToString()) || Player.IsDead || !SkillR.IsReady()) return;
-            if (!SkillR.InRange(unit.Position) && SkillE.IsReady() && Player.Mana >= SkillE.Instance.ManaCost + SkillR.Instance.ManaCost)
+            if (!ItemBool("Misc", "RInterrupt") || !ItemBool("Interrupt", (unit as Obj_AI_Hero).ChampionName + "_" + spell.Slot.ToString()) || Player.IsDead || !R.IsReady()) return;
+            if (!R.InRange(unit.Position) && E.IsReady() && Player.Mana >= E.Instance.ManaCost + R.Instance.ManaCost)
             {
-                foreach (var Obj in ObjectManager.Get<Obj_AI_Base>().Where(i => IsValid(i, SkillE.Range) && !(i is Obj_AI_Turret) && i != unit && i.Distance3D(unit) <= SkillR.Range - 30)) SkillE.CastOnUnit(Obj, PacketCast());
+                foreach (var Obj in ObjectManager.Get<Obj_AI_Base>().Where(i => IsValid(i, E.Range) && !(i is Obj_AI_Turret) && i != unit && i.Distance3D(unit) <= R.Range - 30)) E.CastOnUnit(Obj, PacketCast());
             }
-            if (IsValid(unit, SkillR.Range) && !unit.HasBuff("XinZhaoIntimidate")) SkillR.Cast(PacketCast());
+            if (IsValid(unit, R.Range) && !unit.HasBuff("XinZhaoIntimidate")) R.Cast(PacketCast());
         }
 
         private void AfterAttack(Obj_AI_Base Unit, Obj_AI_Base Target)
         {
             if (!Unit.IsMe) return;
-            if ((Orbwalk.CurrentMode == Orbwalk.Mode.Combo || Orbwalk.CurrentMode == Orbwalk.Mode.Harass) && ItemBool(Orbwalk.CurrentMode.ToString(), "Q") && IsValid(Target, Orbwalk.GetAutoAttackRange() + 50) && SkillQ.IsReady() && Target.HasBuff("XinZhaoIntimidate")) SkillQ.Cast(PacketCast());
+            if ((Orbwalk.CurrentMode == Orbwalk.Mode.Combo || Orbwalk.CurrentMode == Orbwalk.Mode.Harass) && ItemBool(Orbwalk.CurrentMode.ToString(), "Q") && IsValid(Target, Orbwalk.GetAutoAttackRange() + 50) && Q.IsReady() && Target.HasBuff("XinZhaoIntimidate")) Q.Cast(PacketCast());
         }
 
         private void NormalCombo(string Mode)
         {
             if (targetObj == null) return;
-            if (Mode == "Combo" && ItemBool(Mode, "R") && ItemBool("Ultimate", targetObj.ChampionName) && SkillR.IsReady() && SkillR.InRange(targetObj.Position))
+            if (Mode == "Combo" && ItemBool(Mode, "R") && ItemBool("Killable", targetObj.ChampionName) && R.IsReady() && R.InRange(targetObj.Position))
             {
-                if (CanKill(targetObj, SkillR))
+                if (CanKill(targetObj, R))
                 {
-                    SkillR.Cast(PacketCast());
+                    R.Cast(PacketCast());
                 }
-                else if (SkillR.GetHealthPrediction(targetObj) - SkillR.GetDamage(targetObj) + 5 <= SkillE.GetDamage(targetObj) + Player.GetAutoAttackDamage(targetObj, true) + ((ItemBool(Mode, "Q") && SkillQ.IsReady()) ? SkillQ.GetDamage(targetObj) * 3 : 0) && ItemBool(Mode, "E") && SkillE.IsReady() && Player.Mana >= SkillR.Instance.ManaCost + SkillE.Instance.ManaCost + ((ItemBool(Mode, "Q") && SkillQ.IsReady()) ? SkillQ.Instance.ManaCost : 0)) SkillR.Cast(PacketCast());
+                else if (R.GetHealthPrediction(targetObj) - R.GetDamage(targetObj) + 5 <= E.GetDamage(targetObj) + Player.GetAutoAttackDamage(targetObj, true) + ((ItemBool(Mode, "Q") && Q.IsReady()) ? Q.GetDamage(targetObj) * 3 : 0) && ItemBool(Mode, "E") && E.IsReady() && Player.Mana >= R.Instance.ManaCost + E.Instance.ManaCost + ((ItemBool(Mode, "Q") && Q.IsReady()) ? Q.Instance.ManaCost : 0)) R.Cast(PacketCast());
             }
-            if (ItemBool(Mode, "E") && SkillE.IsReady() && SkillE.InRange(targetObj.Position) && (CanKill(targetObj, SkillE) || Player.Distance3D(targetObj) > Orbwalk.GetAutoAttackRange() + 50 || (Mode == "Combo" && Player.HealthPercentage() < targetObj.HealthPercentage()))) SkillE.CastOnUnit(targetObj, PacketCast());
-            if (ItemBool(Mode, "W") && SkillW.IsReady() && Orbwalk.InAutoAttackRange(targetObj)) SkillW.Cast(PacketCast());
+            if (ItemBool(Mode, "E") && E.IsReady() && E.InRange(targetObj.Position) && (CanKill(targetObj, E) || Player.Distance3D(targetObj) > Orbwalk.GetAutoAttackRange() + 50 || (Mode == "Combo" && Player.HealthPercentage() < targetObj.HealthPercentage()))) E.CastOnUnit(targetObj, PacketCast());
+            if (ItemBool(Mode, "W") && W.IsReady() && Orbwalk.InAutoAttackRange(targetObj)) W.Cast(PacketCast());
             if (Mode == "Combo" && ItemBool(Mode, "Item")) UseItem(targetObj);
-            if (Mode == "Combo" && ItemBool(Mode, "Ignite")) CastIgnite(targetObj);
+            if (Mode == "Combo" && ItemBool(Mode, "Ignite") && IgniteReady()) CastIgnite(targetObj);
         }
 
         private void LaneJungClear()
         {
-            foreach (var Obj in ObjectManager.Get<Obj_AI_Minion>().Where(i => IsValid(i, SkillE.Range)).OrderBy(i => i.Health))
+            foreach (var Obj in ObjectManager.Get<Obj_AI_Minion>().Where(i => IsValid(i, E.Range)).OrderBy(i => i.Health))
             {
                 if (SmiteReady() && Obj.Team == GameObjectTeam.Neutral)
                 {
@@ -161,27 +161,27 @@ namespace Master.Champions
                         (ItemBool("SmiteMob", "Krug") && Obj.Name.StartsWith("SRU_Krug")) || (ItemBool("SmiteMob", "Gromp") && Obj.Name.StartsWith("SRU_Gromp")) ||
                         (ItemBool("SmiteMob", "Raptor") && Obj.Name.StartsWith("SRU_Razorbeak")) || (ItemBool("SmiteMob", "Wolf") && Obj.Name.StartsWith("SRU_Murkwolf"))))) CastSmite(Obj);
                 }
-                if (ItemBool("Clear", "E") && SkillE.IsReady() && (Player.Distance3D(Obj) > Orbwalk.GetAutoAttackRange() + 50 || CanKill(Obj, SkillE) || Obj.MaxHealth >= 1200)) SkillE.CastOnUnit(Obj, PacketCast());
-                if (ItemBool("Clear", "W") && SkillW.IsReady() && Orbwalk.InAutoAttackRange(Obj)) SkillW.Cast(PacketCast());
-                if (ItemBool("Clear", "Q") && SkillQ.IsReady() && Player.Distance3D(Obj) <= Orbwalk.GetAutoAttackRange() + 50) SkillQ.Cast(PacketCast());
+                if (ItemBool("Clear", "E") && E.IsReady() && (Player.Distance3D(Obj) > Orbwalk.GetAutoAttackRange() + 50 || CanKill(Obj, E) || Obj.MaxHealth >= 1200)) E.CastOnUnit(Obj, PacketCast());
+                if (ItemBool("Clear", "W") && W.IsReady() && Orbwalk.InAutoAttackRange(Obj)) W.Cast(PacketCast());
+                if (ItemBool("Clear", "Q") && Q.IsReady() && Player.Distance3D(Obj) <= Orbwalk.GetAutoAttackRange() + 50) Q.Cast(PacketCast());
                 if (ItemBool("Clear", "Item")) UseItem(Obj, true);
             }
         }
 
         private void KillSteal()
         {
-            if (!SkillE.IsReady()) return;
-            foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => IsValid(i, SkillE.Range) && CanKill(i, SkillE) && i != targetObj).OrderBy(i => i.Health).OrderBy(i => i.Distance3D(Player))) SkillE.CastOnUnit(Obj, PacketCast());
+            if (!E.IsReady()) return;
+            foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => IsValid(i, E.Range) && CanKill(i, E) && i != targetObj).OrderBy(i => i.Health).OrderBy(i => i.Distance3D(Player))) E.CastOnUnit(Obj, PacketCast());
         }
 
-        private void UseItem(Obj_AI_Base Target, bool Farm = false)
+        private void UseItem(Obj_AI_Base Target, bool IsFarm = false)
         {
-            if (Items.CanUseItem(Bilgewater) && Player.Distance3D(Target) <= 450 && !Farm) Items.UseItem(Bilgewater, Target);
-            if (Items.CanUseItem(BladeRuined) && Player.Distance3D(Target) <= 450 && !Farm) Items.UseItem(BladeRuined, Target);
-            if (Items.CanUseItem(Tiamat) && Farm ? Player.Distance3D(Target) <= 350 : Player.CountEnemysInRange(350) >= 1) Items.UseItem(Tiamat);
-            if (Items.CanUseItem(Hydra) && Farm ? Player.Distance3D(Target) <= 350 : (Player.CountEnemysInRange(350) >= 2 || (Player.GetAutoAttackDamage(Target, true) < Target.Health && Player.CountEnemysInRange(350) == 1))) Items.UseItem(Hydra);
-            if (Items.CanUseItem(Randuin) && Player.CountEnemysInRange(450) >= 1 && !Farm) Items.UseItem(Randuin);
-            if (Items.CanUseItem(Youmuu) && Player.CountEnemysInRange(350) >= 1 && !Farm) Items.UseItem(Youmuu);
+            if (Items.CanUseItem(Bilgewater) && Player.Distance3D(Target) <= 450 && !IsFarm) Items.UseItem(Bilgewater, Target);
+            if (Items.CanUseItem(BladeRuined) && Player.Distance3D(Target) <= 450 && !IsFarm) Items.UseItem(BladeRuined, Target);
+            if (Items.CanUseItem(Tiamat) && IsFarm ? Player.Distance3D(Target) <= 350 : Player.CountEnemysInRange(350) >= 1) Items.UseItem(Tiamat);
+            if (Items.CanUseItem(Hydra) && IsFarm ? Player.Distance3D(Target) <= 350 : (Player.CountEnemysInRange(350) >= 2 || (Player.GetAutoAttackDamage(Target, true) < Target.Health && Player.CountEnemysInRange(350) == 1))) Items.UseItem(Hydra);
+            if (Items.CanUseItem(Randuin) && Player.CountEnemysInRange(450) >= 1 && !IsFarm) Items.UseItem(Randuin);
+            if (Items.CanUseItem(Youmuu) && Player.CountEnemysInRange(350) >= 1 && !IsFarm) Items.UseItem(Youmuu);
         }
     }
 }

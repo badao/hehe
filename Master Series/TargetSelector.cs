@@ -5,7 +5,7 @@ using Color = System.Drawing.Color;
 using LeagueSharp;
 using LeagueSharp.Common;
 
-namespace Master.Common
+namespace MasterSeries.Common
 {
     class M_TargetSelector
     {
@@ -90,13 +90,13 @@ namespace Master.Common
 
         private void OnWndProc(WndEventArgs args)
         {
-            if (args.WParam != 1 || MenuGUI.IsChatOpen || Player.Spellbook.SelectedSpellSlot != SpellSlot.Unknown) return;
+            if (args.WParam != 1 || MenuGUI.IsChatOpen) return;
             newTarget = null;
             if (Player.IsDead) return;
-            if (Program.IsValid((Obj_AI_Hero)Hud.SelectedUnit, 230, true, Game.CursorPos))
+            foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => Program.IsValid(i, i.BoundingRadius, true, Game.CursorPos)).OrderBy(i => i.Position.Distance(Game.CursorPos)))
             {
-                newTarget = (Obj_AI_Hero)Hud.SelectedUnit;
-                if (Config.SubMenu("TS").Item("TS_Print").GetValue<bool>()) Game.PrintChat("<font color = \'{0}'>-></font> New Target: <font color = \'{1}'>{2}</font>", HtmlColor.BlueViolet, HtmlColor.Gold, newTarget.ChampionName);
+                newTarget = Obj;
+                if (Config.SubMenu("TS").Item("TS_Print").GetValue<bool>()) Game.PrintChat("<font color = \'{0}'>-></font> New Target: <font color = \'{1}'>{2}</font>", HtmlColor.BlueViolet, HtmlColor.Gold, Obj.ChampionName);
             }
         }
 
@@ -125,7 +125,7 @@ namespace Master.Common
                             Prior = 2.5f;
                             break;
                     }
-                    var Ratio = 100 / (1 + Obj.Health) * Prior;
+                    var Ratio = (float)Player.CalcDamage(Obj, Damage.DamageType.Physical, 100) / (1 + Obj.Health) * Prior;
                     if (Ratio > bestRatio)
                     {
                         bestRatio = Ratio;
