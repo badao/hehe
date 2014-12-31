@@ -99,7 +99,6 @@ namespace MasterSeries.Champions
             else if (Orbwalk.CurrentMode == Orbwalk.Mode.LaneClear) LaneJungClear();
             if (ItemBool("Misc", "QKillSteal")) KillSteal();
             if (ItemBool("Misc", "WUnderTower")) AutoWUnderTower();
-            if (Player.HasBuff("MaokaiDrain")) Game.PrintChat("{0}/{1}", R.Instance.Ammo);
         }
 
         private void OnDraw(EventArgs args)
