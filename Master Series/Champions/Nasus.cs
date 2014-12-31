@@ -20,15 +20,15 @@ namespace MasterSeries.Champions
             W = new Spell(SpellSlot.W, 600);
             E = new Spell(SpellSlot.E, 650);
             R = new Spell(SpellSlot.R, 20);
-            Q.SetSkillshot(0.0435f, 0, 0, false, SkillshotType.SkillshotCircle);
-            W.SetTargetted(-0.5f, 0);
-            E.SetSkillshot(-0.5f, 0, 20, false, SkillshotType.SkillshotCircle);
+            Q.SetTargetted(0.0435f, float.MaxValue);
+            E.SetSkillshot(0.5f, 380, float.MaxValue, false, SkillshotType.SkillshotCircle);
 
             var ChampMenu = new Menu("Plugin", Name + "Plugin");
             {
                 var ComboMenu = new Menu("Combo", "Combo");
                 {
                     ItemBool(ComboMenu, "Q", "Use Q");
+                    ItemList(ComboMenu, "QMode", "-> Mode", new[] { "Always", "Smart" }, 1);
                     ItemBool(ComboMenu, "W", "Use W");
                     ItemBool(ComboMenu, "E", "Use E");
                     ItemBool(ComboMenu, "Item", "Use Item");
@@ -84,6 +84,7 @@ namespace MasterSeries.Champions
             Game.OnGameUpdate += OnGameUpdate;
             Drawing.OnDraw += OnDraw;
             Obj_AI_Base.OnProcessSpellCast += OnProcessSpellCast;
+            Obj_AI_Base.OnProcessSpellCast += TrySurviveSpellCast;
         }
 
         private void OnGameUpdate(EventArgs args)
@@ -93,11 +94,12 @@ namespace MasterSeries.Champions
             {
                 NormalCombo(Orbwalk.CurrentMode.ToString());
             }
-            else if (Orbwalk.CurrentMode == Orbwalk.Mode.LaneClear || Orbwalk.CurrentMode == Orbwalk.Mode.LaneFreeze)
+            else if (Orbwalk.CurrentMode == Orbwalk.Mode.LaneClear)
             {
                 LaneJungClear();
             }
             else if (Orbwalk.CurrentMode == Orbwalk.Mode.LastHit) LastHit();
+            if (ItemBool("Ultimate", "RSurvive") && R.IsReady()) TrySurvive(R.Slot, ItemSlider("Ultimate", "RUnder"));
             if (ItemBool("Misc", "EKillSteal")) KillSteal();
         }
 
@@ -110,58 +112,52 @@ namespace MasterSeries.Champions
 
         private void OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
         {
-            if (Player.IsDead) return;
-            if (sender.IsMe && Orbwalk.IsAutoAttack(args.SData.Name) && IsValid((Obj_AI_Base)args.Target) && Q.IsReady())
+            if (!sender.IsMe) return;
+            if (args.SData.IsAutoAttack() && ((Obj_AI_Base)args.Target).IsValidTarget(Orbwalk.GetAutoAttackRange(Player, (Obj_AI_Base)args.Target) + 20) && Q.IsReady())
             {
                 var Obj = (Obj_AI_Base)args.Target;
                 var DmgAA = Player.GetAutoAttackDamage(Obj) * Math.Floor(Q.Instance.Cooldown / 1 / Player.AttackDelay);
-                if (Orbwalk.CurrentMode == Orbwalk.Mode.LastHit && ItemBool("Misc", "QLastHit") && Q.GetHealthPrediction(Obj) + 5 <= GetBonusDmg(Obj) && (args.Target is Obj_AI_Minion || args.Target is Obj_AI_Turret))
+                if (Orbwalk.CurrentMode == Orbwalk.Mode.LastHit && ItemBool("Misc", "QLastHit") && CanKill(Obj, Q, GetBonusDmg(Obj)) && args.Target is Obj_AI_Minion)
                 {
                     Q.Cast(PacketCast());
                 }
-                else if ((((Orbwalk.CurrentMode == Orbwalk.Mode.LaneClear || Orbwalk.CurrentMode == Orbwalk.Mode.LaneFreeze) && ItemBool("Clear", "Q") && (args.Target is Obj_AI_Minion || args.Target is Obj_AI_Turret)) || ((Orbwalk.CurrentMode == Orbwalk.Mode.Combo || Orbwalk.CurrentMode == Orbwalk.Mode.Harass) && ItemBool(Orbwalk.CurrentMode.ToString(), "Q") && args.Target is Obj_AI_Hero)) && (Q.GetHealthPrediction(Obj) + 5 <= GetBonusDmg(Obj) || (!(args.Target is Obj_AI_Turret) && Q.GetHealthPrediction(Obj) + 5 > DmgAA + GetBonusDmg(Obj)))) Q.Cast(PacketCast());
-            }
-            else if (sender.IsEnemy && ItemBool("Ultimate", "RSurvive") && R.IsReady())
-            {
-                if (args.Target.IsMe && ((Orbwalk.IsAutoAttack(args.SData.Name) && (Player.Health - sender.GetAutoAttackDamage(Player, true)) * 100 / Player.MaxHealth <= ItemSlider("Ultimate", "RUnder")) || (args.SData.Name == "summonerdot" && (Player.Health - (sender as Obj_AI_Hero).GetSummonerSpellDamage(Player, Damage.SummonerSpell.Ignite)) * 100 / Player.MaxHealth <= ItemSlider("Ultimate", "RUnder"))))
+                else if (((Orbwalk.CurrentMode == Orbwalk.Mode.LaneClear && ItemBool("Clear", "Q") && (args.Target is Obj_AI_Minion || args.Target is Obj_AI_Turret)) || (Orbwalk.CurrentMode == Orbwalk.Mode.Combo && ItemBool("Combo", "Q") && ItemList("Combo", "QMode") == 1 && args.Target is Obj_AI_Hero)) && (CanKill(Obj, Q, GetBonusDmg(Obj)) || (!(args.Target is Obj_AI_Turret) && !CanKill(Obj, Q, GetBonusDmg(Obj) + DmgAA))))
                 {
-                    R.Cast(PacketCast());
+                    Q.Cast(PacketCast());
                 }
-                else if ((args.Target.IsMe || (Player.Position.Distance(args.Start) <= args.SData.CastRange[0] && Player.Position.Distance(args.End) <= Orbwalk.GetAutoAttackRange())) && Damage.Spells.ContainsKey((sender as Obj_AI_Hero).ChampionName))
-                {
-                    for (var i = 3; i > -1; i--)
-                    {
-                        if (Damage.Spells[(sender as Obj_AI_Hero).ChampionName].FirstOrDefault(a => a.Slot == (sender as Obj_AI_Hero).GetSpellSlot(args.SData.Name, false) && a.Stage == i) != null)
-                        {
-                            if ((Player.Health - (sender as Obj_AI_Hero).GetSpellDamage(Player, (sender as Obj_AI_Hero).GetSpellSlot(args.SData.Name, false), i)) * 100 / Player.MaxHealth <= ItemSlider("Ultimate", "RUnder")) R.Cast(PacketCast());
-                        }
-                    }
-                }
+                else if ((Orbwalk.CurrentMode == Orbwalk.Mode.Harass || (Orbwalk.CurrentMode == Orbwalk.Mode.Combo && ItemList("Combo", "QMode") == 0)) && ItemBool(Orbwalk.CurrentMode.ToString(), "Q") && args.Target is Obj_AI_Hero) Q.Cast(PacketCast());
             }
         }
 
         private void NormalCombo(string Mode)
         {
             if (targetObj == null) return;
-            if (ItemBool(Mode, "W") && W.IsReady() && W.InRange(targetObj.Position) && (Mode == "Combo" || (Mode == "Harass" && Player.Distance3D(targetObj) <= Orbwalk.GetAutoAttackRange() + 100))) W.CastOnUnit(targetObj, PacketCast());
-            if (ItemBool(Mode, "E") && E.IsReady() && E.InRange(targetObj.Position) && (Mode == "Combo" || (Mode == "Harass" && Player.Distance3D(targetObj) <= Orbwalk.GetAutoAttackRange() + 100))) E.Cast(targetObj.Position, PacketCast());
-            if (ItemBool(Mode, "Q") && Q.IsReady() && Player.Distance3D(targetObj) <= Orbwalk.GetAutoAttackRange() + 50)
+            if (ItemBool(Mode, "Q") && Q.IsReady() && Player.Distance3D(targetObj) <= Orbwalk.GetAutoAttackRange(Player, targetObj) + 20)
             {
                 var DmgAA = Player.GetAutoAttackDamage(targetObj) * Math.Floor(Q.Instance.Cooldown / 1 / Player.AttackDelay);
-                if (Q.GetHealthPrediction(targetObj) + 5 <= GetBonusDmg(targetObj) || Q.GetHealthPrediction(targetObj) + 5 > DmgAA + GetBonusDmg(targetObj))
+                if (Mode == "Harass" || (Mode == "Combo" && (ItemList(Mode, "QMode") == 0 || (ItemList(Mode, "QMode") == 1 && (CanKill(targetObj, Q, GetBonusDmg(targetObj)) || !CanKill(targetObj, Q, GetBonusDmg(targetObj) + DmgAA))))))
                 {
                     Orbwalk.SetAttack(false);
                     Player.IssueOrder(GameObjectOrder.AttackUnit, targetObj);
                     Orbwalk.SetAttack(true);
                 }
             }
+            if (ItemBool(Mode, "W") && W.CanCast(targetObj) && (Mode == "Combo" || (Mode == "Harass" && Player.Distance3D(targetObj) <= Orbwalk.GetAutoAttackRange(Player, targetObj) + 100))) W.CastOnUnit(targetObj, PacketCast());
+            if (ItemBool(Mode, "E") && E.CanCast(targetObj) && (Mode == "Combo" || (Mode == "Harass" && Player.Distance3D(targetObj) <= Orbwalk.GetAutoAttackRange(Player, targetObj) + 100))) E.Cast(targetObj.Position.Randomize(0, (int)E.Width / 2), PacketCast());
             if (Mode == "Combo" && ItemBool(Mode, "Item") && Items.CanUseItem(Randuin) && Player.CountEnemysInRange(450) >= 1) Items.UseItem(Randuin);
             if (Mode == "Combo" && ItemBool(Mode, "Ignite") && IgniteReady()) CastIgnite(targetObj);
         }
 
         private void LaneJungClear()
         {
-            var minionObj = ObjectManager.Get<Obj_AI_Base>().Where(i => IsValid(i, E.Range) && (i is Obj_AI_Turret || i is Obj_AI_Minion)).OrderBy(i => i.MaxHealth).Reverse();
+            var towerObj = ObjectManager.Get<Obj_AI_Turret>().FirstOrDefault(i => i.IsValidTarget(Orbwalk.GetAutoAttackRange(Player, i) + 20) && CanKill(i, Q, GetBonusDmg(i)));
+            if (towerObj != null && Q.IsReady())
+            {
+                Orbwalk.SetAttack(false);
+                Player.IssueOrder(GameObjectOrder.AttackUnit, towerObj);
+                Orbwalk.SetAttack(true);
+            }
+            var minionObj = MinionManager.GetMinions(E.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
             foreach (var Obj in minionObj)
             {
                 if (SmiteReady() && Obj.Team == GameObjectTeam.Neutral)
@@ -171,15 +167,10 @@ namespace MasterSeries.Champions
                         (ItemBool("SmiteMob", "Krug") && Obj.Name.StartsWith("SRU_Krug")) || (ItemBool("SmiteMob", "Gromp") && Obj.Name.StartsWith("SRU_Gromp")) ||
                         (ItemBool("SmiteMob", "Raptor") && Obj.Name.StartsWith("SRU_Razorbeak")) || (ItemBool("SmiteMob", "Wolf") && Obj.Name.StartsWith("SRU_Murkwolf"))))) CastSmite(Obj);
                 }
-                if (ItemBool("Clear", "E") && E.IsReady() && minionObj.Count(i => i is Obj_AI_Minion) > 0)
-                {
-                    var posEFarm = E.GetCircularFarmLocation(minionObj.Where(i => i is Obj_AI_Minion).ToList());
-                    E.Cast(posEFarm.MinionsHit >= 2 ? posEFarm.Position : minionObj.First(i => i is Obj_AI_Minion).Position.To2D(), PacketCast());
-                }
-                if (ItemBool("Clear", "Q") && Q.IsReady() && Player.Distance3D(Obj) <= Orbwalk.GetAutoAttackRange() + 50)
+                if (ItemBool("Clear", "Q") && Q.IsReady() && Player.Distance3D(Obj) <= Orbwalk.GetAutoAttackRange(Player, Obj) + 20)
                 {
                     var DmgAA = Player.GetAutoAttackDamage(Obj) * Math.Floor(Q.Instance.Cooldown / 1 / Player.AttackDelay);
-                    if (Q.GetHealthPrediction(Obj) + 5 <= GetBonusDmg(targetObj) || Q.GetHealthPrediction(Obj) + 5 > DmgAA + GetBonusDmg(Obj))
+                    if (CanKill(targetObj, Q, GetBonusDmg(targetObj)) || !CanKill(Obj, Q, GetBonusDmg(Obj) + DmgAA))
                     {
                         Orbwalk.SetAttack(false);
                         Player.IssueOrder(GameObjectOrder.AttackUnit, Obj);
@@ -187,13 +178,18 @@ namespace MasterSeries.Champions
                         break;
                     }
                 }
+                if (ItemBool("Clear", "E") && E.IsReady() && (minionObj.Count >= 2 || Obj.MaxHealth >= 1200))
+                {
+                    var posEFarm = E.GetCircularFarmLocation(minionObj);
+                    E.Cast(posEFarm.MinionsHit >= 2 ? posEFarm.Position : Obj.Position.Randomize(0, (int)E.Width / 2).To2D(), PacketCast());
+                }
             }
         }
 
         private void LastHit()
         {
             if (!ItemBool("Misc", "QLastHit") || !Q.IsReady()) return;
-            foreach (var Obj in ObjectManager.Get<Obj_AI_Base>().Where(i => IsValid(i, Orbwalk.GetAutoAttackRange() + 50) && Q.GetHealthPrediction(i) + 5 <= GetBonusDmg(i) && (i is Obj_AI_Minion || i is Obj_AI_Turret)).OrderBy(i => i.MaxHealth).Reverse().OrderBy(i => i.Distance3D(Player)))
+            foreach (var Obj in MinionManager.GetMinions(Orbwalk.GetAutoAttackRange() + 100, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth).Where(i => CanKill(i, Q, GetBonusDmg(i))).OrderByDescending(i => i.Distance3D(Player)))
             {
                 Orbwalk.SetAttack(false);
                 Player.IssueOrder(GameObjectOrder.AttackUnit, Obj);
@@ -205,7 +201,7 @@ namespace MasterSeries.Champions
         private void KillSteal()
         {
             if (!E.IsReady()) return;
-            foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => IsValid(i, E.Range) && CanKill(i, E) && i != targetObj).OrderBy(i => i.Health).OrderByDescending(i => i.Distance3D(Player))) E.Cast(Obj.Position, PacketCast());
+            foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => i.IsValidTarget(E.Range) && CanKill(i, E) && i != targetObj).OrderBy(i => i.Health).OrderByDescending(i => i.Distance3D(Player))) E.Cast(Obj.Position.Randomize(0, (int)E.Width / 2), PacketCast());
         }
 
         private double GetBonusDmg(Obj_AI_Base Target)

@@ -13,7 +13,7 @@ namespace MasterSeries.Champions
     class Renekton : Program
     {
         private Vector3 HarassBackPos = default(Vector3);
-        private bool ECasted = false;
+        private bool WCasted = false, ECasted = false;
         private int AACount = 0;
 
         public Renekton()
@@ -22,9 +22,8 @@ namespace MasterSeries.Champions
             W = new Spell(SpellSlot.W, 300);
             E = new Spell(SpellSlot.E, 450);
             R = new Spell(SpellSlot.R, 20);
-            Q.SetSkillshot(-0.5f, 0, 0, false, SkillshotType.SkillshotCircle);
-            W.SetSkillshot(0.0435f, 0, 0, false, SkillshotType.SkillshotCircle);
-            E.SetSkillshot(-0.5f, 50, 20, false, SkillshotType.SkillshotLine);
+            W.SetTargetted(0.0435f, float.MaxValue);
+            E.SetSkillshot(0.5f, 50, float.MaxValue, false, SkillshotType.SkillshotLine);
 
             var ChampMenu = new Menu("Plugin", Name + "Plugin");
             {
@@ -80,6 +79,7 @@ namespace MasterSeries.Champions
             AntiGapcloser.OnEnemyGapcloser += OnEnemyGapcloser;
             Interrupter.OnPossibleToInterrupt += OnPossibleToInterrupt;
             Obj_AI_Base.OnProcessSpellCast += OnProcessSpellCast;
+            Obj_AI_Base.OnProcessSpellCast += TrySurviveSpellCast;
             Orbwalk.AfterAttack += AfterAttack;
         }
 
@@ -101,13 +101,14 @@ namespace MasterSeries.Champions
                 case Orbwalk.Mode.LaneClear:
                     LaneJungClear();
                     break;
-                case Orbwalk.Mode.LaneFreeze:
-                    LaneJungClear();
-                    break;
                 case Orbwalk.Mode.Flee:
                     if (E.IsReady()) E.Cast(Game.CursorPos, PacketCast());
                     break;
+                case Orbwalk.Mode.None:
+                    AACount = 0;
+                    break;
             }
+            if (ItemBool("Ultimate", "RSurvive") && R.IsReady()) TrySurvive(R.Slot, ItemSlider("Ultimate", "RUnder"));
         }
 
         private void OnDraw(EventArgs args)
@@ -120,7 +121,7 @@ namespace MasterSeries.Champions
         private void OnEnemyGapcloser(ActiveGapcloser gapcloser)
         {
             if (!ItemBool("Misc", "WAntiGap") || Player.IsDead || !W.IsReady() || !Player.HasBuff("RenektonExecuteReady")) return;
-            if (IsValid(gapcloser.Sender, Orbwalk.GetAutoAttackRange() + 50))
+            if (Player.Distance3D(gapcloser.Sender) <= Orbwalk.GetAutoAttackRange(Player, gapcloser.Sender) + 50)
             {
                 if (W.IsReady()) W.Cast(PacketCast());
                 if (Player.HasBuff("RenektonExecuteReady")) Player.IssueOrder(GameObjectOrder.AttackUnit, gapcloser.Sender);
@@ -130,8 +131,8 @@ namespace MasterSeries.Champions
         private void OnPossibleToInterrupt(Obj_AI_Base unit, InterruptableSpell spell)
         {
             if (!ItemBool("Misc", "WInterrupt") || Player.IsDead || !W.IsReady() || !Player.HasBuff("RenektonExecuteReady")) return;
-            if (E.IsReady() && !W.InRange(unit.Position) && IsValid(unit, E.Range)) E.Cast(unit.Position + Vector3.Normalize(unit.Position - Player.Position) * 200, PacketCast());
-            if (IsValid(unit, Orbwalk.GetAutoAttackRange() + 50))
+            if (!Orbwalk.InAutoAttackRange(unit) && E.CanCast(unit)) E.Cast(unit.Position.Randomize(0, (int)Orbwalk.GetAutoAttackRange(Player, unit) / 2), PacketCast());
+            if (Player.Distance3D(unit) <= Orbwalk.GetAutoAttackRange(Player, unit) + 20)
             {
                 if (W.IsReady()) W.Cast(PacketCast());
                 if (Player.HasBuff("RenektonExecuteReady")) Player.IssueOrder(GameObjectOrder.AttackUnit, unit);
@@ -140,71 +141,63 @@ namespace MasterSeries.Champions
 
         private void OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
         {
-            if (Player.IsDead) return;
-            if (sender.IsMe)
+            if (!sender.IsMe) return;
+            if (args.SData.IsAutoAttack() && ((Obj_AI_Base)args.Target).IsValidTarget(Orbwalk.GetAutoAttackRange(Player, (Obj_AI_Base)args.Target) + 20) && W.IsReady())
             {
-                if (Orbwalk.IsAutoAttack(args.SData.Name) && IsValid((Obj_AI_Base)args.Target) && W.IsReady())
+                var Obj = (Obj_AI_Base)args.Target;
+                if (Orbwalk.CurrentMode == Orbwalk.Mode.LaneClear && ItemBool("Clear", "W") && args.Target is Obj_AI_Minion && (CanKill(Obj, W, Player.Mana >= 50 ? 1 : 0) || Obj.MaxHealth >= 1200))
                 {
-                    var Obj = (Obj_AI_Base)args.Target;
-                    if ((Orbwalk.CurrentMode == Orbwalk.Mode.LaneClear || Orbwalk.CurrentMode == Orbwalk.Mode.LaneFreeze) && ItemBool("Clear", "W") && args.Target is Obj_AI_Minion && (CanKill(Obj, W, Player.Mana >= 50 ? 1 : 0) || Obj.MaxHealth >= 1200))
-                    {
-                        W.Cast(PacketCast());
-                    }
-                    else if ((Orbwalk.CurrentMode == Orbwalk.Mode.Combo || Orbwalk.CurrentMode == Orbwalk.Mode.Harass) && ItemBool(Orbwalk.CurrentMode.ToString(), "W") && args.Target is Obj_AI_Hero) W.Cast(PacketCast());
+                    W.Cast(PacketCast());
                 }
-                if (args.SData.Name == "RenektonCleave") AACount = 0;
-                if (args.SData.Name == "RenektonPreExecute") AACount = 0;
-                if (args.SData.Name == "RenektonSliceAndDice")
-                {
-                    ECasted = true;
-                    Utility.DelayAction.Add((Orbwalk.CurrentMode == Orbwalk.Mode.LaneClear || Orbwalk.CurrentMode == Orbwalk.Mode.LaneFreeze) ? 3000 : 1800, () => ECasted = false);
-                    AACount = 0;
-                }
-                if (args.SData.Name == "renektondice") AACount = 0;
+                else if ((Orbwalk.CurrentMode == Orbwalk.Mode.Combo || Orbwalk.CurrentMode == Orbwalk.Mode.Harass) && ItemBool(Orbwalk.CurrentMode.ToString(), "W") && args.Target is Obj_AI_Hero) W.Cast(PacketCast());
             }
-            else if (sender.IsEnemy && ItemBool("Ultimate", "RSurvive") && R.IsReady())
+            if (args.SData.Name == "RenektonCleave") AACount = 0;
+            if (args.SData.Name == "RenektonPreExecute") AACount = 0;
+            if (args.SData.Name == "RenektonExecute")
             {
-                if (args.Target.IsMe && ((Orbwalk.IsAutoAttack(args.SData.Name) && (Player.Health - sender.GetAutoAttackDamage(Player, true)) * 100 / Player.MaxHealth <= ItemSlider("Ultimate", "RUnder")) || (args.SData.Name == "summonerdot" && (Player.Health - (sender as Obj_AI_Hero).GetSummonerSpellDamage(Player, Damage.SummonerSpell.Ignite)) * 100 / Player.MaxHealth <= ItemSlider("Ultimate", "RUnder"))))
-                {
-                    R.Cast(PacketCast());
-                }
-                else if ((args.Target.IsMe || (Player.Position.Distance(args.Start) <= args.SData.CastRange[0] && Player.Position.Distance(args.End) <= Orbwalk.GetAutoAttackRange())) && Damage.Spells.ContainsKey((sender as Obj_AI_Hero).ChampionName))
-                {
-                    for (var i = 3; i > -1; i--)
-                    {
-                        if (Damage.Spells[(sender as Obj_AI_Hero).ChampionName].FirstOrDefault(a => a.Slot == (sender as Obj_AI_Hero).GetSpellSlot(args.SData.Name, false) && a.Stage == i) != null)
-                        {
-                            if ((Player.Health - (sender as Obj_AI_Hero).GetSpellDamage(Player, (sender as Obj_AI_Hero).GetSpellSlot(args.SData.Name, false), i)) * 100 / Player.MaxHealth <= ItemSlider("Ultimate", "RUnder")) R.Cast(PacketCast());
-                        }
-                    }
-                }
+                WCasted = true;
+                Utility.DelayAction.Add(200, () => WCasted = false);
+                AACount = 0;
             }
+            if (args.SData.Name == "RenektonSliceAndDice")
+            {
+                ECasted = true;
+                Utility.DelayAction.Add(Orbwalk.CurrentMode == Orbwalk.Mode.LaneClear ? 3000 : 2400, () => ECasted = false);
+                AACount = 0;
+            }
+            if (args.SData.Name == "renektondice") AACount = 0;
         }
 
-        private void AfterAttack(Obj_AI_Base Unit, Obj_AI_Base Target)
+        private void AfterAttack(AttackableUnit Target)
         {
-            if (!Unit.IsMe) return;
-            if ((Orbwalk.CurrentMode == Orbwalk.Mode.Harass && Target is Obj_AI_Hero) || ((Orbwalk.CurrentMode == Orbwalk.Mode.LaneClear || Orbwalk.CurrentMode == Orbwalk.Mode.LaneFreeze) && Target is Obj_AI_Minion)) AACount += 1;
-            if ((Orbwalk.CurrentMode == Orbwalk.Mode.Combo || Orbwalk.CurrentMode == Orbwalk.Mode.Harass) && ItemBool(Orbwalk.CurrentMode.ToString(), "W") && ItemBool("Misc", "WCancel") && Target.Buffs.Any(i => i.SourceName == Name && i.DisplayName == "Stun") && Target is Obj_AI_Hero) UseItem(Target, true);
+            if (!WCasted && ((Orbwalk.CurrentMode == Orbwalk.Mode.Harass && Target is Obj_AI_Hero) || (Orbwalk.CurrentMode == Orbwalk.Mode.LaneClear && Target is Obj_AI_Minion))) AACount += 1;
+            if ((Orbwalk.CurrentMode == Orbwalk.Mode.Combo || Orbwalk.CurrentMode == Orbwalk.Mode.Harass) && ItemBool(Orbwalk.CurrentMode.ToString(), "W") && ItemBool("Misc", "WCancel") && ((Obj_AI_Hero)Target).Buffs.Any(i => i.SourceName == Name && i.DisplayName == "Stun") && Target is Obj_AI_Hero) UseItem((Obj_AI_Hero)Target, true);
         }
 
         private void NormalCombo()
         {
-            if (targetObj == null) return;
-            if (ItemBool("Combo", "W") && (W.IsReady() || Player.HasBuff("RenektonExecuteReady")) && !Player.IsDashing() && Orbwalk.InAutoAttackRange(targetObj))
+            if (targetObj == null || Player.IsDashing()) return;
+            if (ItemBool("Combo", "E") && E.IsReady())
+            {
+                if (E.Instance.Name == "RenektonSliceAndDice")
+                {
+                    if (E.InRange(targetObj))
+                    {
+                        E.Cast(targetObj.Position.Extend(Player.Position, Player.Distance3D(targetObj) <= E.Range - 100 ? -100 : 0), PacketCast());
+                    }
+                    else if (Player.Distance3D(targetObj) > E.Range + 30 && Player.Distance3D(targetObj) <= E.Range * 2 - 20)
+                    {
+                        foreach (var Obj in ObjectManager.Get<Obj_AI_Base>().Where(i => i.IsValidTarget(E.Range) && !(i is Obj_AI_Turret) && i.Distance3D(targetObj) <= E.Range - 20).OrderBy(i => i.Distance3D(targetObj))) E.Cast(Obj.Position.Extend(Player.Position, Player.Distance3D(Obj) <= E.Range - 100 ? -100 : 0), PacketCast());
+                    }
+                }
+                else if (!ECasted || Player.Distance3D(targetObj) > E.Range - 30 || CanKill(targetObj, E, Player.Mana >= 50 ? 1 : 0)) E.Cast(targetObj.Position.Extend(Player.Position, Player.Distance3D(targetObj) <= E.Range - 100 ? -100 : 0), PacketCast());
+            }
+            if (ItemBool("Combo", "Q") && Q.CanCast(targetObj)) Q.Cast(PacketCast());
+            if (ItemBool("Combo", "W") && (W.IsReady() || Player.HasBuff("RenektonExecuteReady")) && Orbwalk.InAutoAttackRange(targetObj))
             {
                 Orbwalk.SetAttack(false);
                 Player.IssueOrder(GameObjectOrder.AttackUnit, targetObj);
                 Orbwalk.SetAttack(true);
-            }
-            if (ItemBool("Combo", "Q") && Q.IsReady() && !Player.IsDashing() && Q.InRange(targetObj.Position)) Q.Cast(PacketCast());
-            if (ItemBool("Combo", "E") && E.IsReady() && E.InRange(targetObj.Position))
-            {
-                if (E.Instance.Name == "RenektonSliceAndDice")
-                {
-                    E.Cast(Player.Position.To2D().Extend(targetObj.Position.To2D(), targetObj.Distance3D(Player) + 200), PacketCast());
-                }
-                else if (!ECasted || !IsValid(targetObj, E.Range - 30) || CanKill(targetObj, E, Player.Mana >= 50 ? 1 : 0)) E.Cast(Player.Position.To2D().Extend(targetObj.Position.To2D(), targetObj.Distance3D(Player) + 200), PacketCast());
             }
             if (ItemBool("Combo", "Item")) UseItem(targetObj);
             if (ItemBool("Combo", "Ignite") && IgniteReady()) CastIgnite(targetObj);
@@ -212,53 +205,54 @@ namespace MasterSeries.Champions
 
         private void Harass()
         {
-            if (targetObj == null) return;
-            if (ItemBool("Harass", "W") && (W.IsReady() || Player.HasBuff("RenektonExecuteReady")) && !Player.IsDashing() && (AACount >= 1 || (E.IsReady() && E.Instance.Name != "RenektonSliceAndDice")) && Orbwalk.InAutoAttackRange(targetObj))
-            {
-                Orbwalk.SetAttack(false);
-                Player.IssueOrder(GameObjectOrder.AttackUnit, targetObj);
-                Orbwalk.SetAttack(true);
-            }
-            if (ItemBool("Harass", "Q") && Q.IsReady() && !Player.IsDashing() && AACount >= 2 && Q.InRange(targetObj.Position)) Q.Cast(PacketCast());
-            if (ItemBool("Harass", "E") && !Player.IsDashing())
+            if (targetObj == null || Player.IsDashing()) return;
+            if (ItemBool("Harass", "E"))
             {
                 if (E.IsReady())
                 {
                     if (E.Instance.Name == "RenektonSliceAndDice")
                     {
-                        if (E.InRange(targetObj.Position) && Player.HealthPercentage() >= ItemSlider("Harass", "EAbove"))
+                        if (E.InRange(targetObj) && Player.HealthPercentage() >= ItemSlider("Harass", "EAbove"))
                         {
                             HarassBackPos = Player.ServerPosition;
-                            E.Cast(Player.Position.To2D().Extend(targetObj.Position.To2D(), targetObj.Distance3D(Player) + 200), PacketCast());
+                            E.Cast(targetObj.Position.Extend(Player.Position, Player.Distance3D(targetObj) <= E.Range - 100 ? -100 : 0), PacketCast());
                         }
                     }
                     else if (!ECasted || AACount >= 2) E.Cast(HarassBackPos, PacketCast());
                 }
                 else if (HarassBackPos != default(Vector3)) HarassBackPos = default(Vector3);
             }
+            if (ItemBool("Harass", "Q") && Q.CanCast(targetObj) && (AACount >= 2 || (E.IsReady() && E.Instance.Name != "RenektonSliceAndDice"))) Q.Cast(PacketCast());
+            if (ItemBool("Harass", "W") && (W.IsReady() || Player.HasBuff("RenektonExecuteReady")) && (AACount >= 1 || (ItemBool("Harass", "E") && E.IsReady() && E.Instance.Name != "RenektonSliceAndDice")) && Orbwalk.InAutoAttackRange(targetObj))
+            {
+                Orbwalk.SetAttack(false);
+                Player.IssueOrder(GameObjectOrder.AttackUnit, targetObj);
+                Orbwalk.SetAttack(true);
+            }
         }
 
         private void LaneJungClear()
         {
-            var minionObj = ObjectManager.Get<Obj_AI_Base>().Where(i => IsValid(i, E.Range) && i is Obj_AI_Minion).OrderBy(i => i.Health);
+            if (Player.IsDashing()) return;
+            var minionObj = MinionManager.GetMinions(E.Range, MinionTypes.All, MinionTeam.NotAlly);
             foreach (var Obj in minionObj)
             {
-                if (ItemBool("Clear", "Q") && Q.IsReady() && !Player.IsDashing() && (AACount >= 2 || (E.IsReady() && E.Instance.Name != "RenektonSliceAndDice")) && (minionObj.Count(i => IsValid(i, Q.Range)) >= 2 || (Obj.MaxHealth >= 1200 && Q.InRange(Obj.Position)))) Q.Cast(PacketCast());
-                if (ItemBool("Clear", "W") && (W.IsReady() || Player.HasBuff("RenektonExecuteReady")) && !Player.IsDashing() && AACount >= 1 && Orbwalk.InAutoAttackRange(Obj) && (CanKill(Obj, W, Player.Mana >= 50 ? 1 : 0) || Obj.MaxHealth >= 1200))
+                if (ItemBool("Clear", "E") && E.IsReady())
+                {
+                    var posEFarm = E.GetLineFarmLocation(minionObj.ToList());
+                    if (E.Instance.Name == "RenektonSliceAndDice")
+                    {
+                        E.Cast(posEFarm.MinionsHit >= 2 ? posEFarm.Position : Obj.Position.Extend(Player.Position, Player.Distance3D(Obj) <= E.Range - 100 ? -100 : 0).To2D(), PacketCast());
+                    }
+                    else if (!ECasted || AACount >= 2) E.Cast(posEFarm.MinionsHit >= 2 ? posEFarm.Position : Obj.Position.Extend(Player.Position, Player.Distance3D(Obj) <= E.Range - 100 ? -100 : 0).To2D(), PacketCast());
+                }
+                if (ItemBool("Clear", "Q") && Q.IsReady() && (AACount >= 2 || (E.IsReady() && E.Instance.Name != "RenektonSliceAndDice")) && (minionObj.Count(i => Q.InRange(i)) >= 2 || (Obj.MaxHealth >= 1200 && Q.InRange(Obj)))) Q.Cast(PacketCast());
+                if (ItemBool("Clear", "W") && (W.IsReady() || Player.HasBuff("RenektonExecuteReady")) && AACount >= 1 && Orbwalk.InAutoAttackRange(Obj) && (CanKill(Obj, W, Player.Mana >= 50 ? 1 : 0) || Obj.MaxHealth >= 1200))
                 {
                     Orbwalk.SetAttack(false);
                     Player.IssueOrder(GameObjectOrder.AttackUnit, Obj);
                     Orbwalk.SetAttack(true);
                     break;
-                }
-                if (ItemBool("Clear", "E") && E.IsReady() && !Player.IsDashing())
-                {
-                    var posEFarm = E.GetLineFarmLocation(minionObj.ToList());
-                    if (E.Instance.Name == "RenektonSliceAndDice")
-                    {
-                        E.Cast(posEFarm.MinionsHit >= 2 ? posEFarm.Position : Player.Position.To2D().Extend(Obj.Position.To2D(), Obj.Distance3D(Player) + 200), PacketCast());
-                    }
-                    else if (!ECasted || AACount >= 2) E.Cast(posEFarm.MinionsHit >= 2 ? posEFarm.Position : Player.Position.To2D().Extend(Obj.Position.To2D(), Obj.Distance3D(Player) + 200), PacketCast());
                 }
                 if (ItemBool("Clear", "Item") && AACount >= 1) UseItem(Obj, true);
             }

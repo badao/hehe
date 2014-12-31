@@ -29,32 +29,31 @@ namespace MasterSeries.Common
         private readonly string[] Bruiser =
         {
             "Aatrox", "Darius", "Elise", "Evelynn", "Fiora", "Gangplank", "Gnar", "Gragas", "Irelia", "JarvanIV", "Jax", "Jayce", "Khazix", "LeeSin",
-            "MasterYi", "Nocturne", "Olaf", "Pantheon", "Poppy", "Renekton", "Rengar", "Riven", "Rumble", "Shaco", "Shyvana", "Sion", "Trundle",
+            "MasterYi", "Nocturne", "Olaf", "Pantheon", "Poppy", "RekSai", "Renekton", "Rengar", "Riven", "Rumble", "Shaco", "Shyvana", "Sion", "Trundle",
             "Tryndamere", "Udyr", "Vi", "MonkeyKing", "XinZhao"
         };
 
         private static Menu Config;
-        private float Range;
         private Obj_AI_Hero Player = ObjectManager.Player, newTarget = null;
         public Obj_AI_Hero Target = null;
 
-        public M_TargetSelector(Menu menu, float range)
+        public M_TargetSelector(Menu MainMenu)
         {
-            Config = menu;
+            Config = MainMenu;
             var TSMenu = new Menu("Target Selector", "TS");
             {
-                TSMenu.AddItem(new MenuItem("TS_Mode", "Mode").SetValue(new StringList(new[] { "Slider Priority", "Most AD", "Most AP", "Less Attack", "Less Cast", "Low Hp", "Closest", "Near Mouse" })));
+                TSMenu.AddItem(new MenuItem("TS_Mode", "Mode").SetValue(new StringList(new[] { "Priority", "Most AD", "Most AP", "Less Attack", "Less Cast", "Low Hp", "Closest", "Near Mouse" })));
+                TSMenu.AddItem(new MenuItem("TS_Range", "Get Target In").SetValue(new Slider(1200, 800, 1600)));
                 TSMenu.AddItem(new MenuItem("TS_Focus", "Forced Target").SetValue(true));
                 TSMenu.AddItem(new MenuItem("TS_Draw", "Draw Target").SetValue(true));
                 TSMenu.AddItem(new MenuItem("TS_Print", "Print Chat New Target").SetValue(true));
                 TSMenu.AddItem(new MenuItem("TS_AutoPrior", "Auto Arrange Priorities").SetValue(true)).ValueChanged += PriorityChanger;
                 foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => i.IsEnemy))
                 {
-                    TSMenu.AddItem(new MenuItem("TS_Prior" + Obj.ChampionName, Obj.ChampionName).SetValue(new Slider(TSMenu.Item("TS_AutoPrior").GetValue<bool>() ? GetPriority(Obj.ChampionName) : 1, 1, 5)));
+                    TSMenu.AddItem(new MenuItem("TS_Prior" + Obj.ChampionName, Obj.ChampionName).SetValue(new Slider(TSMenu.Item("TS_AutoPrior").GetValue<bool>() ? (int)GetPriority(Obj.ChampionName) : 1, 1, 5)));
                 }
                 Config.AddSubMenu(TSMenu);
             }
-            Range = range;
             Game.OnGameUpdate += OnGameUpdate;
             Drawing.OnDraw += OnDraw;
             Game.OnWndProc += OnWndProc;
@@ -63,17 +62,35 @@ namespace MasterSeries.Common
         private void PriorityChanger(object sender, OnValueChangeEventArgs e)
         {
             if (!e.GetNewValue<bool>()) return;
-            foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => i.IsEnemy)) Config.SubMenu("TS").Item("TS_Prior" + Obj.ChampionName).SetValue(new Slider(GetPriority(Obj.ChampionName), 1, 5));
+            foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => i.IsEnemy)) Config.SubMenu("TS").Item("TS_Prior" + Obj.ChampionName).SetValue(new Slider((int)GetPriority(Obj.ChampionName), 1, 5));
         }
 
-        private int GetPriority(string ChampName)
+        private double GetPriority(string ChampName, bool IsMenu = true)
         {
-            if (AP.Contains(ChampName)) return 4;
-            if (Support.Contains(ChampName)) return 3;
-            if (Tank.Contains(ChampName)) return 1;
-            if (AD.Contains(ChampName)) return 5;
-            if (Bruiser.Contains(ChampName)) return 2;
-            return 1;
+            if (IsMenu)
+            {
+                if (AP.Contains(ChampName)) return 4;
+                if (Support.Contains(ChampName)) return 3;
+                if (Tank.Contains(ChampName)) return 1;
+                if (AD.Contains(ChampName)) return 5;
+                if (Bruiser.Contains(ChampName)) return 2;
+                return 1;
+            }
+            else
+            {
+                switch (Config.SubMenu("TS").Item("TS_Prior" + ChampName).GetValue<Slider>().Value)
+                {
+                    case 2:
+                        return 1.5f;
+                    case 3:
+                        return 1.75f;
+                    case 4:
+                        return 2;
+                    case 5:
+                        return 2.5f;
+                }
+                return 1;
+            }
         }
 
         private void OnGameUpdate(EventArgs args)
@@ -93,7 +110,7 @@ namespace MasterSeries.Common
             if (args.WParam != 1 || MenuGUI.IsChatOpen) return;
             newTarget = null;
             if (Player.IsDead) return;
-            foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => Program.IsValid(i, i.BoundingRadius, true, Game.CursorPos)).OrderBy(i => i.Position.Distance(Game.CursorPos)))
+            foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => i.IsValidTarget(i.BoundingRadius, true, Game.CursorPos)).OrderBy(i => i.Position.Distance(Game.CursorPos)))
             {
                 newTarget = Obj;
                 if (Config.SubMenu("TS").Item("TS_Print").GetValue<bool>()) Game.PrintChat("<font color = \'{0}'>-></font> New Target: <font color = \'{1}'>{2}</font>", HtmlColor.BlueViolet, HtmlColor.Gold, Obj.ChampionName);
@@ -102,75 +119,28 @@ namespace MasterSeries.Common
 
         private Obj_AI_Hero GetTarget()
         {
-            if (Program.IsValid(newTarget, Range)) return newTarget;
-            Obj_AI_Hero bestTarget = null;
-            if (Config.SubMenu("TS").Item("TS_Mode").GetValue<StringList>().SelectedIndex == 0)
+            if (newTarget.IsValidTarget(Config.SubMenu("TS").Item("TS_Range").GetValue<Slider>().Value)) return newTarget;
+            var Obj = ObjectManager.Get<Obj_AI_Hero>().Where(i => i.IsValidTarget(Config.SubMenu("TS").Item("TS_Range").GetValue<Slider>().Value));
+            switch (Config.SubMenu("TS").Item("TS_Mode").GetValue<StringList>().SelectedIndex)
             {
-                float bestRatio = 0;
-                foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => Program.IsValid(i, Range)))
-                {
-                    float Prior = 1;
-                    switch (Config.SubMenu("TS").Item("TS_Prior" + Obj.ChampionName).GetValue<Slider>().Value)
-                    {
-                        case 2:
-                            Prior = 1.5f;
-                            break;
-                        case 3:
-                            Prior = 1.75f;
-                            break;
-                        case 4:
-                            Prior = 2;
-                            break;
-                        case 5:
-                            Prior = 2.5f;
-                            break;
-                    }
-                    var Ratio = (float)Player.CalcDamage(Obj, Damage.DamageType.Physical, 100) / (1 + Obj.Health) * Prior;
-                    if (Ratio > bestRatio)
-                    {
-                        bestRatio = Ratio;
-                        bestTarget = Obj;
-                    }
-                }
+                case 0:
+                    return Obj.OrderByDescending(i => Player.CalcDamage(i, Damage.DamageType.True, 100) / (1 + i.Health) * GetPriority(i.ChampionName, false)).FirstOrDefault();
+                case 1:
+                    return Obj.OrderByDescending(i => i.BaseAttackDamage + i.FlatPhysicalDamageMod).FirstOrDefault();
+                case 2:
+                    return Obj.OrderByDescending(i => i.BaseAbilityDamage + i.FlatMagicDamageMod).FirstOrDefault();
+                case 3:
+                    return Obj.OrderByDescending(i => i.Health - Player.CalcDamage(i, Damage.DamageType.Physical, i.Health)).FirstOrDefault();
+                case 4:
+                    return Obj.OrderByDescending(i => i.Health - Player.CalcDamage(i, Damage.DamageType.Magical, i.Health)).FirstOrDefault();
+                case 5:
+                    return Obj.OrderBy(i => i.Health).FirstOrDefault();
+                case 6:
+                    return Obj.OrderBy(i => i.Distance3D(Player)).FirstOrDefault();
+                case 7:
+                    return Obj.FirstOrDefault(i => i.Position.Distance(Game.CursorPos) < 150);
             }
-            else
-            {
-                foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => Program.IsValid(i, Range)))
-                {
-                    if (bestTarget == null)
-                    {
-                        bestTarget = Obj;
-                    }
-                    else
-                    {
-                        switch (Config.SubMenu("TS").Item("TS_Mode").GetValue<StringList>().SelectedIndex)
-                        {
-                            case 1:
-                                if (Obj.BaseAttackDamage + Obj.FlatPhysicalDamageMod < bestTarget.BaseAttackDamage + bestTarget.FlatPhysicalDamageMod) bestTarget = Obj;
-                                break;
-                            case 2:
-                                if (Obj.FlatMagicDamageMod < bestTarget.FlatMagicDamageMod) bestTarget = Obj;
-                                break;
-                            case 3:
-                                if (Obj.Health - Player.CalcDamage(Obj, Damage.DamageType.Physical, Obj.Health) < bestTarget.Health - Player.CalcDamage(bestTarget, Damage.DamageType.Physical, bestTarget.Health)) bestTarget = Obj;
-                                break;
-                            case 4:
-                                if (Obj.Health - Player.CalcDamage(Obj, Damage.DamageType.Magical, Obj.Health) < bestTarget.Health - Player.CalcDamage(bestTarget, Damage.DamageType.Magical, bestTarget.Health)) bestTarget = Obj;
-                                break;
-                            case 5:
-                                if (Obj.Health < bestTarget.Health) bestTarget = Obj;
-                                break;
-                            case 6:
-                                if (Player.Distance3D(Obj) < Player.Distance3D(bestTarget)) bestTarget = Obj;
-                                break;
-                            case 7:
-                                if (Obj.Position.Distance(Game.CursorPos) + 50 < bestTarget.Position.Distance(Game.CursorPos)) bestTarget = Obj;
-                                break;
-                        }
-                    }
-                }
-            }
-            return bestTarget;
+            return null;
         }
     }
 }

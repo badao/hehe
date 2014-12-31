@@ -74,6 +74,7 @@
     <Compile Include="Champions\Garen.cs" />
     <Compile Include="Champions\JarvanIV.cs" />
     <Compile Include="Champions\Jax.cs" />
+    <Compile Include="Champions\Kennen.cs" />
     <Compile Include="Champions\LeeSin.cs" />
     <Compile Include="Champions\Lucian.cs" />
     <Compile Include="Champions\Maokai.cs" />

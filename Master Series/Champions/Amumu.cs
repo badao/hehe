@@ -18,10 +18,8 @@ namespace MasterSeries.Champions
             W = new Spell(SpellSlot.W, 300);
             E = new Spell(SpellSlot.E, 350);
             R = new Spell(SpellSlot.R, 550);
-            Q.SetSkillshot(-0.5f, 80, 2000, true, SkillshotType.SkillshotLine);
-            W.SetSkillshot(-0.3864f, 0, 0, false, SkillshotType.SkillshotCircle);
-            E.SetSkillshot(-0.5f, 0, 0, false, SkillshotType.SkillshotCircle);
-            R.SetSkillshot(-0.5f, 0, 20, false, SkillshotType.SkillshotCircle);
+            Q.SetSkillshot(0.5f, 80, 2000, true, SkillshotType.SkillshotLine);
+            R.SetSkillshot(0.5f, 550, float.MaxValue, false, SkillshotType.SkillshotCircle);
 
             var ChampMenu = new Menu("Plugin", Name + "Plugin");
             {
@@ -68,6 +66,7 @@ namespace MasterSeries.Champions
                 var MiscMenu = new Menu("Misc", "Misc");
                 {
                     ItemBool(MiscMenu, "QAntiGap", "Use Q To Anti Gap Closer");
+                    ItemBool(MiscMenu, "QInterrupt", "Use Q To Interrupt");
                     ItemBool(MiscMenu, "SmiteCol", "Auto Smite Collision");
                     ItemSlider(MiscMenu, "CustomSkin", "Skin Changer", 6, 0, 7).ValueChanged += SkinChanger;
                     ChampMenu.AddSubMenu(MiscMenu);
@@ -85,6 +84,7 @@ namespace MasterSeries.Champions
             Game.OnGameUpdate += OnGameUpdate;
             Drawing.OnDraw += OnDraw;
             AntiGapcloser.OnEnemyGapcloser += OnEnemyGapcloser;
+            Interrupter.OnPossibleToInterrupt += OnPossibleToInterrupt;
         }
 
         private void OnGameUpdate(EventArgs args)
@@ -94,7 +94,7 @@ namespace MasterSeries.Champions
             {
                 NormalCombo(Orbwalk.CurrentMode.ToString());
             }
-            else if (Orbwalk.CurrentMode == Orbwalk.Mode.LaneClear || Orbwalk.CurrentMode == Orbwalk.Mode.LaneFreeze) LaneJungClear();
+            else if (Orbwalk.CurrentMode == Orbwalk.Mode.LaneClear) LaneJungClear();
         }
 
         private void OnDraw(EventArgs args)
@@ -108,8 +108,24 @@ namespace MasterSeries.Champions
 
         private void OnEnemyGapcloser(ActiveGapcloser gapcloser)
         {
-            if (!ItemBool("Misc", "QAntiGap") || Player.IsDead || !Q.IsReady()) return;
-            if (IsValid(gapcloser.Sender, Q.Range) && Player.Distance3D(gapcloser.Sender) < 400) Q.Cast(gapcloser.Sender.Position, PacketCast());
+            if (!ItemBool("Misc", "QAntiGap") || Player.IsDead || !Q.CanCast(gapcloser.Sender) || Player.Distance3D(gapcloser.Sender) > 400) return;
+            var QPred = Q.GetPrediction(gapcloser.Sender);
+            if (ItemBool("Misc", "SmiteCol") && QPred.CollisionObjects.Count == 1 && Q.MinHitChance == HitChance.High && CastSmite(QPred.CollisionObjects.First()))
+            {
+                Q.Cast(QPred.CastPosition, PacketCast());
+            }
+            else Q.Cast(gapcloser.Sender.Position, PacketCast());
+        }
+
+        private void OnPossibleToInterrupt(Obj_AI_Base unit, InterruptableSpell spell)
+        {
+            if (!ItemBool("Misc", "QInterrupt") || !Q.CanCast(unit)) return;
+            var QPred = Q.GetPrediction(unit);
+            if (ItemBool("Misc", "SmiteCol") && QPred.CollisionObjects.Count == 1 && Q.MinHitChance == HitChance.High && CastSmite(QPred.CollisionObjects.First()))
+            {
+                Q.Cast(QPred.CastPosition, PacketCast());
+            }
+            else Q.CastIfHitchanceEquals(unit, HitChance.High, PacketCast());
         }
 
         private void NormalCombo(string Mode)
@@ -118,18 +134,27 @@ namespace MasterSeries.Champions
             if (targetObj == null) return;
             if (Mode == "Combo" && ItemBool(Mode, "Q") && Q.IsReady())
             {
-                var nearObj = ObjectManager.Get<Obj_AI_Base>().Where(i => IsValid(i, Q.Range) && !(i is Obj_AI_Turret) && i.CountEnemysInRange((int)R.Range - 40) >= ItemSlider(Mode, "RAbove") && !CanKill(i, Q)).OrderBy(i => i.CountEnemysInRange((int)R.Range));
+                var nearObj = ObjectManager.Get<Obj_AI_Base>().Where(i => i.IsValidTarget(Q.Range) && !(i is Obj_AI_Turret) && i.CountEnemysInRange((int)R.Range - 20) >= ItemSlider(Mode, "RAbove")).OrderBy(i => i.CountEnemysInRange((int)R.Range));
                 if (ItemBool(Mode, "R") && R.IsReady() && ItemList(Mode, "RMode") == 1 && nearObj.Count() > 0)
                 {
-                    foreach (var Obj in nearObj) Q.CastIfHitchanceEquals(Obj, HitChance.VeryHigh, PacketCast());
-                }
-                else if (Q.InRange(targetObj.Position) && (CanKill(targetObj, Q) || !Orbwalk.InAutoAttackRange(targetObj)))
-                {
-                    if (ItemBool("Misc", "SmiteCol"))
+                    foreach (var Obj in nearObj)
                     {
-                        if (!SmiteCollision(targetObj, Q)) Q.CastIfHitchanceEquals(targetObj, HitChance.VeryHigh, PacketCast());
+                        var QPred = Q.GetPrediction(Obj);
+                        if (ItemBool("Misc", "SmiteCol") && QPred.CollisionObjects.Count == 1 && Q.MinHitChance == HitChance.High && CastSmite(QPred.CollisionObjects.First()))
+                        {
+                            Q.Cast(QPred.CastPosition, PacketCast());
+                        }
+                        else Q.CastIfHitchanceEquals(Obj, HitChance.High, PacketCast());
                     }
-                    else Q.CastIfHitchanceEquals(targetObj, HitChance.VeryHigh, PacketCast());
+                }
+                else if (Q.InRange(targetObj) && (CanKill(targetObj, Q) || !Orbwalk.InAutoAttackRange(targetObj)))
+                {
+                    var QPred = Q.GetPrediction(targetObj);
+                    if (ItemBool("Misc", "SmiteCol") && QPred.CollisionObjects.Count == 1 && Q.MinHitChance == HitChance.High && CastSmite(QPred.CollisionObjects.First()))
+                    {
+                        Q.Cast(QPred.CastPosition, PacketCast());
+                    }
+                    else Q.CastIfHitchanceEquals(targetObj, HitChance.High, PacketCast());
                 }
             }
             if (ItemBool(Mode, "W") && W.IsReady())
@@ -144,16 +169,16 @@ namespace MasterSeries.Champions
                 }
                 else if (Player.HasBuff("AuraofDespair")) W.Cast(PacketCast());
             }
-            if (ItemBool(Mode, "E") && E.IsReady() && E.InRange(targetObj.Position)) E.Cast(PacketCast());
+            if (ItemBool(Mode, "E") && E.CanCast(targetObj)) E.Cast(PacketCast());
             if (Mode == "Combo" && ItemBool(Mode, "R") && R.IsReady())
             {
                 switch (ItemList(Mode, "RMode"))
                 {
                     case 0:
-                        if (R.InRange(targetObj.Position) && CanKill(targetObj, R)) R.Cast(PacketCast());
+                        if (R.InRange(targetObj) && CanKill(targetObj, R)) R.Cast(PacketCast());
                         break;
                     case 1:
-                        var Obj = ObjectManager.Get<Obj_AI_Hero>().Where(i => IsValid(i, R.Range));
+                        var Obj = ObjectManager.Get<Obj_AI_Hero>().Where(i => i.IsValidTarget(R.Range));
                         if (Obj.Count() > 0 && (Obj.Count() >= ItemSlider(Mode, "RAbove") || (Obj.Count() >= 2 && Obj.Count(i => CanKill(i, R)) >= 1))) R.Cast(PacketCast());
                         break;
                 }
@@ -164,7 +189,7 @@ namespace MasterSeries.Champions
 
         private void LaneJungClear()
         {
-            var minionObj = ObjectManager.Get<Obj_AI_Minion>().Where(i => IsValid(i, Q.Range)).OrderBy(i => i.Health);
+            var minionObj = MinionManager.GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
             if (minionObj.Count() == 0 && ItemBool("Clear", "W") && W.IsReady() && Player.HasBuff("AuraofDespair")) W.Cast(PacketCast());
             foreach (var Obj in minionObj)
             {
@@ -175,7 +200,7 @@ namespace MasterSeries.Champions
                         (ItemBool("SmiteMob", "Krug") && Obj.Name.StartsWith("SRU_Krug")) || (ItemBool("SmiteMob", "Gromp") && Obj.Name.StartsWith("SRU_Gromp")) ||
                         (ItemBool("SmiteMob", "Raptor") && Obj.Name.StartsWith("SRU_Razorbeak")) || (ItemBool("SmiteMob", "Wolf") && Obj.Name.StartsWith("SRU_Murkwolf"))))) CastSmite(Obj);
                 }
-                if (ItemBool("Clear", "E") && E.IsReady() && E.InRange(Obj.Position)) E.Cast(PacketCast());
+                if (ItemBool("Clear", "E") && E.CanCast(Obj)) E.Cast(PacketCast());
                 if (ItemBool("Clear", "W") && W.IsReady())
                 {
                     if (Player.ManaPercentage() >= ItemSlider("Clear", "WAbove"))
@@ -188,7 +213,7 @@ namespace MasterSeries.Champions
                     }
                     else if (Player.HasBuff("AuraofDespair")) W.Cast(PacketCast());
                 }
-                if (ItemBool("Clear", "Q") && Q.IsReady() && (!Orbwalk.InAutoAttackRange(Obj) || CanKill(Obj, Q))) Q.CastIfHitchanceEquals(Obj, HitChance.Medium, PacketCast());
+                if (ItemBool("Clear", "Q") && Q.IsReady() && (CanKill(Obj, Q) || !Orbwalk.InAutoAttackRange(Obj))) Q.CastIfHitchanceEquals(Obj, HitChance.Medium, PacketCast());
             }
         }
     }

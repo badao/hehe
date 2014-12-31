@@ -16,10 +16,9 @@ namespace MasterSeries.Champions
         {
             Q = new Spell(SpellSlot.Q, 400);
             W = new Spell(SpellSlot.W, 1250);
-            E = new Spell(SpellSlot.E, 1600);
             R = new Spell(SpellSlot.R, 700);
-            Q.SetTargetted(-0.5f, 20);
-            R.SetTargetted(-0.5f, 0);
+            Q.SetTargetted(0.5f, float.MaxValue);
+            R.SetTargetted(0.5f, float.MaxValue);
 
             var ChampMenu = new Menu("Plugin", Name + "Plugin");
             {
@@ -30,7 +29,7 @@ namespace MasterSeries.Champions
                     ItemList(ComboMenu, "WMode", "-> Mode", new[] { "Always", "# Ally" });
                     ItemSlider(ComboMenu, "WAbove", "--> If Ally Above", 2, 1, 4);
                     ItemBool(ComboMenu, "R", "Use R");
-                    ItemBool(ComboMenu, "Smite", "Use Challenging Smite");
+                    ItemBool(ComboMenu, "Smite", "Use Red Smite");
                     ItemBool(ComboMenu, "Item", "Use Item");
                     ItemBool(ComboMenu, "Ignite", "Auto Ignite If Killable");
                     ChampMenu.AddSubMenu(ComboMenu);
@@ -91,7 +90,7 @@ namespace MasterSeries.Champions
             {
                 NormalCombo(Orbwalk.CurrentMode.ToString());
             }
-            else if (Orbwalk.CurrentMode == Orbwalk.Mode.LaneClear || Orbwalk.CurrentMode == Orbwalk.Mode.LaneFreeze)
+            else if (Orbwalk.CurrentMode == Orbwalk.Mode.LaneClear)
             {
                 LaneJungClear();
             }
@@ -110,17 +109,17 @@ namespace MasterSeries.Champions
         private void NormalCombo(string Mode)
         {
             if (targetObj == null) return;
-            if (ItemBool(Mode, "Q") && Q.IsReady() && Q.InRange(targetObj.Position)) Q.CastOnUnit(targetObj, PacketCast());
-            if (ItemBool(Mode, "W") && W.IsReady() && ((Mode == "Harass" && Orbwalk.InAutoAttackRange(targetObj)) || (Mode == "Combo" && ((ItemList(Mode, "WMode") == 0 && Orbwalk.InAutoAttackRange(targetObj)) || (ItemList(Mode, "WMode") == 1 && ObjectManager.Get<Obj_AI_Hero>().Count(i => IsValid(i, W.Range, false)) >= ItemSlider(Mode, "WAbove")))))) W.Cast(PacketCast());
+            if (ItemBool(Mode, "Q") && Q.CanCast(targetObj)) Q.CastOnUnit(targetObj, PacketCast());
+            if (ItemBool(Mode, "W") && W.IsReady() && ((Mode == "Harass" && Orbwalk.InAutoAttackRange(targetObj)) || (Mode == "Combo" && ((ItemList(Mode, "WMode") == 0 && Orbwalk.InAutoAttackRange(targetObj)) || (ItemList(Mode, "WMode") == 1 && ObjectManager.Get<Obj_AI_Hero>().Count(i => i.IsValidTarget(W.Range, false) && i.IsAlly && !i.IsMe) >= ItemSlider(Mode, "WAbove")))))) W.Cast(PacketCast());
             if (Mode == "Combo" && ItemBool(Mode, "Item")) UseItem(targetObj);
             if (Mode == "Combo" && ItemBool(Mode, "Smite") && SmiteReady() && Player.GetSpellSlot("s5_summonersmiteduel") != SpellSlot.Unknown) CastSmite(targetObj, false);
-            if (Mode == "Combo" && ItemBool(Mode, "R") && ItemBool("Ultimate", targetObj.ChampionName) && R.IsReady() && R.InRange(targetObj.Position)) R.CastOnUnit(targetObj, PacketCast());
+            if (Mode == "Combo" && ItemBool(Mode, "R") && ItemBool("Ultimate", targetObj.ChampionName) && R.CanCast(targetObj)) R.CastOnUnit(targetObj, PacketCast());
             if (Mode == "Combo" && ItemBool(Mode, "Ignite") && IgniteReady()) CastIgnite(targetObj);
         }
 
         private void LaneJungClear()
         {
-            foreach (var Obj in ObjectManager.Get<Obj_AI_Minion>().Where(i => IsValid(i, R.Range)).OrderBy(i => i.Health))
+            foreach (var Obj in MinionManager.GetMinions(R.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth))
             {
                 if (SmiteReady() && Obj.Team == GameObjectTeam.Neutral)
                 {
@@ -129,7 +128,7 @@ namespace MasterSeries.Champions
                         (ItemBool("SmiteMob", "Krug") && Obj.Name.StartsWith("SRU_Krug")) || (ItemBool("SmiteMob", "Gromp") && Obj.Name.StartsWith("SRU_Gromp")) ||
                         (ItemBool("SmiteMob", "Raptor") && Obj.Name.StartsWith("SRU_Razorbeak")) || (ItemBool("SmiteMob", "Wolf") && Obj.Name.StartsWith("SRU_Murkwolf"))))) CastSmite(Obj);
                 }
-                if (ItemBool("Clear", "Q") && Q.IsReady() && Q.InRange(Obj.Position) && (CanKill(Obj, Q) || Obj.MaxHealth >= 1200 || Obj.HealthPercentage() > 50)) Q.CastOnUnit(Obj, PacketCast());
+                if (ItemBool("Clear", "Q") && Q.CanCast(Obj) && (CanKill(Obj, Q) || Obj.MaxHealth >= 1200 || Obj.HealthPercentage() > 50)) Q.CastOnUnit(Obj, PacketCast());
                 if (ItemBool("Clear", "W") && W.IsReady() && Orbwalk.InAutoAttackRange(Obj)) W.Cast(PacketCast());
             }
         }
@@ -137,21 +136,21 @@ namespace MasterSeries.Champions
         private void LastHit()
         {
             if (!ItemBool("Misc", "QLastHit") || !Q.IsReady()) return;
-            foreach (var Obj in ObjectManager.Get<Obj_AI_Minion>().Where(i => IsValid(i, Q.Range) && CanKill(i, Q)).OrderBy(i => i.Health).OrderByDescending(i => i.Distance3D(Player))) Q.CastOnUnit(Obj, PacketCast());
+            foreach (var Obj in MinionManager.GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly).Where(i => CanKill(i, Q)).OrderByDescending(i => i.Distance3D(Player))) Q.CastOnUnit(Obj, PacketCast());
         }
 
         private void KillSteal()
         {
             if (!Q.IsReady()) return;
-            foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => IsValid(i, Q.Range) && CanKill(i, Q) && i != targetObj).OrderBy(i => i.Health).OrderBy(i => i.Distance3D(Player))) Q.CastOnUnit(Obj, PacketCast());
+            foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => i.IsValidTarget(Q.Range) && CanKill(i, Q) && i != targetObj).OrderBy(i => i.Health).OrderBy(i => i.Distance3D(Player))) Q.CastOnUnit(Obj, PacketCast());
         }
 
         private void AutoRUnderTower()
         {
             if (Player.UnderTurret() || !R.IsReady()) return;
-            foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => IsValid(i, R.Range)).OrderBy(i => i.Distance3D(Player)))
+            foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => i.IsValidTarget(R.Range)).OrderBy(i => i.Distance3D(Player)))
             {
-                var TowerObj = ObjectManager.Get<Obj_AI_Turret>().FirstOrDefault(i => IsValid(i, 950, false));
+                var TowerObj = ObjectManager.Get<Obj_AI_Turret>().FirstOrDefault(i => i.IsValidTarget(950, false) && i.IsAlly);
                 if (TowerObj != null && Obj.Distance3D(TowerObj) <= 950) R.CastOnUnit(Obj, PacketCast());
             }
         }

@@ -14,13 +14,10 @@ namespace MasterSeries.Champions
     {
         public Rammus()
         {
-            Q = new Spell(SpellSlot.Q, 300);
+            Q = new Spell(SpellSlot.Q, 210);
             W = new Spell(SpellSlot.W, 300);
             E = new Spell(SpellSlot.E, 325);
             R = new Spell(SpellSlot.R, 375);
-            Q.SetSkillshot(-0.5f, 0, 0, false, SkillshotType.SkillshotCircle);
-            E.SetTargetted(-0.5f, 0);
-            R.SetSkillshot(-0.5f, 0, 0, false, SkillshotType.SkillshotCircle);
 
             var ChampMenu = new Menu("Plugin", Name + "Plugin");
             {
@@ -29,7 +26,7 @@ namespace MasterSeries.Champions
                     ItemBool(ComboMenu, "Q", "Use Q");
                     ItemBool(ComboMenu, "W", "Use W");
                     ItemBool(ComboMenu, "E", "Use E");
-                    ItemList(ComboMenu, "EMode", "-> Mode", new[] { "Always", "W Ready" });
+                    ItemList(ComboMenu, "EMode", "-> Mode", new[] { "Always", "Have W" });
                     ItemBool(ComboMenu, "R", "Use R");
                     ItemList(ComboMenu, "RMode", "-> Mode", new[] { "Always", "# Enemy" });
                     ItemSlider(ComboMenu, "RCount", "--> If Enemy Above", 2, 1, 4);
@@ -42,7 +39,7 @@ namespace MasterSeries.Champions
                     ItemBool(HarassMenu, "Q", "Use Q");
                     ItemBool(HarassMenu, "W", "Use W");
                     ItemBool(HarassMenu, "E", "Use E");
-                    ItemList(HarassMenu, "EMode", "-> Mode", new[] { "Always", "W Ready" });
+                    ItemList(HarassMenu, "EMode", "-> Mode", new[] { "Always", "Have W" });
                     ChampMenu.AddSubMenu(HarassMenu);
                 }
                 var ClearMenu = new Menu("Lane/Jungle Clear", "Clear");
@@ -62,7 +59,7 @@ namespace MasterSeries.Champions
                     ItemBool(ClearMenu, "Q", "Use Q");
                     ItemBool(ClearMenu, "W", "Use W");
                     ItemBool(ClearMenu, "E", "Use E");
-                    ItemList(ClearMenu, "EMode", "-> Mode", new[] { "Always", "W Ready" });
+                    ItemList(ClearMenu, "EMode", "-> Mode", new[] { "Always", "Have W" });
                     ChampMenu.AddSubMenu(ClearMenu);
                 }
                 var MiscMenu = new Menu("Misc", "Misc");
@@ -85,7 +82,7 @@ namespace MasterSeries.Champions
             Drawing.OnDraw += OnDraw;
             AntiGapcloser.OnEnemyGapcloser += OnEnemyGapcloser;
             Interrupter.OnPossibleToInterrupt += OnPossibleToInterrupt;
-            Obj_AI_Base.OnProcessSpellCast += OnProcessSpellCast;
+            Obj_AI_Base.OnProcessSpellCast += TrySurviveSpellCast;
         }
 
         private void OnGameUpdate(EventArgs args)
@@ -95,11 +92,12 @@ namespace MasterSeries.Champions
             {
                 NormalCombo(Orbwalk.CurrentMode.ToString());
             }
-            else if (Orbwalk.CurrentMode == Orbwalk.Mode.LaneClear || Orbwalk.CurrentMode == Orbwalk.Mode.LaneFreeze)
+            else if (Orbwalk.CurrentMode == Orbwalk.Mode.LaneClear)
             {
                 LaneJungClear();
             }
             else if (Orbwalk.CurrentMode == Orbwalk.Mode.Flee && Q.IsReady() && !Player.HasBuff("PowerBall")) Q.Cast(PacketCast());
+            if (ItemBool("Misc", "WSurvive") && W.IsReady()) TrySurvive(W.Slot);
         }
 
         private void OnDraw(EventArgs args)
@@ -112,46 +110,24 @@ namespace MasterSeries.Champions
         private void OnEnemyGapcloser(ActiveGapcloser gapcloser)
         {
             if (!ItemBool("Misc", "QAntiGap") || Player.IsDead || !Q.IsReady()) return;
-            if (IsValid(gapcloser.Sender, Orbwalk.GetAutoAttackRange() + 100) && !Player.HasBuff("PowerBall")) Q.Cast(PacketCast());
+            if (Player.Distance3D(gapcloser.Sender) <= Orbwalk.GetAutoAttackRange(Player, gapcloser.Sender) + 30 && !Player.HasBuff("PowerBall")) Q.Cast(PacketCast());
         }
 
         private void OnPossibleToInterrupt(Obj_AI_Base unit, InterruptableSpell spell)
         {
-            if (!ItemBool("Misc", "EInterrupt") || Player.IsDead || !E.IsReady()) return;
-            if (IsValid(unit, E.Range)) E.CastOnUnit(unit, PacketCast());
-        }
-
-        private void OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
-        {
-            if (Player.IsDead) return;
-            if (sender.IsEnemy && ItemBool("Misc", "WSurvive") && W.IsReady())
-            {
-                if (args.Target.IsMe && (Orbwalk.IsAutoAttack(args.SData.Name) && Player.Health <= sender.GetAutoAttackDamage(Player, true)))
-                {
-                    W.Cast(PacketCast());
-                }
-                else if ((args.Target.IsMe || (Player.Position.Distance(args.Start) <= args.SData.CastRange[0] && Player.Position.Distance(args.End) <= Orbwalk.GetAutoAttackRange())) && Damage.Spells.ContainsKey((sender as Obj_AI_Hero).ChampionName))
-                {
-                    for (var i = 3; i > -1; i--)
-                    {
-                        if (Damage.Spells[(sender as Obj_AI_Hero).ChampionName].FirstOrDefault(a => a.Slot == (sender as Obj_AI_Hero).GetSpellSlot(args.SData.Name, false) && a.Stage == i) != null)
-                        {
-                            if (Player.Health <= (sender as Obj_AI_Hero).GetSpellDamage(Player, (sender as Obj_AI_Hero).GetSpellSlot(args.SData.Name, false), i)) W.Cast(PacketCast());
-                        }
-                    }
-                }
-            }
+            if (!ItemBool("Misc", "EInterrupt") || Player.IsDead || !E.CanCast(unit) || !Player.HasBuff("PowerBall")) return;
+            E.CastOnUnit(unit, PacketCast());
         }
 
         private void NormalCombo(string Mode)
         {
             if (targetObj == null) return;
-            if (ItemBool(Mode, "Q") && Q.IsReady() && Player.Distance3D(targetObj) <= ((Mode == "Combo") ? 800 : Orbwalk.GetAutoAttackRange() + 50) && !Player.HasBuff("PowerBall"))
+            if (ItemBool(Mode, "Q") && Q.IsReady() && Player.Distance3D(targetObj) <= ((Mode == "Combo") ? 800 : Orbwalk.GetAutoAttackRange(Player, targetObj) + 30) && !Player.HasBuff("PowerBall"))
             {
-                if ((ItemBool(Mode, "E") && E.IsReady() && !E.InRange(targetObj.Position)) || !Player.HasBuff("DefensiveBallCurl")) Q.Cast(PacketCast());
+                if ((ItemBool(Mode, "E") && E.IsReady() && !E.InRange(targetObj)) || !Player.HasBuff("DefensiveBallCurl")) Q.Cast(PacketCast());
             }
             if (ItemBool(Mode, "W") && W.IsReady() && Orbwalk.InAutoAttackRange(targetObj) && !Player.HasBuff("PowerBall")) W.Cast(PacketCast());
-            if (ItemBool(Mode, "E") && E.IsReady() && E.InRange(targetObj.Position) && !Player.HasBuff("PowerBall"))
+            if (ItemBool(Mode, "E") && E.CanCast(targetObj) && !Player.HasBuff("PowerBall"))
             {
                 switch (ItemList(Mode, "EMode"))
                 {
@@ -159,7 +135,7 @@ namespace MasterSeries.Champions
                         E.CastOnUnit(targetObj, PacketCast());
                         break;
                     case 1:
-                        if (Player.HasBuff("DefensiveBallCurl")) E.CastOnUnit(targetObj, PacketCast());
+                        if (!ItemBool(Mode, "W") || (ItemBool(Mode, "W") && Player.HasBuff("DefensiveBallCurl"))) E.CastOnUnit(targetObj, PacketCast());
                         break;
                 }
             }
@@ -168,7 +144,7 @@ namespace MasterSeries.Champions
                 switch (ItemList(Mode, "RMode"))
                 {
                     case 0:
-                        if (R.InRange(targetObj.Position)) R.Cast(PacketCast());
+                        if (R.InRange(targetObj)) R.Cast(PacketCast());
                         break;
                     case 1:
                         if (Player.CountEnemysInRange((int)R.Range) >= ItemSlider(Mode, "RCount")) R.Cast(PacketCast());
@@ -181,7 +157,7 @@ namespace MasterSeries.Champions
 
         private void LaneJungClear()
         {
-            foreach (var Obj in ObjectManager.Get<Obj_AI_Minion>().Where(i => IsValid(i, 800)).OrderBy(i => i.Health))
+            foreach (var Obj in MinionManager.GetMinions(800, MinionTypes.All, MinionTeam.NotAlly))
             {
                 if (SmiteReady() && Obj.Team == GameObjectTeam.Neutral)
                 {
@@ -192,10 +168,10 @@ namespace MasterSeries.Champions
                 }
                 if (ItemBool("Clear", "Q") && Q.IsReady() && !Player.HasBuff("PowerBall"))
                 {
-                    if ((ItemBool("Clear", "E") && E.IsReady() && !E.InRange(Obj.Position)) || !Player.HasBuff("DefensiveBallCurl")) Q.Cast(PacketCast());
+                    if ((ItemBool("Clear", "E") && E.IsReady() && !E.InRange(Obj)) || !Player.HasBuff("DefensiveBallCurl")) Q.Cast(PacketCast());
                 }
                 if (ItemBool("Clear", "W") && W.IsReady() && Orbwalk.InAutoAttackRange(Obj) && !Player.HasBuff("PowerBall")) W.Cast(PacketCast());
-                if (ItemBool("Clear", "E") && E.IsReady() && E.InRange(Obj.Position) && !Player.HasBuff("PowerBall") && Obj.Team == GameObjectTeam.Neutral)
+                if (ItemBool("Clear", "E") && E.CanCast(Obj) && !Player.HasBuff("PowerBall") && Obj.Team == GameObjectTeam.Neutral)
                 {
                     switch (ItemList("Clear", "EMode"))
                     {
@@ -203,7 +179,7 @@ namespace MasterSeries.Champions
                             E.CastOnUnit(Obj, PacketCast());
                             break;
                         case 1:
-                            if (Player.HasBuff("DefensiveBallCurl")) E.CastOnUnit(Obj, PacketCast());
+                            if (!ItemBool("Clear", "W") || (ItemBool("Clear", "W") && Player.HasBuff("DefensiveBallCurl"))) E.CastOnUnit(Obj, PacketCast());
                             break;
                     }
                 }

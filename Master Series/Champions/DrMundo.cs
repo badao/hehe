@@ -14,12 +14,11 @@ namespace MasterSeries.Champions
     {
         public DrMundo()
         {
-            Q = new Spell(SpellSlot.Q, 975);
-            W = new Spell(SpellSlot.W, 325);
+            Q = new Spell(SpellSlot.Q, 1025);
+            W = new Spell(SpellSlot.W, 300);
             E = new Spell(SpellSlot.E, 300);
             R = new Spell(SpellSlot.R, 20);
-            Q.SetSkillshot(-0.5f, 75, 1500, true, SkillshotType.SkillshotLine);
-            W.SetSkillshot(-0.3864f, 0, 20, false, SkillshotType.SkillshotCircle);
+            Q.SetSkillshot(0.5f, 75, 1500, true, SkillshotType.SkillshotLine);
 
             var ChampMenu = new Menu("Plugin", Name + "Plugin");
             {
@@ -64,7 +63,7 @@ namespace MasterSeries.Champions
                 var UltiMenu = new Menu("Ultimate", "Ultimate");
                 {
                     ItemBool(UltiMenu, "RSurvive", "Try Use R To Survive");
-                    ItemSlider(UltiMenu, "RUnder", "-> If Hp Under", 35);
+                    ItemSlider(UltiMenu, "RUnder", "-> If Hp Under", 30);
                     ChampMenu.AddSubMenu(UltiMenu);
                 }
                 var MiscMenu = new Menu("Misc", "Misc");
@@ -85,7 +84,7 @@ namespace MasterSeries.Champions
             }
             Game.OnGameUpdate += OnGameUpdate;
             Drawing.OnDraw += OnDraw;
-            Obj_AI_Base.OnProcessSpellCast += OnProcessSpellCast;
+            Obj_AI_Base.OnProcessSpellCast += TrySurviveSpellCast;
         }
 
         private void OnGameUpdate(EventArgs args)
@@ -95,11 +94,12 @@ namespace MasterSeries.Champions
             {
                 NormalCombo(Orbwalk.CurrentMode.ToString());
             }
-            else if (Orbwalk.CurrentMode == Orbwalk.Mode.LaneClear || Orbwalk.CurrentMode == Orbwalk.Mode.LaneFreeze)
+            else if (Orbwalk.CurrentMode == Orbwalk.Mode.LaneClear)
             {
                 LaneJungClear();
             }
             else if (Orbwalk.CurrentMode == Orbwalk.Mode.LastHit) LastHit();
+            if (ItemBool("Ultimate", "RSurvive") && R.IsReady()) TrySurvive(R.Slot, ItemSlider("Ultimate", "RUnder"));
             if (ItemBool("Misc", "QKillSteal")) KillSteal();
         }
 
@@ -108,28 +108,6 @@ namespace MasterSeries.Champions
             if (Player.IsDead) return;
             if (ItemBool("Draw", "Q") && Q.Level > 0) Utility.DrawCircle(Player.Position, Q.Range, Q.IsReady() ? Color.Green : Color.Red);
             if (ItemBool("Draw", "W") && W.Level > 0) Utility.DrawCircle(Player.Position, W.Range, W.IsReady() ? Color.Green : Color.Red);
-        }
-
-        private void OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
-        {
-            if (Player.IsDead) return;
-            if (sender.IsEnemy && ItemBool("Ultimate", "RSurvive") && R.IsReady())
-            {
-                if (args.Target.IsMe && ((Orbwalk.IsAutoAttack(args.SData.Name) && (Player.Health - sender.GetAutoAttackDamage(Player, true)) * 100 / Player.MaxHealth <= ItemSlider("Ultimate", "RUnder")) || (args.SData.Name == "summonerdot" && (Player.Health - (sender as Obj_AI_Hero).GetSummonerSpellDamage(Player, Damage.SummonerSpell.Ignite)) * 100 / Player.MaxHealth <= ItemSlider("Ultimate", "RUnder"))))
-                {
-                    R.Cast(PacketCast());
-                }
-                else if ((args.Target.IsMe || (Player.Position.Distance(args.Start) <= args.SData.CastRange[0] && Player.Position.Distance(args.End) <= Orbwalk.GetAutoAttackRange())) && Damage.Spells.ContainsKey((sender as Obj_AI_Hero).ChampionName))
-                {
-                    for (var i = 3; i > -1; i--)
-                    {
-                        if (Damage.Spells[(sender as Obj_AI_Hero).ChampionName].FirstOrDefault(a => a.Slot == (sender as Obj_AI_Hero).GetSpellSlot(args.SData.Name, false) && a.Stage == i) != null)
-                        {
-                            if ((Player.Health - (sender as Obj_AI_Hero).GetSpellDamage(Player, (sender as Obj_AI_Hero).GetSpellSlot(args.SData.Name, false), i)) * 100 / Player.MaxHealth <= ItemSlider("Ultimate", "RUnder")) R.Cast(PacketCast());
-                        }
-                    }
-                }
-            }
         }
 
         private void NormalCombo(string Mode)
@@ -148,13 +126,14 @@ namespace MasterSeries.Champions
                 }
                 else if (Player.HasBuff("BurningAgony")) W.Cast(PacketCast());
             }
-            if (ItemBool(Mode, "Q") && Q.IsReady() && Q.InRange(targetObj.Position))
+            if (ItemBool(Mode, "Q") && Q.CanCast(targetObj))
             {
-                if (ItemBool("Misc", "SmiteCol"))
+                var QPred = Q.GetPrediction(targetObj);
+                if (ItemBool("Misc", "SmiteCol") && QPred.CollisionObjects.Count == 1 && Q.MinHitChance == HitChance.High && CastSmite(QPred.CollisionObjects.First()))
                 {
-                    if (!SmiteCollision(targetObj, Q)) Q.CastIfHitchanceEquals(targetObj, HitChance.VeryHigh, PacketCast());
+                    Q.Cast(QPred.CastPosition, PacketCast());
                 }
-                else Q.CastIfHitchanceEquals(targetObj, HitChance.VeryHigh, PacketCast());
+                else Q.CastIfHitchanceEquals(targetObj, HitChance.High, PacketCast());
             }
             if (ItemBool(Mode, "E") && E.IsReady() && Orbwalk.InAutoAttackRange(targetObj)) E.Cast(PacketCast());
             if (Mode == "Combo" && ItemBool(Mode, "Item") && Items.CanUseItem(Randuin) && Player.CountEnemysInRange(450) >= 1) Items.UseItem(Randuin);
@@ -163,7 +142,7 @@ namespace MasterSeries.Champions
 
         private void LaneJungClear()
         {
-            var minionObj = ObjectManager.Get<Obj_AI_Minion>().Where(i => IsValid(i, Q.Range)).OrderBy(i => i.Health);
+            var minionObj = MinionManager.GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly);
             if (minionObj.Count() == 0 && ItemBool("Clear", "W") && W.IsReady() && Player.HasBuff("BurningAgony")) W.Cast(PacketCast());
             foreach (var Obj in minionObj)
             {
@@ -187,26 +166,27 @@ namespace MasterSeries.Champions
                     }
                     else if (Player.HasBuff("BurningAgony")) W.Cast(PacketCast());
                 }
-                if (ItemBool("Clear", "Q") && Q.IsReady() && (Obj.MaxHealth >= 1200 || CanKill(Obj, Q))) Q.CastIfHitchanceEquals(Obj, HitChance.Medium, PacketCast());
+                if (ItemBool("Clear", "Q") && Q.IsReady() && (CanKill(Obj, Q) || Obj.MaxHealth >= 1200)) Q.CastIfHitchanceEquals(Obj, HitChance.Medium, PacketCast());
             }
         }
 
         private void LastHit()
         {
             if (!ItemBool("Misc", "QLastHit") || !Q.IsReady()) return;
-            foreach (var Obj in ObjectManager.Get<Obj_AI_Minion>().Where(i => IsValid(i, Q.Range) && CanKill(i, Q)).OrderBy(i => i.Health).OrderByDescending(i => i.Distance3D(Player))) Q.CastIfHitchanceEquals(Obj, HitChance.VeryHigh, PacketCast());
+            foreach (var Obj in MinionManager.GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly).Where(i => CanKill(i, Q)).OrderByDescending(i => i.Distance3D(Player))) Q.CastIfHitchanceEquals(Obj, HitChance.High, PacketCast());
         }
 
         private void KillSteal()
         {
             if (!Q.IsReady()) return;
-            foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => IsValid(i, Q.Range) && CanKill(i, Q) && i != targetObj).OrderBy(i => i.Health).OrderBy(i => i.Distance3D(Player)))
+            foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => i.IsValidTarget(Q.Range) && CanKill(i, Q) && i != targetObj).OrderBy(i => i.Health).OrderBy(i => i.Distance3D(Player)))
             {
-                if (ItemBool("Misc", "SmiteCol"))
+                var QPred = Q.GetPrediction(Obj);
+                if (ItemBool("Misc", "SmiteCol") && QPred.CollisionObjects.Count == 1 && Q.MinHitChance == HitChance.High && CastSmite(QPred.CollisionObjects.First()))
                 {
-                    if (!SmiteCollision(Obj, Q)) Q.CastIfHitchanceEquals(Obj, HitChance.VeryHigh, PacketCast());
+                    Q.Cast(QPred.CastPosition, PacketCast());
                 }
-                else Q.CastIfHitchanceEquals(Obj, HitChance.VeryHigh, PacketCast());
+                else Q.CastIfHitchanceEquals(Obj, HitChance.High, PacketCast());
             }
         }
     }

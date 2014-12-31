@@ -8,7 +8,7 @@ using SharpDX;
 
 using Orbwalk = MasterSeries.Common.M_Orbwalker;
 
-namespace MasterSeries.Champions
+namespace MasterSeries.Champion
 {
     class Talon : Program
     {
@@ -18,10 +18,9 @@ namespace MasterSeries.Champions
             W = new Spell(SpellSlot.W, 650);
             E = new Spell(SpellSlot.E, 700);
             R = new Spell(SpellSlot.R, 600);
-            Q.SetSkillshot(0.0435f, 0, 0, false, SkillshotType.SkillshotCircle);
-            W.SetSkillshot(-0.5f, 0, 902, false, SkillshotType.SkillshotCone);
-            E.SetTargetted(-0.5f, 0);
-            R.SetSkillshot(-0.5f, 0, 902, false, SkillshotType.SkillshotCircle);
+            W.SetSkillshot(0.5f, 0, 902, false, SkillshotType.SkillshotCone);
+            E.SetTargetted(0.5f, float.MaxValue);
+            R.SetSkillshot(0.5f, 0, 902, false, SkillshotType.SkillshotCircle);
 
             var ChampMenu = new Menu("Plugin", Name + "Plugin");
             {
@@ -86,9 +85,6 @@ namespace MasterSeries.Champions
                 case Orbwalk.Mode.LaneClear:
                     //LaneJungClear();
                     break;
-                case Orbwalk.Mode.LaneFreeze:
-                    //LaneJungClear();
-                    break;
                 case Orbwalk.Mode.Flee:
                     //WardJump(Game.CursorPos);
                     break;
@@ -107,10 +103,10 @@ namespace MasterSeries.Champions
         private void NormalCombo()
         {
             if (targetObj == null) return;
-            if (ItemBool("Combo", "E") && E.IsReady() && E.InRange(targetObj.Position)) E.CastOnUnit(targetObj, PacketCast());
-            if (ItemBool("Combo", "R") && R.IsReady() && R.InRange(targetObj.Position)) R.Cast(PacketCast());
-            if (ItemBool("Combo", "W") && W.IsReady() && W.InRange(targetObj.Position)) W.CastIfHitchanceEquals(targetObj, HitChance.VeryHigh, PacketCast());
-                if (ItemBool("Combo", "Item")) UseItem(targetObj);
+            if (ItemBool("Combo", "E") && E.CanCast(targetObj)) E.CastOnUnit(targetObj, PacketCast());
+            if (ItemBool("Combo", "R") && R.CanCast(targetObj)) R.Cast(PacketCast());
+            if (ItemBool("Combo", "W") && W.CanCast(targetObj)) W.CastIfHitchanceEquals(targetObj, HitChance.VeryHigh, PacketCast());
+            if (ItemBool("Combo", "Item")) UseItem(targetObj);
             if (ItemBool("Combo", "Ignite") && IgniteReady()) CastIgnite(targetObj);
         }
 
@@ -121,7 +117,7 @@ namespace MasterSeries.Champions
 
         private void SmallHarass()
         {
-            if (targetObj == null || !W.IsReady() || !W.InRange(targetObj.Position)) return;
+            if (targetObj == null || !W.CanCast(targetObj)) return;
             W.CastIfHitchanceEquals(targetObj, HitChance.VeryHigh, PacketCast());
         }
 
