@@ -166,7 +166,7 @@ namespace MasterSeries.Champions
                 if (ItemBool("Clear", "W") && W.CanCast(Obj) && (CanKill(Obj, W, 0, W.GetDamage(Obj) > 300 ? Player.CalcDamage(Obj, Damage.DamageType.Magical, 300) : W.GetDamage(Obj)) || Obj.MaxHealth >= 1200)) W.CastOnUnit(Obj, PacketCast());
                 if (ItemBool("Clear", "Q") && Q.IsReady())
                 {
-                    var posQFarm = Q.GetLineFarmLocation(minionObj.Where(i => i.IsValidTarget(Q.Range)).ToList());
+                    var posQFarm = Q.GetLineFarmLocation(minionObj.Where(i => Q.InRange(i)).ToList());
                     if (posQFarm.MinionsHit >= 2)
                     {
                         Q.Cast(posQFarm.Position, PacketCast());

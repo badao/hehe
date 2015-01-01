@@ -136,7 +136,7 @@ namespace MasterSeries.Champions
                 if (ItemBool("Clear", "Q") && Q.IsReady() && Player.HealthPercentage() <= ItemSlider("Clear", "QUnder") && (minionObj.Count(i => Orbwalk.InAutoAttackRange(i)) >= 2 || (Obj.MaxHealth >= 1200 && Orbwalk.InAutoAttackRange(Obj)))) Q.Cast(PacketCast());
                 if (ItemBool("Clear", "E") && E.IsReady())
                 {
-                    var posEFarm = E.GetLineFarmLocation(minionObj.ToList());
+                    var posEFarm = E.GetLineFarmLocation(minionObj);
                     E.Cast(posEFarm.MinionsHit >= 2 ? posEFarm.Position : Obj.Position.Extend(Player.Position, Player.Distance3D(Obj) <= E.Range - 100 ? -100 : 0).To2D(), PacketCast());
                 }
                 if (ItemBool("Clear", "Item")) UseItem(Obj, true);

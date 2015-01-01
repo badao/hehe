@@ -243,8 +243,8 @@ namespace MasterSeries.Champions
             if (!Q.IsReady()) return;
             bool Casted = false;
             var JumpPos = Pos;
-            if (GetWardSlot() != null && !WardCasted && Player.Position.Distance(JumpPos) > GetWardRange()) JumpPos = Player.Position.Extend(JumpPos, GetWardRange());
-            foreach (var Obj in ObjectManager.Get<Obj_AI_Base>().Where(i => i.IsValidTarget(Q.Range + i.BoundingRadius, false, Player.Position) && !i.IsMe && !(i is Obj_AI_Turret) && i.Position.Distance(WardCasted ? WardPlacePos : JumpPos) < 200).OrderBy(i => i.Position.Distance(WardCasted ? WardPlacePos : JumpPos)))
+            if (GetWardSlot() != null && !WardCasted && Player.Distance(JumpPos) > GetWardRange()) JumpPos = Player.Position.Extend(JumpPos, GetWardRange());
+            foreach (var Obj in ObjectManager.Get<Obj_AI_Base>().Where(i => i.IsValidTarget(Q.Range + i.BoundingRadius, false) && !i.IsMe && !(i is Obj_AI_Turret) && i.Distance(WardCasted ? WardPlacePos : JumpPos) < 200).OrderBy(i => i.Distance(WardCasted ? WardPlacePos : JumpPos)))
             {
                 Q.CastOnUnit(Obj, PacketCast());
                 Casted = true;

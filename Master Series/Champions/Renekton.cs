@@ -239,7 +239,7 @@ namespace MasterSeries.Champions
             {
                 if (ItemBool("Clear", "E") && E.IsReady())
                 {
-                    var posEFarm = E.GetLineFarmLocation(minionObj.ToList());
+                    var posEFarm = E.GetLineFarmLocation(minionObj);
                     if (E.Instance.Name == "RenektonSliceAndDice")
                     {
                         E.Cast(posEFarm.MinionsHit >= 2 ? posEFarm.Position : Obj.Position.Extend(Player.Position, Player.Distance3D(Obj) <= E.Range - 100 ? -100 : 0).To2D(), PacketCast());
