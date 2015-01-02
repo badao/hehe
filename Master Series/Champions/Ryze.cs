@@ -14,13 +14,13 @@ namespace MasterSeries.Champions
     {
         public Ryze()
         {
-            Q = new Spell(SpellSlot.Q, 625);
-            W = new Spell(SpellSlot.W, 600);
-            E = new Spell(SpellSlot.E, 600);
-            R = new Spell(SpellSlot.R, 200);
-            Q.SetTargetted(0.2f, 1400);
-            W.SetTargetted(0.2f, 500);
-            E.SetTargetted(0.2f, 1000);
+            Q = new Spell(SpellSlot.Q, 632.5f);
+            W = new Spell(SpellSlot.W, 607.5f);
+            E = new Spell(SpellSlot.E, 607.5f);
+            R = new Spell(SpellSlot.R);
+            Q.SetTargetted(0, 1400);
+            W.SetTargetted(0, 500);
+            E.SetTargetted(0, 1000);
 
             Config.SubMenu("OW").SubMenu("Mode").AddItem(new MenuItem("OWChase", "Chase", true).SetValue(new KeyBind("Z".ToCharArray()[0], KeyBindType.Press)));
             var ChampMenu = new Menu("Plugin", Name + "Plugin");
@@ -73,6 +73,7 @@ namespace MasterSeries.Champions
             Drawing.OnDraw += OnDraw;
             AntiGapcloser.OnEnemyGapcloser += OnEnemyGapcloser;
             Interrupter.OnPossibleToInterrupt += OnPossibleToInterrupt;
+            Obj_AI_Hero.OnProcessSpellCast += OnProcessSpellCast;
             Obj_AI_Base.OnProcessSpellCast += TrySurviveSpellCast;
             Orbwalk.BeforeAttack += BeforeAttack;
         }
@@ -94,15 +95,15 @@ namespace MasterSeries.Champions
             }
             else if (ItemActive("Chase")) NormalCombo("Chase");
             if (ItemBool("Misc", "QKillSteal")) KillSteal();
-            if (ItemBool("Misc", "SeraphSurvive") && Items.CanUseItem(3040)) TrySurvive(3040);
+            if (ItemBool("Misc", "SeraphSurvive") && Items.CanUseItem(ItemData.Seraphs_Embrace.Id)) TrySurvive(ItemData.Seraphs_Embrace.Id);
         }
 
         private void OnDraw(EventArgs args)
         {
             if (Player.IsDead) return;
-            if (ItemBool("Draw", "Q") && Q.Level > 0) Utility.DrawCircle(Player.Position, Q.Range, Q.IsReady() ? Color.Green : Color.Red);
-            if (ItemBool("Draw", "W") && W.Level > 0) Utility.DrawCircle(Player.Position, W.Range, W.IsReady() ? Color.Green : Color.Red);
-            if (ItemBool("Draw", "E") && E.Level > 0) Utility.DrawCircle(Player.Position, E.Range, E.IsReady() ? Color.Green : Color.Red);
+            if (ItemBool("Draw", "Q") && Q.Level > 0) Render.Circle.DrawCircle(Player.Position, Q.Range, Q.IsReady() ? Color.Green : Color.Red, 7);
+            if (ItemBool("Draw", "W") && W.Level > 0) Render.Circle.DrawCircle(Player.Position, W.Range, W.IsReady() ? Color.Green : Color.Red, 7);
+            if (ItemBool("Draw", "E") && E.Level > 0) Render.Circle.DrawCircle(Player.Position, E.Range, E.IsReady() ? Color.Green : Color.Red, 7);
         }
 
         private void OnEnemyGapcloser(ActiveGapcloser gapcloser)
@@ -115,6 +116,12 @@ namespace MasterSeries.Champions
         {
             if (!ItemBool("Misc", "WInterrupt") || Player.IsDead || !W.CanCast(unit)) return;
             W.CastOnUnit(unit, PacketCast());
+        }
+
+        private void OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
+        {
+            if (!sender.IsMe) return;
+            if (ItemBool("Misc", "Exploit") && W.IsReady() && args.SData.Name == "Overload" && Orbwalk.CurrentMode == Orbwalk.Mode.LastHit && ItemBool("Misc", "QLastHit") && args.Target is Obj_AI_Minion) Utility.DelayAction.Add((int)((Player.Distance3D((Obj_AI_Minion)args.Target) - 50) / Q.Speed * 1000 + Q.Delay), () => W.CastOnUnit((Obj_AI_Minion)args.Target, PacketCast()));
         }
 
         private void BeforeAttack(Orbwalk.BeforeAttackEventArgs Args)
@@ -134,7 +141,7 @@ namespace MasterSeries.Champions
         private void NormalCombo(string Mode)
         {
             if (Mode == "Chase") CustomOrbwalk(targetObj);
-            if (targetObj == null) return;
+            if (!targetObj.IsValidTarget()) return;
             if ((Mode == "Chase" || (Mode != "Chase" && ItemBool(Mode, "Q"))) && Q.CanCast(targetObj) && CanKill(targetObj, Q)) Q.CastOnUnit(targetObj, PacketCast());
             if ((Mode == "Chase" || (Mode != "Chase" && ItemBool(Mode, "E"))) && E.CanCast(targetObj) && CanKill(targetObj, E)) E.CastOnUnit(targetObj, PacketCast());
             if ((Mode == "Chase" || (Mode != "Chase" && ItemBool(Mode, "W"))) && W.CanCast(targetObj) && (CanKill(targetObj, W) || (Player.Distance3D(targetObj) > W.Range - 20 && !targetObj.IsFacing(Player)))) W.CastOnUnit(targetObj, PacketCast());
@@ -172,20 +179,16 @@ namespace MasterSeries.Champions
         {
             foreach (var Obj in MinionManager.GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth))
             {
-                if (ItemBool("Clear", "Q") && Q.IsReady() && (CanKill(Obj, Q) || Obj.MaxHealth >= 1200 || !CanKill(Obj, Q, 0, Q.GetDamage(Obj) * 2))) Q.CastOnUnit(Obj, PacketCast());
-                if (ItemBool("Clear", "W") && W.CanCast(Obj) && (CanKill(Obj, W) || Obj.MaxHealth >= 1200 || !CanKill(Obj, Q, 0, W.GetDamage(Obj) * 2))) W.CastOnUnit(Obj, PacketCast());
-                if (ItemBool("Clear", "E") && E.CanCast(Obj) && (CanKill(Obj, E) || Obj.MaxHealth >= 1200 || !CanKill(Obj, Q, 0, E.GetDamage(Obj) * 2))) E.CastOnUnit(Obj, PacketCast());
+                if (ItemBool("Clear", "Q") && Q.IsReady() && (CanKill(Obj, Q) || Obj.MaxHealth >= 1200 || !CanKill(Obj, Q, Q.GetDamage(Obj) * 2))) Q.CastOnUnit(Obj, PacketCast());
+                if (ItemBool("Clear", "W") && W.CanCast(Obj) && (CanKill(Obj, W) || Obj.MaxHealth >= 1200 || !CanKill(Obj, W, W.GetDamage(Obj) * 2))) W.CastOnUnit(Obj, PacketCast());
+                if (ItemBool("Clear", "E") && E.CanCast(Obj) && (CanKill(Obj, E) || Obj.MaxHealth >= 1200 || !CanKill(Obj, E, E.GetDamage(Obj) * 2))) E.CastOnUnit(Obj, PacketCast());
             }
         }
 
         private void LastHit()
         {
             if (!ItemBool("Misc", "QLastHit") || !Q.IsReady()) return;
-            foreach (var Obj in MinionManager.GetMinions((ItemBool("Misc", "Exploit") && W.IsReady()) ? W.Range : Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth).Where(i => CanKill(i, Q)).OrderByDescending(i => i.Distance3D(Player)))
-            {
-                Q.CastOnUnit(Obj, PacketCast());
-                if (ItemBool("Misc", "Exploit") && W.IsReady()) Utility.DelayAction.Add((int)(Player.Distance3D(Obj) / Q.Speed * 1000 - 400), () => W.CastOnUnit(Obj, PacketCast()));
-            }
+            foreach (var Obj in MinionManager.GetMinions((ItemBool("Misc", "Exploit") && W.IsReady()) ? W.Range : Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth).Where(i => CanKill(i, Q)).OrderByDescending(i => i.Distance3D(Player))) Q.CastOnUnit(Obj, PacketCast());
         }
 
         private void KillSteal()

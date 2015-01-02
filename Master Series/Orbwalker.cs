@@ -70,11 +70,11 @@ namespace MasterSeries.Common
             {
                 var DrawMenu = new Menu("Draw", "Draw");
                 {
-                    DrawMenu.AddItem(new MenuItem("OW_Draw_AARange", "AA Circle").SetValue(new Circle(true, Color.FloralWhite)));
-                    DrawMenu.AddItem(new MenuItem("OW_Draw_AARangeEnemy", "AA Circle Enemy").SetValue(new Circle(true, Color.Pink)));
-                    DrawMenu.AddItem(new MenuItem("OW_Draw_HoldZone", "Hold Zone").SetValue(new Circle(true, Color.FloralWhite)));
-                    DrawMenu.AddItem(new MenuItem("OW_Draw_LastHit", "Minion Last Hit").SetValue(new Circle(true, Color.Lime)));
-                    DrawMenu.AddItem(new MenuItem("OW_Draw_NearKill", "Minion Near Kill").SetValue(new Circle(true, Color.Gold)));
+                    DrawMenu.AddItem(new MenuItem("OW_Draw_AARange", "AA Circle").SetValue(new Circle(false, Color.FloralWhite)));
+                    DrawMenu.AddItem(new MenuItem("OW_Draw_AARangeEnemy", "AA Circle Enemy").SetValue(new Circle(false, Color.Pink)));
+                    DrawMenu.AddItem(new MenuItem("OW_Draw_HoldZone", "Hold Zone").SetValue(new Circle(false, Color.FloralWhite)));
+                    DrawMenu.AddItem(new MenuItem("OW_Draw_LastHit", "Minion Last Hit").SetValue(new Circle(false, Color.Lime)));
+                    DrawMenu.AddItem(new MenuItem("OW_Draw_NearKill", "Minion Near Kill").SetValue(new Circle(false, Color.Gold)));
                     OWMenu.AddSubMenu(DrawMenu);
                 }
                 var MiscMenu = new Menu("Misc", "Misc");
@@ -84,7 +84,7 @@ namespace MasterSeries.Common
                     MiscMenu.AddItem(new MenuItem("OW_Misc_ExtraWindUp", "Extra WindUp Time").SetValue(new Slider(80, 200, 0)));
                     MiscMenu.AddItem(new MenuItem("OW_Misc_AutoWindUp", "Auto WindUp").SetValue(true));
                     MiscMenu.AddItem(new MenuItem("OW_Misc_PriorityUnit", "Priority Unit").SetValue(new StringList(new[] { "Minion", "Hero" })));
-                    MiscMenu.AddItem(new MenuItem("OW_Misc_Humanizer", "Humanizer Delay").SetValue(new Slider(80, 200, 15)));
+                    MiscMenu.AddItem(new MenuItem("OW_Misc_Humanizer", "Humanizer Delay").SetValue(new Slider(80, 50, 500)));
                     MiscMenu.AddItem(new MenuItem("OW_Misc_MeleePrediction", "Melee Movement Prediction").SetValue(false));
                     MiscMenu.AddItem(new MenuItem("OW_Misc_AllMovementDisabled", "Disable All Movement").SetValue(false));
                     MiscMenu.AddItem(new MenuItem("OW_Misc_AllAttackDisabled", "Disable All Attack").SetValue(false));
@@ -151,21 +151,21 @@ namespace MasterSeries.Common
         private static void OnDraw(EventArgs args)
         {
             if (Player.IsDead) return;
-            if (Config.Item("OW_Draw_AARange").GetValue<Circle>().Active) Utility.DrawCircle(Player.Position, GetAutoAttackRange(), Config.Item("OW_Draw_AARange").GetValue<Circle>().Color);
+            if (Config.Item("OW_Draw_AARange").GetValue<Circle>().Active) Render.Circle.DrawCircle(Player.Position, GetAutoAttackRange(), Config.Item("OW_Draw_AARange").GetValue<Circle>().Color, 7);
             if (Config.Item("OW_Draw_AARangeEnemy").GetValue<Circle>().Active)
             {
-                foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => i.IsValidTarget(1500))) Utility.DrawCircle(Obj.Position, GetAutoAttackRange(Obj, Player), Config.Item("OW_Draw_AARangeEnemy").GetValue<Circle>().Color);
+                foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => i.IsValidTarget(1300))) Render.Circle.DrawCircle(Obj.Position, GetAutoAttackRange(Obj, Player), Config.Item("OW_Draw_AARangeEnemy").GetValue<Circle>().Color, 7);
             }
-            if (Config.Item("OW_Draw_HoldZone").GetValue<Circle>().Active) Utility.DrawCircle(Player.Position, Config.Item("OW_Misc_HoldZone").GetValue<Slider>().Value, Config.Item("OW_Draw_HoldZone").GetValue<Circle>().Color);
+            if (Config.Item("OW_Draw_HoldZone").GetValue<Circle>().Active) Render.Circle.DrawCircle(Player.Position, Config.Item("OW_Misc_HoldZone").GetValue<Slider>().Value, Config.Item("OW_Draw_HoldZone").GetValue<Circle>().Color, 7);
             if (Config.Item("OW_Draw_LastHit").GetValue<Circle>().Active || Config.Item("OW_Draw_NearKill").GetValue<Circle>().Active)
             {
-                foreach (var Obj in ObjectManager.Get<Obj_AI_Minion>().Where(i => i.IsValidTarget(GetAutoAttackRange(Player, i) + 500)))
+                foreach (var Obj in MinionManager.GetMinions(GetAutoAttackRange() + 500, MinionTypes.All, MinionTeam.All, MinionOrderTypes.MaxHealth))
                 {
                     if (Config.Item("OW_Draw_LastHit").GetValue<Circle>().Active && Obj.Health <= Player.GetAutoAttackDamage(Obj, true))
                     {
-                        Utility.DrawCircle(Obj.Position, Obj.BoundingRadius, Config.Item("OW_Draw_LastHit").GetValue<Circle>().Color);
+                        Render.Circle.DrawCircle(Obj.Position, 70, Config.Item("OW_Draw_LastHit").GetValue<Circle>().Color, 7);
                     }
-                    else if (Config.Item("OW_Draw_NearKill").GetValue<Circle>().Active && Obj.Health <= Player.GetAutoAttackDamage(Obj, true) * 2) Utility.DrawCircle(Obj.Position, Obj.BoundingRadius, Config.Item("OW_Draw_NearKill").GetValue<Circle>().Color);
+                    else if (Config.Item("OW_Draw_NearKill").GetValue<Circle>().Active && Obj.Health <= Player.GetAutoAttackDamage(Obj, true) * 2) Render.Circle.DrawCircle(Obj.Position, 70, Config.Item("OW_Draw_NearKill").GetValue<Circle>().Color, 7);
                 }
             }
         }
@@ -177,17 +177,17 @@ namespace MasterSeries.Common
 
         private static void OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
         {
-            if (Orbwalking.IsAutoAttackReset(args.SData.Name) && sender.IsMe) Utility.DelayAction.Add(200, ResetAutoAttack);
+            if (Orbwalking.IsAutoAttackReset(args.SData.Name) && sender.IsMe) Utility.DelayAction.Add(100, ResetAutoAttack);
             if (!args.SData.IsAutoAttack()) return;
-            if (sender.IsMe && args.Target is Obj_AI_Base)
+            if (sender.IsMe && args.Target is AttackableUnit)
             {
                 LastAttack = Environment.TickCount - Game.Ping / 2;
                 if (args.Target.IsValid)
                 {
-                    FireOnTargetSwitch((Obj_AI_Base)args.Target);
-                    LastTarget = (Obj_AI_Base)args.Target;
+                    FireOnTargetSwitch((AttackableUnit)args.Target);
+                    LastTarget = (AttackableUnit)args.Target;
                 }
-                if (sender.IsMelee()) Utility.DelayAction.Add((int)(sender.AttackCastDelay * 1000 + 40), () => FireAfterAttack(LastTarget));
+                if (sender.IsMelee()) Utility.DelayAction.Add((int)(sender.AttackCastDelay * 1000 + Game.Ping * 0.5 + 50), () => FireAfterAttack(LastTarget));
                 FireOnAttack(LastTarget);
             }
         }
@@ -232,7 +232,7 @@ namespace MasterSeries.Common
                 }
             }
             if (!CanMove() || !IsAllowedToMove()) return;
-            if (Player.IsMelee() && Target.IsValidTarget() && InAutoAttackRange(Target) && Config.Item("OW_Misc_MeleePrediction").GetValue<bool>() && Target is Obj_AI_Hero && Game.CursorPos.Distance(Target.Position) < 400)
+            if (Player.IsMelee() && Target.IsValidTarget() && InAutoAttackRange(Target) && Config.Item("OW_Misc_MeleePrediction").GetValue<bool>() && Target is Obj_AI_Hero && Game.CursorPos.Distance(Target.Position) < 300)
             {
                 MovePrediction.Delay = Player.BasicAttack.SpellCastTime;
                 MovePrediction.Speed = Player.BasicAttack.MissileSpeed;
@@ -369,7 +369,7 @@ namespace MasterSeries.Common
             {
                 foreach (var Obj in ObjectManager.Get<Obj_AI_Minion>().Where(i => i.IsValidTarget() && i.Name != "Beacon" && InAutoAttackRange(i) && i.Team != GameObjectTeam.Neutral && i.Health < 2 * (Player.BaseAttackDamage + Player.FlatPhysicalDamageMod)))
                 {
-                    var Time = (int)(Player.AttackCastDelay * 1000) - 100 + Game.Ping / 2 + 1000 * (int)(Player.Distance(Obj.ServerPosition) / (Player.IsMelee() ? float.MaxValue : Player.BasicAttack.MissileSpeed));
+                    var Time = (int)(Player.AttackCastDelay * 1000) - 100 + Game.Ping / 2 + 1000 * (int)(Player.Distance(Obj.ServerPosition) / Orbwalking.GetMyProjectileSpeed());
                     var predHp = HealthPrediction.GetHealthPrediction(Obj, Time, GetCurrentFarmDelay());
                     if (predHp <= 0) FireOnNonKillableMinion(Obj);
                     if (predHp > 0 && predHp <= Player.GetAutoAttackDamage(Obj, true)) return Obj;
@@ -408,7 +408,7 @@ namespace MasterSeries.Common
                     if ((predHp >= 2 * Player.GetAutoAttackDamage(Obj, true) || Math.Abs(predHp - Obj.Health) < float.Epsilon) && (Obj.Health >= R || Math.Abs(R - float.MaxValue) < float.Epsilon))
                     {
                         Target = Obj;
-                        R = Obj.Health;
+                        R = Obj.MaxHealth;
                         PrevMinion = Obj;
                     }
                 }

@@ -43,7 +43,7 @@ namespace MasterSeries.Common
             var TSMenu = new Menu("Target Selector", "TS");
             {
                 TSMenu.AddItem(new MenuItem("TS_Mode", "Mode").SetValue(new StringList(new[] { "Priority", "Most AD", "Most AP", "Less Attack", "Less Cast", "Low Hp", "Closest", "Near Mouse" })));
-                TSMenu.AddItem(new MenuItem("TS_Range", "Get Target In").SetValue(new Slider(1200, 800, 1600)));
+                TSMenu.AddItem(new MenuItem("TS_Range", "Get Target In").SetValue(new Slider(1300, 800, 1600)));
                 TSMenu.AddItem(new MenuItem("TS_Focus", "Forced Target").SetValue(true));
                 TSMenu.AddItem(new MenuItem("TS_Draw", "Draw Target").SetValue(true));
                 TSMenu.AddItem(new MenuItem("TS_Print", "Print Chat New Target").SetValue(true));
@@ -65,34 +65,6 @@ namespace MasterSeries.Common
             foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => i.IsEnemy)) Config.SubMenu("TS").Item("TS_Prior" + Obj.ChampionName).SetValue(new Slider((int)GetPriority(Obj.ChampionName), 1, 5));
         }
 
-        private double GetPriority(string ChampName, bool IsMenu = true)
-        {
-            if (IsMenu)
-            {
-                if (AP.Contains(ChampName)) return 4;
-                if (Support.Contains(ChampName)) return 3;
-                if (Tank.Contains(ChampName)) return 1;
-                if (AD.Contains(ChampName)) return 5;
-                if (Bruiser.Contains(ChampName)) return 2;
-                return 1;
-            }
-            else
-            {
-                switch (Config.SubMenu("TS").Item("TS_Prior" + ChampName).GetValue<Slider>().Value)
-                {
-                    case 2:
-                        return 1.5f;
-                    case 3:
-                        return 1.75f;
-                    case 4:
-                        return 2;
-                    case 5:
-                        return 2.5f;
-                }
-                return 1;
-            }
-        }
-
         private void OnGameUpdate(EventArgs args)
         {
             Target = GetTarget();
@@ -102,15 +74,15 @@ namespace MasterSeries.Common
         private void OnDraw(EventArgs args)
         {
             if (Player.IsDead || !Config.SubMenu("TS").Item("TS_Draw").GetValue<bool>() || Target == null) return;
-            Utility.DrawCircle(Target.Position, 130, Color.Red);
+            Render.Circle.DrawCircle(Target.Position, 130, Color.Red, 7);
         }
 
         private void OnWndProc(WndEventArgs args)
         {
-            if (args.WParam != 1 || MenuGUI.IsChatOpen) return;
+            if (args.Msg != (uint)WindowsMessages.WM_LBUTTONDOWN || MenuGUI.IsChatOpen) return;
             newTarget = null;
             if (Player.IsDead) return;
-            foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => i.IsValidTarget(i.BoundingRadius, true, Game.CursorPos)).OrderBy(i => i.Position.Distance(Game.CursorPos)))
+            foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => i.IsValidTarget(200, true, Game.CursorPos)).OrderByDescending(i => i.Distance(Game.CursorPos)))
             {
                 newTarget = Obj;
                 if (Config.SubMenu("TS").Item("TS_Print").GetValue<bool>()) Game.PrintChat("<font color = \'{0}'>-></font> New Target: <font color = \'{1}'>{2}</font>", HtmlColor.BlueViolet, HtmlColor.Gold, Obj.ChampionName);
@@ -141,6 +113,34 @@ namespace MasterSeries.Common
                     return Obj.FirstOrDefault(i => i.Position.Distance(Game.CursorPos) < 150);
             }
             return null;
+        }
+
+        private double GetPriority(string ChampName, bool IsMenu = true)
+        {
+            if (IsMenu)
+            {
+                if (AP.Contains(ChampName)) return 4;
+                if (Support.Contains(ChampName)) return 3;
+                if (Tank.Contains(ChampName)) return 1;
+                if (AD.Contains(ChampName)) return 5;
+                if (Bruiser.Contains(ChampName)) return 2;
+                return 1;
+            }
+            else
+            {
+                switch (Config.SubMenu("TS").Item("TS_Prior" + ChampName).GetValue<Slider>().Value)
+                {
+                    case 2:
+                        return 1.5f;
+                    case 3:
+                        return 1.75f;
+                    case 4:
+                        return 2;
+                    case 5:
+                        return 2.5f;
+                }
+                return 1;
+            }
         }
     }
 }

@@ -14,10 +14,12 @@ namespace MasterSeries.Champions
     {
         public Rammus()
         {
-            Q = new Spell(SpellSlot.Q, 210);
-            W = new Spell(SpellSlot.W, 300);
+            Q = new Spell(SpellSlot.Q);
+            W = new Spell(SpellSlot.W);
             E = new Spell(SpellSlot.E, 325);
             R = new Spell(SpellSlot.R, 375);
+            E.SetTargetted(0.5f, float.MaxValue);
+            R.SetSkillshot(0.5f, 375, float.MaxValue, false, SkillshotType.SkillshotCircle);
 
             var ChampMenu = new Menu("Plugin", Name + "Plugin");
             {
@@ -103,8 +105,8 @@ namespace MasterSeries.Champions
         private void OnDraw(EventArgs args)
         {
             if (Player.IsDead) return;
-            if (ItemBool("Draw", "E") && E.Level > 0) Utility.DrawCircle(Player.Position, E.Range, E.IsReady() ? Color.Green : Color.Red);
-            if (ItemBool("Draw", "R") && R.Level > 0) Utility.DrawCircle(Player.Position, R.Range, R.IsReady() ? Color.Green : Color.Red);
+            if (ItemBool("Draw", "E") && E.Level > 0) Render.Circle.DrawCircle(Player.Position, E.Range, E.IsReady() ? Color.Green : Color.Red, 7);
+            if (ItemBool("Draw", "R") && R.Level > 0) Render.Circle.DrawCircle(Player.Position, R.Range, R.IsReady() ? Color.Green : Color.Red, 7);
         }
 
         private void OnEnemyGapcloser(ActiveGapcloser gapcloser)
@@ -121,7 +123,7 @@ namespace MasterSeries.Champions
 
         private void NormalCombo(string Mode)
         {
-            if (targetObj == null) return;
+            if (!targetObj.IsValidTarget()) return;
             if (ItemBool(Mode, "Q") && Q.IsReady() && Player.Distance3D(targetObj) <= ((Mode == "Combo") ? 800 : Orbwalk.GetAutoAttackRange(Player, targetObj) + 30) && !Player.HasBuff("PowerBall"))
             {
                 if ((ItemBool(Mode, "E") && E.IsReady() && !E.InRange(targetObj)) || !Player.HasBuff("DefensiveBallCurl")) Q.Cast(PacketCast());
@@ -151,7 +153,7 @@ namespace MasterSeries.Champions
                         break;
                 }
             }
-            if (Mode == "Combo" && ItemBool(Mode, "Item") && Items.CanUseItem(Randuin) && Player.CountEnemysInRange(450) >= 1) Items.UseItem(Randuin);
+            if (Mode == "Combo" && ItemBool(Mode, "Item") && RanduinOmen.IsReady() && Player.CountEnemysInRange((int)RanduinOmen.Range) >= 1) RanduinOmen.Cast();
             if (Mode == "Combo" && ItemBool(Mode, "Ignite") && IgniteReady()) CastIgnite(targetObj);
         }
 

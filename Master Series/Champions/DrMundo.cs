@@ -14,10 +14,10 @@ namespace MasterSeries.Champions
     {
         public DrMundo()
         {
-            Q = new Spell(SpellSlot.Q, 1025);
-            W = new Spell(SpellSlot.W, 300);
-            E = new Spell(SpellSlot.E, 300);
-            R = new Spell(SpellSlot.R, 20);
+            Q = new Spell(SpellSlot.Q, 1050);
+            W = new Spell(SpellSlot.W, 325);
+            E = new Spell(SpellSlot.E);
+            R = new Spell(SpellSlot.R);
             Q.SetSkillshot(0.5f, 75, 1500, true, SkillshotType.SkillshotLine);
 
             var ChampMenu = new Menu("Plugin", Name + "Plugin");
@@ -106,14 +106,14 @@ namespace MasterSeries.Champions
         private void OnDraw(EventArgs args)
         {
             if (Player.IsDead) return;
-            if (ItemBool("Draw", "Q") && Q.Level > 0) Utility.DrawCircle(Player.Position, Q.Range, Q.IsReady() ? Color.Green : Color.Red);
-            if (ItemBool("Draw", "W") && W.Level > 0) Utility.DrawCircle(Player.Position, W.Range, W.IsReady() ? Color.Green : Color.Red);
+            if (ItemBool("Draw", "Q") && Q.Level > 0) Render.Circle.DrawCircle(Player.Position, Q.Range, Q.IsReady() ? Color.Green : Color.Red, 7);
+            if (ItemBool("Draw", "W") && W.Level > 0) Render.Circle.DrawCircle(Player.Position, W.Range, W.IsReady() ? Color.Green : Color.Red, 7);
         }
 
         private void NormalCombo(string Mode)
         {
             if (ItemBool(Mode, "W") && W.IsReady() && Player.HasBuff("BurningAgony") && Player.CountEnemysInRange(500) == 0) W.Cast(PacketCast());
-            if (targetObj == null) return;
+            if (!targetObj.IsValidTarget()) return;
             if (ItemBool(Mode, "W") && W.IsReady())
             {
                 if (Player.HealthPercentage() >= ItemSlider(Mode, "WAbove"))
@@ -136,7 +136,7 @@ namespace MasterSeries.Champions
                 else Q.CastIfHitchanceEquals(targetObj, HitChance.High, PacketCast());
             }
             if (ItemBool(Mode, "E") && E.IsReady() && Orbwalk.InAutoAttackRange(targetObj)) E.Cast(PacketCast());
-            if (Mode == "Combo" && ItemBool(Mode, "Item") && Items.CanUseItem(Randuin) && Player.CountEnemysInRange(450) >= 1) Items.UseItem(Randuin);
+            if (Mode == "Combo" && ItemBool(Mode, "Item") && RanduinOmen.IsReady() && Player.CountEnemysInRange((int)RanduinOmen.Range) >= 1) RanduinOmen.Cast();
             if (Mode == "Combo" && ItemBool(Mode, "Ignite") && IgniteReady()) CastIgnite(targetObj);
         }
 

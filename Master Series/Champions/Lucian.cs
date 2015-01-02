@@ -18,15 +18,15 @@ namespace MasterSeries.Champions
 
         public Lucian()
         {
-            Q = new Spell(SpellSlot.Q, 640);
-            Q2 = new Spell(SpellSlot.Q, 1100);
-            W = new Spell(SpellSlot.W, 1000);
+            Q = new Spell(SpellSlot.Q, 630);
+            Q2 = new Spell(SpellSlot.Q, 1130);
+            W = new Spell(SpellSlot.W, 1080);
             E = new Spell(SpellSlot.E, 445);
-            R = new Spell(SpellSlot.R, 1400);
-            Q.SetTargetted(0.35f, 500);
-            Q2.SetSkillshot(0.35f, 65, 500, true, SkillshotType.SkillshotLine);
-            W.SetSkillshot(0.2f, 80, 500, true, SkillshotType.SkillshotLine);
-            R.SetSkillshot(0.2f, 120, 500, true, SkillshotType.SkillshotLine);
+            R = new Spell(SpellSlot.R, 1460);
+            Q.SetTargetted(0, 500);
+            Q2.SetSkillshot(0, 65, 500, true, SkillshotType.SkillshotLine);
+            W.SetSkillshot(0, 80, 500, true, SkillshotType.SkillshotLine);
+            R.SetSkillshot(0, 120, 500, true, SkillshotType.SkillshotLine);
 
             var ChampMenu = new Menu("Plugin", Name + "Plugin");
             {
@@ -91,7 +91,7 @@ namespace MasterSeries.Champions
                 if (ItemBool("Combo", "R"))
                 {
                     if (Player.CountEnemysInRange((int)R.Range + 60) == 0) R.Cast(PacketCast());
-                    if (targetObj != null) LockROnTarget(targetObj);
+                    if (targetObj.IsValidTarget()) LockROnTarget(targetObj);
                 }
                 return;
             }
@@ -107,10 +107,10 @@ namespace MasterSeries.Champions
         private void OnDraw(EventArgs args)
         {
             if (Player.IsDead) return;
-            if (ItemBool("Draw", "Q") && Q.Level > 0) Utility.DrawCircle(Player.Position, Q2.Range, Q.IsReady() ? Color.Green : Color.Red);
-            if (ItemBool("Draw", "W") && W.Level > 0) Utility.DrawCircle(Player.Position, W.Range, W.IsReady() ? Color.Green : Color.Red);
-            if (ItemBool("Draw", "E") && E.Level > 0) Utility.DrawCircle(Player.Position, E.Range, E.IsReady() ? Color.Green : Color.Red);
-            if (ItemBool("Draw", "R") && R.Level > 0) Utility.DrawCircle(Player.Position, R.Range, R.IsReady() ? Color.Green : Color.Red);
+            if (ItemBool("Draw", "Q") && Q.Level > 0) Render.Circle.DrawCircle(Player.Position, Q.Range, Q.IsReady() ? Color.Green : Color.Red, 7);
+            if (ItemBool("Draw", "W") && W.Level > 0) Render.Circle.DrawCircle(Player.Position, W.Range, W.IsReady() ? Color.Green : Color.Red, 7);
+            if (ItemBool("Draw", "E") && E.Level > 0) Render.Circle.DrawCircle(Player.Position, E.Range, E.IsReady() ? Color.Green : Color.Red, 7);
+            if (ItemBool("Draw", "R") && R.Level > 0) Render.Circle.DrawCircle(Player.Position, R.Range, R.IsReady() ? Color.Green : Color.Red, 7);
         }
 
         private void OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
@@ -150,7 +150,7 @@ namespace MasterSeries.Champions
 
         private void NormalCombo(string Mode)
         {
-            if (targetObj == null || Player.IsDashing()) return;
+            if (!targetObj.IsValidTarget() || Player.IsDashing()) return;
             if (ItemBool(Mode, "Q") && Q.IsReady() && CanKill(targetObj, Q))
             {
                 if (Q.InRange(targetObj))
@@ -295,9 +295,9 @@ namespace MasterSeries.Champions
 
         private void UseItem(Obj_AI_Base Target)
         {
-            if (Items.CanUseItem(Bilgewater) && Player.Distance3D(Target) <= 450) Items.UseItem(Bilgewater, Target);
-            if (Items.CanUseItem(BladeRuined) && Player.Distance3D(Target) <= 450) Items.UseItem(BladeRuined, Target);
-            if (Items.CanUseItem(Youmuu) && Player.CountEnemysInRange(480) >= 1) Items.UseItem(Youmuu);
+            if (Bilgewater.IsReady()) Bilgewater.Cast(Target);
+            if (BladeRuined.IsReady()) BladeRuined.Cast(Target);
+            if (Youmuu.IsReady() && Player.CountEnemysInRange((int)Orbwalk.GetAutoAttackRange()) >= 1) Youmuu.Cast();
         }
 
         private bool HavePassive(string Mode = "Clear")

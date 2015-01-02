@@ -14,11 +14,11 @@ namespace MasterSeries.Champions
     {
         public Tryndamere()
         {
-            Q = new Spell(SpellSlot.Q, 20);
+            Q = new Spell(SpellSlot.Q);
             W = new Spell(SpellSlot.W, 830);
-            E = new Spell(SpellSlot.E, 670);
-            R = new Spell(SpellSlot.R, 20);
-            E.SetSkillshot(0.1f, 160, 700, false, SkillshotType.SkillshotLine);
+            E = new Spell(SpellSlot.E, 830);
+            R = new Spell(SpellSlot.R);
+            E.SetSkillshot(0, 160, 700, false, SkillshotType.SkillshotLine);
 
             var ChampMenu = new Menu("Plugin", Name + "Plugin");
             {
@@ -100,13 +100,13 @@ namespace MasterSeries.Champions
         private void OnDraw(EventArgs args)
         {
             if (Player.IsDead) return;
-            if (ItemBool("Draw", "W") && W.Level > 0) Utility.DrawCircle(Player.Position, W.Range, W.IsReady() ? Color.Green : Color.Red);
-            if (ItemBool("Draw", "E") && E.Level > 0) Utility.DrawCircle(Player.Position, E.Range, E.IsReady() ? Color.Green : Color.Red);
+            if (ItemBool("Draw", "W") && W.Level > 0) Render.Circle.DrawCircle(Player.Position, W.Range, W.IsReady() ? Color.Green : Color.Red, 7);
+            if (ItemBool("Draw", "E") && E.Level > 0) Render.Circle.DrawCircle(Player.Position, E.Range, E.IsReady() ? Color.Green : Color.Red, 7);
         }
 
         private void NormalCombo(string Mode)
         {
-            if (targetObj == null) return;
+            if (!targetObj.IsValidTarget()) return;
             if (Mode == "Combo" && ItemBool(Mode, "Q") && Q.IsReady() && Player.HealthPercentage() <= ItemSlider(Mode, "QUnder") && Player.CountEnemysInRange(800) >= 1) Q.Cast(PacketCast());
             if (ItemBool(Mode, "W") && W.CanCast(targetObj))
             {
@@ -134,11 +134,7 @@ namespace MasterSeries.Champions
                         (ItemBool("SmiteMob", "Raptor") && Obj.Name.StartsWith("SRU_Razorbeak")) || (ItemBool("SmiteMob", "Wolf") && Obj.Name.StartsWith("SRU_Murkwolf"))))) CastSmite(Obj);
                 }
                 if (ItemBool("Clear", "Q") && Q.IsReady() && Player.HealthPercentage() <= ItemSlider("Clear", "QUnder") && (minionObj.Count(i => Orbwalk.InAutoAttackRange(i)) >= 2 || (Obj.MaxHealth >= 1200 && Orbwalk.InAutoAttackRange(Obj)))) Q.Cast(PacketCast());
-                if (ItemBool("Clear", "E") && E.IsReady())
-                {
-                    var posEFarm = E.GetLineFarmLocation(minionObj);
-                    E.Cast(posEFarm.MinionsHit >= 2 ? posEFarm.Position : Obj.Position.Extend(Player.Position, Player.Distance3D(Obj) <= E.Range - 100 ? -100 : 0).To2D(), PacketCast());
-                }
+                if (ItemBool("Clear", "E") && E.IsReady()) E.Cast(GetClearPos(minionObj, E), PacketCast());
                 if (ItemBool("Clear", "Item")) UseItem(Obj, true);
             }
         }
@@ -151,12 +147,12 @@ namespace MasterSeries.Champions
 
         private void UseItem(Obj_AI_Base Target, bool IsFarm = false)
         {
-            if (Items.CanUseItem(Bilgewater) && Player.Distance3D(Target) <= 450 && !IsFarm) Items.UseItem(Bilgewater, Target);
-            if (Items.CanUseItem(BladeRuined) && Player.Distance3D(Target) <= 450 && !IsFarm) Items.UseItem(BladeRuined, Target);
-            if (Items.CanUseItem(Tiamat) && IsFarm ? Player.Distance3D(Target) <= 350 : Player.CountEnemysInRange(350) >= 1) Items.UseItem(Tiamat);
-            if (Items.CanUseItem(Hydra) && IsFarm ? Player.Distance3D(Target) <= 350 : (Player.CountEnemysInRange(350) >= 2 || (Player.GetAutoAttackDamage(Target, true) < Target.Health && Player.CountEnemysInRange(350) == 1))) Items.UseItem(Hydra);
-            if (Items.CanUseItem(Randuin) && Player.CountEnemysInRange(450) >= 1 && !IsFarm) Items.UseItem(Randuin);
-            if (Items.CanUseItem(Youmuu) && Player.CountEnemysInRange(350) >= 1 && !IsFarm) Items.UseItem(Youmuu);
+            if (Bilgewater.IsReady() && !IsFarm) Bilgewater.Cast(Target);
+            if (BladeRuined.IsReady() && !IsFarm) BladeRuined.Cast(Target);
+            if (Tiamat.IsReady() && IsFarm ? Player.Distance3D(Target) <= Tiamat.Range : Player.CountEnemysInRange((int)Tiamat.Range) >= 1) Tiamat.Cast();
+            if (Hydra.IsReady() && IsFarm ? Player.Distance3D(Target) <= Hydra.Range : (Player.CountEnemysInRange((int)Hydra.Range) >= 2 || (Player.GetAutoAttackDamage(Target, true) < Target.Health && Player.CountEnemysInRange((int)Hydra.Range) == 1))) Hydra.Cast();
+            if (RanduinOmen.IsReady() && Player.CountEnemysInRange((int)RanduinOmen.Range) >= 1 && !IsFarm) RanduinOmen.Cast();
+            if (Youmuu.IsReady() && Player.CountEnemysInRange((int)Orbwalk.GetAutoAttackRange()) >= 1 && !IsFarm) Youmuu.Cast();
         }
     }
 }

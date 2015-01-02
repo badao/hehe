@@ -14,14 +14,14 @@ namespace MasterSeries.Champions
     {
         public Maokai()
         {
-            Q = new Spell(SpellSlot.Q, 600);
+            Q = new Spell(SpellSlot.Q, 630);
             W = new Spell(SpellSlot.W, 525);
-            E = new Spell(SpellSlot.E, 1100);
-            R = new Spell(SpellSlot.R, 475);
-            Q.SetSkillshot(0.2222f, 110, 1100, false, SkillshotType.SkillshotLine);
+            E = new Spell(SpellSlot.E, 1115);
+            R = new Spell(SpellSlot.R, 478);
+            Q.SetSkillshot(0.3333f, 110, 1100, false, SkillshotType.SkillshotLine);
             W.SetTargetted(0.5f, 1000);
             E.SetSkillshot(0.25f, 225, 1750, false, SkillshotType.SkillshotCircle);
-            R.SetSkillshot(0.5f, 475, float.MaxValue, false, SkillshotType.SkillshotCircle);
+            R.SetSkillshot(0.25f, 478, float.MaxValue, false, SkillshotType.SkillshotCircle);
 
             var ChampMenu = new Menu("Plugin", Name + "Plugin");
             {
@@ -104,10 +104,10 @@ namespace MasterSeries.Champions
         private void OnDraw(EventArgs args)
         {
             if (Player.IsDead) return;
-            if (ItemBool("Draw", "Q") && Q.Level > 0) Utility.DrawCircle(Player.Position, Q.Range, Q.IsReady() ? Color.Green : Color.Red);
-            if (ItemBool("Draw", "W") && W.Level > 0) Utility.DrawCircle(Player.Position, W.Range, W.IsReady() ? Color.Green : Color.Red);
-            if (ItemBool("Draw", "E") && E.Level > 0) Utility.DrawCircle(Player.Position, E.Range, E.IsReady() ? Color.Green : Color.Red);
-            if (ItemBool("Draw", "R") && R.Level > 0) Utility.DrawCircle(Player.Position, R.Range, R.IsReady() ? Color.Green : Color.Red);
+            if (ItemBool("Draw", "Q") && Q.Level > 0) Render.Circle.DrawCircle(Player.Position, Q.Range, Q.IsReady() ? Color.Green : Color.Red, 7);
+            if (ItemBool("Draw", "W") && W.Level > 0) Render.Circle.DrawCircle(Player.Position, W.Range, W.IsReady() ? Color.Green : Color.Red, 7);
+            if (ItemBool("Draw", "E") && E.Level > 0) Render.Circle.DrawCircle(Player.Position, E.Range, E.IsReady() ? Color.Green : Color.Red, 7);
+            if (ItemBool("Draw", "R") && R.Level > 0) Render.Circle.DrawCircle(Player.Position, R.Range, R.IsReady() ? Color.Green : Color.Red, 7);
         }
 
         private void OnEnemyGapcloser(ActiveGapcloser gapcloser)
@@ -129,7 +129,7 @@ namespace MasterSeries.Champions
 
         private void NormalCombo(string Mode)
         {
-            if (targetObj == null) return;
+            if (!targetObj.IsValidTarget()) return;
             if (ItemBool(Mode, "E") && E.CanCast(targetObj)) E.Cast(targetObj.Position.Extend(Player.Position, Player.Distance3D(targetObj) <= E.Range - 100 ? -100 : 0), PacketCast());
             if (Mode == "Combo" && ItemBool(Mode, "R") && R.CanCast(targetObj))
             {
@@ -142,7 +142,7 @@ namespace MasterSeries.Champions
             }
             if (ItemBool(Mode, "W") && W.CanCast(targetObj) && (Mode == "Combo" || (Mode == "Harass" && Player.HealthPercentage() >= ItemSlider(Mode, "WAbove")))) W.CastOnUnit(targetObj, PacketCast());
             if (ItemBool(Mode, "Q") && Q.CanCast(targetObj)) Q.Cast(targetObj.Position, PacketCast());
-            if (Mode == "Combo" && ItemBool(Mode, "Item") && Items.CanUseItem(Randuin) && Player.CountEnemysInRange(450) >= 1) Items.UseItem(Randuin);
+            if (Mode == "Combo" && ItemBool(Mode, "Item") && RanduinOmen.IsReady() && Player.CountEnemysInRange((int)RanduinOmen.Range) >= 1) RanduinOmen.Cast();
             if (Mode == "Combo" && ItemBool(Mode, "Ignite") && IgniteReady()) CastIgnite(targetObj);
         }
 
@@ -158,21 +158,9 @@ namespace MasterSeries.Champions
                         (ItemBool("SmiteMob", "Krug") && Obj.Name.StartsWith("SRU_Krug")) || (ItemBool("SmiteMob", "Gromp") && Obj.Name.StartsWith("SRU_Gromp")) ||
                         (ItemBool("SmiteMob", "Raptor") && Obj.Name.StartsWith("SRU_Razorbeak")) || (ItemBool("SmiteMob", "Wolf") && Obj.Name.StartsWith("SRU_Murkwolf"))))) CastSmite(Obj);
                 }
-                if (ItemBool("Clear", "E") && E.IsReady() && (minionObj.Count >= 2 || Obj.MaxHealth >= 1200))
-                {
-                    var posEFarm = E.GetCircularFarmLocation(minionObj);
-                    E.Cast(posEFarm.MinionsHit >= 2 ? posEFarm.Position : Obj.Position.To2D(), PacketCast());
-                }
-                if (ItemBool("Clear", "W") && W.CanCast(Obj) && (CanKill(Obj, W, 0, W.GetDamage(Obj) > 300 ? Player.CalcDamage(Obj, Damage.DamageType.Magical, 300) : W.GetDamage(Obj)) || Obj.MaxHealth >= 1200)) W.CastOnUnit(Obj, PacketCast());
-                if (ItemBool("Clear", "Q") && Q.IsReady())
-                {
-                    var posQFarm = Q.GetLineFarmLocation(minionObj.Where(i => Q.InRange(i)).ToList());
-                    if (posQFarm.MinionsHit >= 2)
-                    {
-                        Q.Cast(posQFarm.Position, PacketCast());
-                    }
-                    else if (Q.InRange(Obj)) Q.Cast(Obj.Position, PacketCast());
-                }
+                if (ItemBool("Clear", "E") && E.IsReady() && (minionObj.Count >= 2 || Obj.MaxHealth >= 1200)) E.Cast(GetClearPos(minionObj, E), PacketCast());
+                if (ItemBool("Clear", "W") && W.CanCast(Obj) && (CanKill(Obj, W, W.GetDamage(Obj) > 300 ? Player.CalcDamage(Obj, Damage.DamageType.Magical, 300) : W.GetDamage(Obj)) || Obj.MaxHealth >= 1200)) W.CastOnUnit(Obj, PacketCast());
+                if (ItemBool("Clear", "Q") && Q.IsReady()) Q.Cast(GetClearPos(minionObj.Where(i => Q.InRange(i)).ToList(), Q), PacketCast());
             }
         }
 

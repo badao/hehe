@@ -14,9 +14,9 @@ namespace MasterSeries.Champions
     {
         public Warwick()
         {
-            Q = new Spell(SpellSlot.Q, 400);
+            Q = new Spell(SpellSlot.Q, 413.6f);
             W = new Spell(SpellSlot.W, 1250);
-            R = new Spell(SpellSlot.R, 700);
+            R = new Spell(SpellSlot.R, 704.62f);
             Q.SetTargetted(0.5f, float.MaxValue);
             R.SetTargetted(0.5f, float.MaxValue);
 
@@ -102,13 +102,13 @@ namespace MasterSeries.Champions
         private void OnDraw(EventArgs args)
         {
             if (Player.IsDead) return;
-            if (ItemBool("Draw", "Q") && Q.Level > 0) Utility.DrawCircle(Player.Position, Q.Range, Q.IsReady() ? Color.Green : Color.Red);
-            if (ItemBool("Draw", "R") && R.Level > 0) Utility.DrawCircle(Player.Position, R.Range, R.IsReady() ? Color.Green : Color.Red);
+            if (ItemBool("Draw", "Q") && Q.Level > 0) Render.Circle.DrawCircle(Player.Position, Q.Range, Q.IsReady() ? Color.Green : Color.Red, 7);
+            if (ItemBool("Draw", "R") && R.Level > 0) Render.Circle.DrawCircle(Player.Position, R.Range, R.IsReady() ? Color.Green : Color.Red, 7);
         }
 
         private void NormalCombo(string Mode)
         {
-            if (targetObj == null) return;
+            if (!targetObj.IsValidTarget()) return;
             if (ItemBool(Mode, "Q") && Q.CanCast(targetObj)) Q.CastOnUnit(targetObj, PacketCast());
             if (ItemBool(Mode, "W") && W.IsReady() && ((Mode == "Harass" && Orbwalk.InAutoAttackRange(targetObj)) || (Mode == "Combo" && ((ItemList(Mode, "WMode") == 0 && Orbwalk.InAutoAttackRange(targetObj)) || (ItemList(Mode, "WMode") == 1 && ObjectManager.Get<Obj_AI_Hero>().Count(i => i.IsValidTarget(W.Range, false) && i.IsAlly && !i.IsMe) >= ItemSlider(Mode, "WAbove")))))) W.Cast(PacketCast());
             if (Mode == "Combo" && ItemBool(Mode, "Item")) UseItem(targetObj);
@@ -157,9 +157,9 @@ namespace MasterSeries.Champions
 
         private void UseItem(Obj_AI_Base Target)
         {
-            if (Items.CanUseItem(Bilgewater) && Player.Distance3D(Target) <= 450) Items.UseItem(Bilgewater, Target);
-            if (Items.CanUseItem(BladeRuined) && Player.Distance3D(Target) <= 450) Items.UseItem(BladeRuined, Target);
-            if (Items.CanUseItem(Randuin) && Player.CountEnemysInRange(450) >= 1) Items.UseItem(Randuin);
+            if (Bilgewater.IsReady()) Bilgewater.Cast(Target);
+            if (BladeRuined.IsReady()) BladeRuined.Cast(Target);
+            if (RanduinOmen.IsReady() && Player.CountEnemysInRange((int)RanduinOmen.Range) >= 1) RanduinOmen.Cast();
         }
     }
 }

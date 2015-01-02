@@ -100,10 +100,10 @@ namespace MasterSeries.Champions
         private void OnDraw(EventArgs args)
         {
             if (Player.IsDead) return;
-            if (ItemBool("Draw", "Q") && Q.Level > 0) Utility.DrawCircle(Player.Position, Q.Range, Q.IsReady() ? Color.Green : Color.Red);
-            if (ItemBool("Draw", "W") && W.Level > 0) Utility.DrawCircle(Player.Position, W.Range, W.IsReady() ? Color.Green : Color.Red);
-            if (ItemBool("Draw", "E") && E.Level > 0) Utility.DrawCircle(Player.Position, E.Range, E.IsReady() ? Color.Green : Color.Red);
-            if (ItemBool("Draw", "R") && R.Level > 0) Utility.DrawCircle(Player.Position, R.Range, R.IsReady() ? Color.Green : Color.Red);
+            if (ItemBool("Draw", "Q") && Q.Level > 0) Render.Circle.DrawCircle(Player.Position, Q.Range, Q.IsReady() ? Color.Green : Color.Red, 7);
+            if (ItemBool("Draw", "W") && W.Level > 0) Render.Circle.DrawCircle(Player.Position, W.Range, W.IsReady() ? Color.Green : Color.Red, 7);
+            if (ItemBool("Draw", "E") && E.Level > 0) Render.Circle.DrawCircle(Player.Position, E.Range, E.IsReady() ? Color.Green : Color.Red, 7);
+            if (ItemBool("Draw", "R") && R.Level > 0) Render.Circle.DrawCircle(Player.Position, R.Range, R.IsReady() ? Color.Green : Color.Red, 7);
         }
 
         private void OnEnemyGapcloser(ActiveGapcloser gapcloser)
@@ -131,21 +131,13 @@ namespace MasterSeries.Champions
         private void NormalCombo(string Mode)
         {
             if (ItemBool(Mode, "W") && W.IsReady() && Player.HasBuff("AuraofDespair") && Player.CountEnemysInRange(500) == 0) W.Cast(PacketCast());
-            if (targetObj == null) return;
+            if (!targetObj.IsValidTarget()) return;
             if (Mode == "Combo" && ItemBool(Mode, "Q") && Q.IsReady())
             {
-                var nearObj = ObjectManager.Get<Obj_AI_Base>().Where(i => i.IsValidTarget(Q.Range) && !(i is Obj_AI_Turret) && i.CountEnemysInRange((int)R.Range - 20) >= ItemSlider(Mode, "RAbove")).OrderBy(i => i.CountEnemysInRange((int)R.Range));
+                var nearObj = ObjectManager.Get<Obj_AI_Base>().Where(i => i.IsValidTarget(Q.Range) && !(i is Obj_AI_Turret) && i.CountEnemysInRange((int)R.Range - 20) >= ItemSlider(Mode, "RAbove") && Q.GetPrediction(i).Hitchance >= HitChance.Medium).OrderBy(i => i.CountEnemysInRange((int)R.Range));
                 if (ItemBool(Mode, "R") && R.IsReady() && ItemList(Mode, "RMode") == 1 && nearObj.Count() > 0)
                 {
-                    foreach (var Obj in nearObj)
-                    {
-                        var QPred = Q.GetPrediction(Obj);
-                        if (ItemBool("Misc", "SmiteCol") && QPred.CollisionObjects.Count == 1 && Q.MinHitChance == HitChance.High && CastSmite(QPred.CollisionObjects.First()))
-                        {
-                            Q.Cast(QPred.CastPosition, PacketCast());
-                        }
-                        else Q.CastIfHitchanceEquals(Obj, HitChance.High, PacketCast());
-                    }
+                    foreach (var Obj in nearObj) Q.CastIfHitchanceEquals(Obj, HitChance.High, PacketCast());
                 }
                 else if (Q.InRange(targetObj) && (CanKill(targetObj, Q) || !Orbwalk.InAutoAttackRange(targetObj)))
                 {
@@ -183,7 +175,7 @@ namespace MasterSeries.Champions
                         break;
                 }
             }
-            if (Mode == "Combo" && ItemBool(Mode, "Item") && Items.CanUseItem(Randuin) && Player.CountEnemysInRange(450) >= 1) Items.UseItem(Randuin);
+            if (Mode == "Combo" && ItemBool(Mode, "Item") && RanduinOmen.IsReady() && Player.CountEnemysInRange((int)RanduinOmen.Range) >= 1) RanduinOmen.Cast();
             if (Mode == "Combo" && ItemBool(Mode, "Ignite") && IgniteReady()) CastIgnite(targetObj);
         }
 

@@ -23,10 +23,10 @@ namespace MasterSeries.Champions
 
         public Udyr()
         {
-            Q = new Spell(SpellSlot.Q, 600);
-            W = new Spell(SpellSlot.W, 600);
-            E = new Spell(SpellSlot.E, 600);
-            R = new Spell(SpellSlot.R, 325);
+            Q = new Spell(SpellSlot.Q);
+            W = new Spell(SpellSlot.W);
+            E = new Spell(SpellSlot.E);
+            R = new Spell(SpellSlot.R);
 
             Config.SubMenu("OW").SubMenu("Mode").AddItem(new MenuItem("OWStunCycle", "Stun Cycle", true).SetValue(new KeyBind("Z".ToCharArray()[0], KeyBindType.Press)));
             var ChampMenu = new Menu("Plugin", Name + "Plugin");
@@ -121,7 +121,7 @@ namespace MasterSeries.Champions
         private void OnPossibleToInterrupt(Obj_AI_Base unit, InterruptableSpell spell)
         {
             if (!ItemBool("Misc", "EInterrupt") || Player.IsDead || CurStance != Stance.Bear || (!E.IsReady() && CurStance != Stance.Bear)) return;
-            if (E.InRange(unit) && !unit.HasBuff("UdyrBearStunCheck"))
+            if (Player.Distance3D(unit) <= 600 && !unit.HasBuff("UdyrBearStunCheck"))
             {
                 if (CurStance != Stance.Bear && E.IsReady()) E.Cast(PacketCast());
                 if (CurStance == Stance.Bear) Player.IssueOrder(GameObjectOrder.AttackUnit, unit);
@@ -165,7 +165,7 @@ namespace MasterSeries.Champions
 
         private void NormalCombo(string Mode)
         {
-            if (targetObj == null) return;
+            if (!targetObj.IsValidTarget()) return;
             if (ItemBool(Mode, "E") && E.IsReady() && !targetObj.HasBuff("UdyrBearStunCheck") && Player.Distance3D(targetObj) <= ((Mode == "Combo") ? 800 : Orbwalk.GetAutoAttackRange(Player, targetObj) + 80)) E.Cast(PacketCast());
             if (Player.Distance3D(targetObj) <= Orbwalk.GetAutoAttackRange(Player, targetObj) + 50 && (!ItemBool(Mode, "E") || (ItemBool(Mode, "E") && (E.Level == 0 || targetObj.HasBuff("UdyrBearStunCheck")))))
             {
@@ -240,11 +240,11 @@ namespace MasterSeries.Champions
 
         private void UseItem(Obj_AI_Base Target, bool IsFarm = false)
         {
-            if (Items.CanUseItem(Bilgewater) && Player.Distance3D(Target) <= 450 && !IsFarm) Items.UseItem(Bilgewater, Target);
-            if (Items.CanUseItem(BladeRuined) && Player.Distance3D(Target) <= 450 && !IsFarm) Items.UseItem(BladeRuined, Target);
-            if (Items.CanUseItem(Tiamat) && IsFarm ? Player.Distance3D(Target) <= 350 : Player.CountEnemysInRange(350) >= 1) Items.UseItem(Tiamat);
-            if (Items.CanUseItem(Hydra) && IsFarm ? Player.Distance3D(Target) <= 350 : (Player.CountEnemysInRange(350) >= 2 || (Player.GetAutoAttackDamage(Target, true) < Target.Health && Player.CountEnemysInRange(350) == 1))) Items.UseItem(Hydra);
-            if (Items.CanUseItem(Randuin) && Player.CountEnemysInRange(450) >= 1 && !IsFarm) Items.UseItem(Randuin);
+            if (Bilgewater.IsReady() && !IsFarm) Bilgewater.Cast(Target);
+            if (BladeRuined.IsReady() && !IsFarm) BladeRuined.Cast(Target);
+            if (Tiamat.IsReady() && IsFarm ? Player.Distance3D(Target) <= Tiamat.Range : Player.CountEnemysInRange((int)Tiamat.Range) >= 1) Tiamat.Cast();
+            if (Hydra.IsReady() && IsFarm ? Player.Distance3D(Target) <= Hydra.Range : (Player.CountEnemysInRange((int)Hydra.Range) >= 2 || (Player.GetAutoAttackDamage(Target, true) < Target.Health && Player.CountEnemysInRange((int)Hydra.Range) == 1))) Hydra.Cast();
+            if (RanduinOmen.IsReady() && Player.CountEnemysInRange((int)RanduinOmen.Range) >= 1 && !IsFarm) RanduinOmen.Cast();
         }
     }
 }

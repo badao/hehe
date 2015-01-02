@@ -17,15 +17,14 @@ namespace MasterSeries.Champions
 
         public JarvanIV()
         {
-            Q = new Spell(SpellSlot.Q, 820);
-            W = new Spell(SpellSlot.W, 525);
+            Q = new Spell(SpellSlot.Q, 840);
+            W = new Spell(SpellSlot.W, 505);
             E = new Spell(SpellSlot.E, 860);
             R = new Spell(SpellSlot.R, 650);
             Q.SetSkillshot(0.5f, 70, float.MaxValue, false, SkillshotType.SkillshotLine);
             E.SetSkillshot(0.5f, 175, 1450, false, SkillshotType.SkillshotCircle);
             R.SetTargetted(0.5f, float.MaxValue);
 
-            //Config.SubMenu("OW").SubMenu("Mode").AddItem(new MenuItem("OWEQFlash", "EQ Flash", true).SetValue(new KeyBind("Z".ToCharArray()[0], KeyBindType.Press)));
             var ChampMenu = new Menu("Plugin", Name + "Plugin");
             {
                 var ComboMenu = new Menu("Combo", "Combo");
@@ -109,7 +108,6 @@ namespace MasterSeries.Champions
                 LastHit();
             }
             else if (Orbwalk.CurrentMode == Orbwalk.Mode.Flee) Flee();
-            //if (ItemActive("EQFlash")) EQFlash();
             if (ItemBool("Misc", "QKillSteal")) KillSteal();
             if (ItemBool("Misc", "WSurvive") && W.IsReady()) TrySurvive(W.Slot);
         }
@@ -117,10 +115,10 @@ namespace MasterSeries.Champions
         private void OnDraw(EventArgs args)
         {
             if (Player.IsDead) return;
-            if (ItemBool("Draw", "Q") && Q.Level > 0) Utility.DrawCircle(Player.Position, Q.Range, Q.IsReady() ? Color.Green : Color.Red);
-            if (ItemBool("Draw", "W") && W.Level > 0) Utility.DrawCircle(Player.Position, W.Range, W.IsReady() ? Color.Green : Color.Red);
-            if (ItemBool("Draw", "E") && E.Level > 0) Utility.DrawCircle(Player.Position, E.Width, E.IsReady() ? Color.Green : Color.Red);
-            if (ItemBool("Draw", "R") && R.Level > 0) Utility.DrawCircle(Player.Position, R.Range, R.IsReady() ? Color.Green : Color.Red);
+            if (ItemBool("Draw", "Q") && Q.Level > 0) Render.Circle.DrawCircle(Player.Position, Q.Range, Q.IsReady() ? Color.Green : Color.Red, 7);
+            if (ItemBool("Draw", "W") && W.Level > 0) Render.Circle.DrawCircle(Player.Position, W.Range, W.IsReady() ? Color.Green : Color.Red, 7);
+            if (ItemBool("Draw", "E") && E.Level > 0) Render.Circle.DrawCircle(Player.Position, E.Range, E.IsReady() ? Color.Green : Color.Red, 7);
+            if (ItemBool("Draw", "R") && R.Level > 0) Render.Circle.DrawCircle(Player.Position, R.Range, R.IsReady() ? Color.Green : Color.Red, 7);
         }
 
         private void OnPossibleToInterrupt(Obj_AI_Base unit, InterruptableSpell spell)
@@ -148,7 +146,7 @@ namespace MasterSeries.Champions
         private void NormalCombo(string Mode)
         {
             if (Mode == "Combo" && ItemBool(Mode, "R") && ItemList(Mode, "RMode") == 0 && R.IsReady() && RCasted && Player.CountEnemysInRange(325) == 0) R.Cast(PacketCast());
-            if (targetObj == null) return;
+            if (!targetObj.IsValidTarget()) return;
             if (ItemBool(Mode, "E") && E.CanCast(targetObj)) E.Cast((Player.Distance3D(targetObj) > 450 && !targetObj.IsFacing(Player)) ? targetObj.Position.Extend(Player.Position, Player.Distance3D(targetObj) <= E.Range - 100 ? -100 : 0) : targetObj.Position, PacketCast());
             if ((!ItemBool(Mode, "E") || (ItemBool(Mode, "E") && !E.IsReady())) && ItemBool(Mode, "Q") && Q.IsReady())
             {
@@ -196,33 +194,18 @@ namespace MasterSeries.Champions
                         (ItemBool("SmiteMob", "Krug") && Obj.Name.StartsWith("SRU_Krug")) || (ItemBool("SmiteMob", "Gromp") && Obj.Name.StartsWith("SRU_Gromp")) ||
                         (ItemBool("SmiteMob", "Raptor") && Obj.Name.StartsWith("SRU_Razorbeak")) || (ItemBool("SmiteMob", "Wolf") && Obj.Name.StartsWith("SRU_Murkwolf"))))) CastSmite(Obj);
                 }
-                if (ItemBool("Clear", "E") && E.IsReady() && (minionObj.Count >= 2 || Obj.MaxHealth >= 1200))
-                {
-                    var posEFarm1 = E.GetCircularFarmLocation(minionObj.Where(i => !i.IsMelee()).ToList());
-                    var posEFarm2 = E.GetCircularFarmLocation(minionObj);
-                    if (posEFarm1.MinionsHit >= 3)
-                    {
-                        E.Cast(posEFarm1.Position, PacketCast());
-                    }
-                    else E.Cast(posEFarm2.MinionsHit >= 2 ? posEFarm2.Position : Obj.Position.To2D(), PacketCast());
-                }
+                if (ItemBool("Clear", "E") && E.IsReady() && (minionObj.Count >= 2 || Obj.MaxHealth >= 1200)) E.Cast(GetClearPos(minionObj, E), PacketCast());
                 if (ItemBool("Clear", "Q") && Q.IsReady())
                 {
-                    var posQFarm1 = Q.GetLineFarmLocation(minionObj.Where(i => Q.InRange(i) && !i.IsMelee()).ToList());
-                    var posQFarm2 = Q.GetLineFarmLocation(minionObj.Where(i => Q.InRange(i)).ToList());
-                    if (Q.InRange(Obj) && CanKill(Obj, Q))
+                    if (ItemBool("Clear", "E") && FlagPos != default(Vector3))
                     {
-                        Q.Cast(Obj.Position, PacketCast());
+                        if ((minionObj.Count(i => FlagPos.Distance(i.Position) <= 60) >= 2 || minionObj.Where(i => Q.InRange(i)).Count(i => Q.WillHit(i.Position, FlagPos, 110)) >= 2) && Q.InRange(FlagPos))
+                        {
+                            Q.Cast(FlagPos, PacketCast());
+                        }
+                        else Q.Cast(GetClearPos(minionObj.Where(i => Q.InRange(i)).ToList(), Q), PacketCast());
                     }
-                    else if (posQFarm1.MinionsHit >= 3)
-                    {
-                        Q.Cast(posQFarm1.Position, PacketCast());
-                    }
-                    else if (posQFarm2.MinionsHit >= 2)
-                    {
-                        Q.Cast(posQFarm2.Position, PacketCast());
-                    }
-                    else if (Q.InRange(Obj)) Q.Cast(Obj, PacketCast());
+                    else if (!ItemBool("Clear", "E") || (ItemBool("Clear", "E") && FlagPos == default(Vector3))) Q.Cast(GetClearPos(minionObj.Where(i => Q.InRange(i)).ToList(), Q), PacketCast());
                 }
                 if (ItemBool("Clear", "Item")) UseItem(Obj, true);
             }
@@ -241,18 +224,6 @@ namespace MasterSeries.Champions
             if (Player.LastCastedSpellName() == "JarvanIVDemacianStandard") Q.Cast(Game.CursorPos, PacketCast());
         }
 
-        private void EQFlash()
-        {
-            CustomOrbwalk(targetObj);
-            if (targetObj == null || !Q.IsReady()) return;
-            if (E.IsReady() && Player.Mana >= Q.Instance.ManaCost + E.Instance.ManaCost) E.Cast(Player.Position.Extend(targetObj.Position, (!Q.InRange(targetObj) && Player.Distance3D(targetObj) <= Q.Range + 370 && FlashReady()) ? Q.Range : targetObj.Distance3D(Player) + (Player.Distance3D(targetObj) <= E.Range - 100 ? 100 : 0)), PacketCast());
-            if (FlagPos != default(Vector3) && Q.InRange(FlagPos) && (FlagPos.Distance(targetObj.Position) <= 60 || Q.WillHit(targetObj.Position, FlagPos, 110) || (FlashReady() && Player.Distance3D(targetObj) <= Q.Range + 370)))
-            {
-                Q.Cast(FlagPos, PacketCast());
-                if (FlashReady() && Player.LastCastedSpellName() == "JarvanIVDragonStrike" && (FlagPos.Distance(targetObj.Position) > 60 || !Q.WillHit(targetObj.Position, FlagPos, 110)) && Player.Distance3D(targetObj) <= Q.Range + 370) Utility.DelayAction.Add((int)((Player.Distance3D(targetObj) - Q.Range) / E.Speed * 1000 + 500), () => CastFlash(targetObj.Position));
-            }
-        }
-
         private void KillSteal()
         {
             if (!Q.IsReady()) return;
@@ -261,9 +232,9 @@ namespace MasterSeries.Champions
 
         private void UseItem(Obj_AI_Base Target, bool IsFarm = false)
         {
-            if (Items.CanUseItem(Tiamat) && IsFarm ? Player.Distance3D(Target) <= 350 : Player.CountEnemysInRange(350) >= 1) Items.UseItem(Tiamat);
-            if (Items.CanUseItem(Hydra) && IsFarm ? Player.Distance3D(Target) <= 350 : (Player.CountEnemysInRange(350) >= 2 || (Player.GetAutoAttackDamage(Target, true) < Target.Health && Player.CountEnemysInRange(350) == 1))) Items.UseItem(Hydra);
-            if (Items.CanUseItem(Randuin) && Player.CountEnemysInRange(450) >= 1 && !IsFarm) Items.UseItem(Randuin);
+            if (Tiamat.IsReady() && IsFarm ? Player.Distance3D(Target) <= Tiamat.Range : Player.CountEnemysInRange((int)Tiamat.Range) >= 1) Tiamat.Cast();
+            if (Hydra.IsReady() && IsFarm ? Player.Distance3D(Target) <= Hydra.Range : (Player.CountEnemysInRange((int)Hydra.Range) >= 2 || (Player.GetAutoAttackDamage(Target, true) < Target.Health && Player.CountEnemysInRange((int)Hydra.Range) == 1))) Hydra.Cast();
+            if (RanduinOmen.IsReady() && Player.CountEnemysInRange((int)RanduinOmen.Range) >= 1 && !IsFarm) RanduinOmen.Cast();
         }
     }
 }

@@ -12,15 +12,13 @@ namespace MasterSeries.Champions
 {
     class Nasus : Program
     {
-        private int Sheen = 3057, Iceborn = 3025, Trinity = 3078;
-
         public Nasus()
         {
-            Q = new Spell(SpellSlot.Q, 300);
+            Q = new Spell(SpellSlot.Q);
             W = new Spell(SpellSlot.W, 600);
             E = new Spell(SpellSlot.E, 650);
-            R = new Spell(SpellSlot.R, 20);
-            Q.SetTargetted(0.0435f, float.MaxValue);
+            R = new Spell(SpellSlot.R);
+            Q.SetTargetted(0.2333f, float.MaxValue);
             E.SetSkillshot(0.5f, 380, float.MaxValue, false, SkillshotType.SkillshotCircle);
 
             var ChampMenu = new Menu("Plugin", Name + "Plugin");
@@ -83,8 +81,8 @@ namespace MasterSeries.Champions
             }
             Game.OnGameUpdate += OnGameUpdate;
             Drawing.OnDraw += OnDraw;
-            Obj_AI_Base.OnProcessSpellCast += OnProcessSpellCast;
             Obj_AI_Base.OnProcessSpellCast += TrySurviveSpellCast;
+            Orbwalk.OnAttack += OnAttack;
         }
 
         private void OnGameUpdate(EventArgs args)
@@ -106,32 +104,31 @@ namespace MasterSeries.Champions
         private void OnDraw(EventArgs args)
         {
             if (Player.IsDead) return;
-            if (ItemBool("Draw", "W") && W.Level > 0) Utility.DrawCircle(Player.Position, W.Range, W.IsReady() ? Color.Green : Color.Red);
-            if (ItemBool("Draw", "E") && E.Level > 0) Utility.DrawCircle(Player.Position, E.Range, E.IsReady() ? Color.Green : Color.Red);
+            if (ItemBool("Draw", "W") && W.Level > 0) Render.Circle.DrawCircle(Player.Position, W.Range, W.IsReady() ? Color.Green : Color.Red, 7);
+            if (ItemBool("Draw", "E") && E.Level > 0) Render.Circle.DrawCircle(Player.Position, E.Range, E.IsReady() ? Color.Green : Color.Red, 7);
         }
 
-        private void OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
+        private void OnAttack(AttackableUnit Target)
         {
-            if (!sender.IsMe) return;
-            if (args.SData.IsAutoAttack() && ((Obj_AI_Base)args.Target).IsValidTarget(Orbwalk.GetAutoAttackRange(Player, (Obj_AI_Base)args.Target) + 20) && Q.IsReady())
+            if (Target.IsValidTarget(Orbwalk.GetAutoAttackRange(Player, Target) + 20) && Q.IsReady())
             {
-                var Obj = (Obj_AI_Base)args.Target;
+                var Obj = (Obj_AI_Base)Target;
                 var DmgAA = Player.GetAutoAttackDamage(Obj) * Math.Floor(Q.Instance.Cooldown / 1 / Player.AttackDelay);
-                if (Orbwalk.CurrentMode == Orbwalk.Mode.LastHit && ItemBool("Misc", "QLastHit") && CanKill(Obj, Q, GetBonusDmg(Obj)) && args.Target is Obj_AI_Minion)
+                if (Orbwalk.CurrentMode == Orbwalk.Mode.LastHit && ItemBool("Misc", "QLastHit") && CanKill(Obj, Q, GetBonusDmg(Obj)) && Target is Obj_AI_Minion)
                 {
                     Q.Cast(PacketCast());
                 }
-                else if (((Orbwalk.CurrentMode == Orbwalk.Mode.LaneClear && ItemBool("Clear", "Q") && (args.Target is Obj_AI_Minion || args.Target is Obj_AI_Turret)) || (Orbwalk.CurrentMode == Orbwalk.Mode.Combo && ItemBool("Combo", "Q") && ItemList("Combo", "QMode") == 1 && args.Target is Obj_AI_Hero)) && (CanKill(Obj, Q, GetBonusDmg(Obj)) || (!(args.Target is Obj_AI_Turret) && !CanKill(Obj, Q, GetBonusDmg(Obj) + DmgAA))))
+                else if (((Orbwalk.CurrentMode == Orbwalk.Mode.LaneClear && ItemBool("Clear", "Q") && (Target is Obj_AI_Minion || Target is Obj_AI_Turret)) || (Orbwalk.CurrentMode == Orbwalk.Mode.Combo && ItemBool("Combo", "Q") && ItemList("Combo", "QMode") == 1 && Target is Obj_AI_Hero)) && (CanKill(Obj, Q, GetBonusDmg(Obj)) || (!(Target is Obj_AI_Turret) && !CanKill(Obj, Q, GetBonusDmg(Obj) + DmgAA))))
                 {
                     Q.Cast(PacketCast());
                 }
-                else if ((Orbwalk.CurrentMode == Orbwalk.Mode.Harass || (Orbwalk.CurrentMode == Orbwalk.Mode.Combo && ItemList("Combo", "QMode") == 0)) && ItemBool(Orbwalk.CurrentMode.ToString(), "Q") && args.Target is Obj_AI_Hero) Q.Cast(PacketCast());
+                else if ((Orbwalk.CurrentMode == Orbwalk.Mode.Harass || (Orbwalk.CurrentMode == Orbwalk.Mode.Combo && ItemList("Combo", "QMode") == 0)) && ItemBool(Orbwalk.CurrentMode.ToString(), "Q") && Target is Obj_AI_Hero) Q.Cast(PacketCast());
             }
         }
 
         private void NormalCombo(string Mode)
         {
-            if (targetObj == null) return;
+            if (!targetObj.IsValidTarget()) return;
             if (ItemBool(Mode, "Q") && Q.IsReady() && Player.Distance3D(targetObj) <= Orbwalk.GetAutoAttackRange(Player, targetObj) + 20)
             {
                 var DmgAA = Player.GetAutoAttackDamage(targetObj) * Math.Floor(Q.Instance.Cooldown / 1 / Player.AttackDelay);
@@ -144,7 +141,7 @@ namespace MasterSeries.Champions
             }
             if (ItemBool(Mode, "W") && W.CanCast(targetObj) && (Mode == "Combo" || (Mode == "Harass" && Player.Distance3D(targetObj) <= Orbwalk.GetAutoAttackRange(Player, targetObj) + 100))) W.CastOnUnit(targetObj, PacketCast());
             if (ItemBool(Mode, "E") && E.CanCast(targetObj) && (Mode == "Combo" || (Mode == "Harass" && Player.Distance3D(targetObj) <= Orbwalk.GetAutoAttackRange(Player, targetObj) + 100))) E.Cast(targetObj.Position.Randomize(0, (int)E.Width / 2), PacketCast());
-            if (Mode == "Combo" && ItemBool(Mode, "Item") && Items.CanUseItem(Randuin) && Player.CountEnemysInRange(450) >= 1) Items.UseItem(Randuin);
+            if (Mode == "Combo" && ItemBool(Mode, "Item") && RanduinOmen.IsReady() && Player.CountEnemysInRange((int)RanduinOmen.Range) >= 1) RanduinOmen.Cast();
             if (Mode == "Combo" && ItemBool(Mode, "Ignite") && IgniteReady()) CastIgnite(targetObj);
         }
 
@@ -178,11 +175,7 @@ namespace MasterSeries.Champions
                         break;
                     }
                 }
-                if (ItemBool("Clear", "E") && E.IsReady() && (minionObj.Count >= 2 || Obj.MaxHealth >= 1200))
-                {
-                    var posEFarm = E.GetCircularFarmLocation(minionObj);
-                    E.Cast(posEFarm.MinionsHit >= 2 ? posEFarm.Position : Obj.Position.Randomize(0, (int)E.Width / 2).To2D(), PacketCast());
-                }
+                if (ItemBool("Clear", "E") && E.IsReady() && (minionObj.Count >= 2 || Obj.MaxHealth >= 1200)) E.Cast(GetClearPos(minionObj, E), PacketCast());
             }
         }
 
@@ -207,9 +200,9 @@ namespace MasterSeries.Champions
         private double GetBonusDmg(Obj_AI_Base Target)
         {
             double DmgItem = 0;
-            if (Items.HasItem(Sheen) && ((Items.CanUseItem(Sheen) && Q.IsReady()) || Player.HasBuff("Sheen")) && Player.BaseAttackDamage > DmgItem) DmgItem = Player.BaseAttackDamage;
-            if (Items.HasItem(Iceborn) && ((Items.CanUseItem(Iceborn) && Q.IsReady()) || Player.HasBuff("ItemFrozenFist")) && Player.BaseAttackDamage * 1.25 > DmgItem) DmgItem = Player.BaseAttackDamage * 1.25;
-            if (Items.HasItem(Trinity) && ((Items.CanUseItem(Trinity) && Q.IsReady()) || Player.HasBuff("Sheen")) && Player.BaseAttackDamage * 2 > DmgItem) DmgItem = Player.BaseAttackDamage * 2;
+            if (Sheen.IsOwned() && ((Sheen.IsReady() && Q.IsReady()) || Player.HasBuff("Sheen")) && Player.BaseAttackDamage > DmgItem) DmgItem = Player.BaseAttackDamage;
+            if (Iceborn.IsOwned() && ((Iceborn.IsReady() && Q.IsReady()) || Player.HasBuff("ItemFrozenFist")) && Player.BaseAttackDamage * 1.25 > DmgItem) DmgItem = Player.BaseAttackDamage * 1.25;
+            if (Trinity.IsOwned() && ((Trinity.IsReady() && Q.IsReady()) || Player.HasBuff("Sheen")) && Player.BaseAttackDamage * 2 > DmgItem) DmgItem = Player.BaseAttackDamage * 2;
             return (Q.IsReady() ? Q.GetDamage(Target) : 0) + Player.GetAutoAttackDamage(Target, Q.IsReady() ? false : true) + Player.CalcDamage(Target, Damage.DamageType.Physical, DmgItem);
         }
     }

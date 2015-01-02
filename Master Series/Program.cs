@@ -161,7 +161,7 @@ namespace MasterSeries
         public static Obj_AI_Hero Player = null, targetObj = null;
         public static Spell Q, W, E, R;
         private static SpellSlot FlashSlot, SmiteSlot, IgniteSlot;
-        public static int Tiamat = 3077, Hydra = 3074, Bilgewater = 3144, HexGun = 3146, BladeRuined = 3153, Randuin = 3143, Youmuu = 3142, Deathfire = 3128, Blackfire = 3188;
+        public static Items.Item Tiamat, Hydra, Bilgewater, HexGun, BladeRuined, RanduinOmen, Youmuu, Deathfire, Blackfire, Sheen, Iceborn, Trinity;
         public static Menu Config;
         public static String Name;
         private static M_TargetSelector TS;
@@ -189,14 +189,18 @@ namespace MasterSeries
             {
                 if (Activator.CreateInstance(null, "MasterSeries.Champions." + Name) != null)
                 {
-                    //var QData = Player.GetSpell(SpellSlot.Q);
-                    //var WData = Player.GetSpell(SpellSlot.W);
-                    //var EData = Player.GetSpell(SpellSlot.E);
-                    //var RData = Player.GetSpell(SpellSlot.R);
-                    //Game.PrintChat("{0}: {1}-{2}/{3}/{4}/{5}/{6}", QData.SData.Name, QData.SData.CastRange[0], QData.SData.CastRangeDisplayOverride[0], QData.SData.SpellCastTime, QData.SData.LineWidth, QData.SData.MissileSpeed, QData.SData.CastRadius[0]);
-                    //Game.PrintChat("{0}: {1}-{2}/{3}/{4}/{5}/{6}", WData.SData.Name, WData.SData.CastRange[0], WData.SData.CastRangeDisplayOverride[0], WData.SData.SpellCastTime, WData.SData.LineWidth, WData.SData.MissileSpeed, WData.SData.CastRadius[0]);
-                    //Game.PrintChat("{0}: {1}-{2}/{3}/{4}/{5}/{6}", EData.SData.Name, EData.SData.CastRange[0], EData.SData.CastRangeDisplayOverride[0], EData.SData.SpellCastTime, EData.SData.LineWidth, EData.SData.MissileSpeed, EData.SData.CastRadius[0]);
-                    //Game.PrintChat("{0}: {1}-{2}/{3}/{4}/{5}/{6}", RData.SData.Name, RData.SData.CastRange[0], RData.SData.CastRangeDisplayOverride[0], RData.SData.SpellCastTime, RData.SData.LineWidth, RData.SData.MissileSpeed, RData.SData.CastRadius[0]);
+                    Tiamat = ItemData.Tiamat_Melee_Only.GetItem();
+                    Hydra = ItemData.Ravenous_Hydra_Melee_Only.GetItem();
+                    Bilgewater = ItemData.Bilgewater_Cutlass.GetItem();
+                    HexGun = ItemData.Hextech_Gunblade.GetItem();
+                    BladeRuined = ItemData.Blade_of_the_Ruined_King.GetItem();
+                    RanduinOmen = ItemData.Randuins_Omen.GetItem();
+                    Youmuu = ItemData.Youmuus_Ghostblade.GetItem();
+                    Deathfire = ItemData.Deathfire_Grasp.GetItem();
+                    Blackfire = ItemData.Blackfire_Torch.GetItem();
+                    Sheen = ItemData.Sheen.GetItem();
+                    Iceborn = ItemData.Iceborn_Gauntlet.GetItem();
+                    Trinity = ItemData.Trinity_Force.GetItem();
                     ItemBool(Config.SubMenu(Name + "Plugin").SubMenu("Misc"), "UsePacket", "Use Packet To Cast");
                     FlashSlot = Player.GetSpellSlot("summonerflash");
                     foreach (var Smite in Player.Spellbook.Spells.Where(i => i.Name.ToLower().Contains("smite") && (i.Slot == SpellSlot.Summoner1 || i.Slot == SpellSlot.Summoner2))) SmiteSlot = Smite.Slot;
@@ -221,7 +225,7 @@ namespace MasterSeries
 
         private static void OnGameUpdate(EventArgs args)
         {
-            targetObj = TS.Target;
+            Utility.DelayAction.Add(100, () => targetObj = TS.Target);
         }
 
         private static void OnGameProcessPacket(GamePacketEventArgs args)
@@ -398,7 +402,7 @@ namespace MasterSeries
             InventorySlot Ward = null;
             int[] WardPink = { 3362, 2043 };
             int[] WardGreen = { 3340, 3361, 2049, 2045, 2044 };
-            if (ItemBool("Misc", "WJPink")) foreach (var Id in WardPink.Where(i => Items.CanUseItem(i))) Ward = Player.InventoryItems.First(i => i.Id == (ItemId)Id);
+            if (ItemBool("Misc", "WJPink")) Ward = Player.InventoryItems.FirstOrDefault(i => i.Id == (ItemId)WardPink.FirstOrDefault(a => Items.CanUseItem(a)));
             foreach (var Id in WardGreen.Where(i => Items.CanUseItem(i))) Ward = Player.InventoryItems.First(i => i.Id == (ItemId)Id);
             return Ward;
         }
@@ -406,7 +410,7 @@ namespace MasterSeries
         public static float GetWardRange()
         {
             int[] TricketWard = { 3340, 3361, 3362 };
-            return 600 * (Player.Masteries.Any(i => i.Page == MasteryPage.Utility && i.Id == 68 && i.Points == 1) && GetWardSlot() != null && TricketWard.Contains((int)GetWardSlot().Id) ? 1.15f : 1);
+            return 600 * ((Player.Masteries.Any(i => i.Page == MasteryPage.Utility && i.Id == 68 && i.Points == 1) && GetWardSlot() != null && TricketWard.Contains((int)GetWardSlot().Id)) ? 1.15f : 1);
         }
 
         public static void TrySurvive(int Id, int AtHpPer = 0)
@@ -418,11 +422,27 @@ namespace MasterSeries
         {
             if (!SurviveHit) return;
             var HpPerAfterHit = (Player.Health - (int)SurviveHitDmg) / Player.MaxHealth * 100;
-            if ((AtHpPer == 0 && HpPerAfterHit <= 5) || (AtHpPer > 0 && HpPerAfterHit <= AtHpPer))
+            if ((AtHpPer == 0 && HpPerAfterHit <= 50) || (AtHpPer > 0 && HpPerAfterHit <= AtHpPer))
             {
-                Player.Spellbook.CastSpell(Slot, Player);
+                Player.Spellbook.CastSpell(Slot);
                 SurviveHit = false;
             }
+        }
+
+        public static Vector3 GetClearPos(List<Obj_AI_Base> Object, Spell Skill)
+        {
+            var Best = 0;
+            var BestPos = default(Vector3);
+            foreach (var Obj in Object)
+            {
+                var Hit = Skill.CountHits(Object, Obj.Position);
+                if (Hit > Best || BestPos == default(Vector3))
+                {
+                    Best = Hit;
+                    BestPos = Obj.Position;
+                }
+            }
+            return BestPos;
         }
     }
 }

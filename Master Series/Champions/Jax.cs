@@ -12,7 +12,6 @@ namespace MasterSeries.Champions
 {
     class Jax : Program
     {
-        private int Sheen = 3057, Trinity = 3078;
         private bool WardCasted = false, ECasted = false;
         private int RCount = 0;
         private Vector3 WardPlacePos = default(Vector3);
@@ -20,11 +19,12 @@ namespace MasterSeries.Champions
         public Jax()
         {
             Q = new Spell(SpellSlot.Q, 700);
-            W = new Spell(SpellSlot.W, 300);
+            W = new Spell(SpellSlot.W);
             E = new Spell(SpellSlot.E, 375);
-            R = new Spell(SpellSlot.R, 100);
+            R = new Spell(SpellSlot.R);
             Q.SetTargetted(0.5f, float.MaxValue);
-            W.SetTargetted(0.0435f, float.MaxValue);
+            W.SetTargetted(0.2333f, float.MaxValue);
+            E.SetSkillshot(0.3f, 375, 1450, false, SkillshotType.SkillshotCircle);
 
             var ChampMenu = new Menu("Plugin", Name + "Plugin");
             {
@@ -92,6 +92,7 @@ namespace MasterSeries.Champions
             AntiGapcloser.OnEnemyGapcloser += OnEnemyGapcloser;
             Interrupter.OnPossibleToInterrupt += OnPossibleToInterrupt;
             Obj_AI_Base.OnProcessSpellCast += OnProcessSpellCast;
+            Orbwalk.OnAttack += OnAttack;
             Orbwalk.AfterAttack += AfterAttack;
         }
 
@@ -121,8 +122,8 @@ namespace MasterSeries.Champions
         private void OnDraw(EventArgs args)
         {
             if (Player.IsDead) return;
-            if (ItemBool("Draw", "Q") && Q.Level > 0) Utility.DrawCircle(Player.Position, Q.Range, Q.IsReady() ? Color.Green : Color.Red);
-            if (ItemBool("Draw", "E") && E.Level > 0) Utility.DrawCircle(Player.Position, E.Range, E.IsReady() ? Color.Green : Color.Red);
+            if (ItemBool("Draw", "Q") && Q.Level > 0) Render.Circle.DrawCircle(Player.Position, Q.Range, Q.IsReady() ? Color.Green : Color.Red, 7);
+            if (ItemBool("Draw", "E") && E.Level > 0) Render.Circle.DrawCircle(Player.Position, E.Range, E.IsReady() ? Color.Green : Color.Red, 7);
         }
 
         private void OnEnemyGapcloser(ActiveGapcloser gapcloser)
@@ -141,13 +142,17 @@ namespace MasterSeries.Champions
         private void OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
         {
             if (!sender.IsMe) return;
-            if (args.SData.IsAutoAttack() && ((Obj_AI_Minion)args.Target).IsValidTarget(Orbwalk.GetAutoAttackRange(Player, (Obj_AI_Minion)args.Target) + 20) && ItemBool("Misc", "WLastHit") && W.IsReady() && Orbwalk.CurrentMode == Orbwalk.Mode.LastHit && CanKill((Obj_AI_Minion)args.Target, W, GetBonusDmg((Obj_AI_Minion)args.Target)) && args.Target is Obj_AI_Minion) W.Cast(PacketCast());
             if (args.SData.Name == "JaxCounterStrike")
             {
                 ECasted = true;
                 Utility.DelayAction.Add(1800, () => ECasted = false);
             }
             if (args.SData.Name == "jaxrelentlessattack") RCount = 0;
+        }
+
+        private void OnAttack(AttackableUnit Target)
+        {
+            if (Target.IsValidTarget(Orbwalk.GetAutoAttackRange(Player, Target) + 20) && ItemBool("Misc", "WLastHit") && W.IsReady() && Orbwalk.CurrentMode == Orbwalk.Mode.LastHit && CanKill((Obj_AI_Minion)Target, W, GetBonusDmg((Obj_AI_Minion)Target)) && Target is Obj_AI_Minion) W.Cast(PacketCast());
         }
 
         private void AfterAttack(AttackableUnit Target)
@@ -173,7 +178,7 @@ namespace MasterSeries.Champions
 
         private void NormalCombo(string Mode)
         {
-            if (targetObj == null) return;
+            if (!targetObj.IsValidTarget()) return;
             if (ItemBool(Mode, "E") && E.IsReady())
             {
                 if (!Player.HasBuff("JaxEvasion"))
@@ -182,8 +187,8 @@ namespace MasterSeries.Champions
                 }
                 else if (E.InRange(targetObj) && Player.Distance3D(targetObj) >= E.Range - 20) E.Cast(PacketCast());
             }
-            if (ItemBool(Mode, "W") && W.IsReady() && ItemBool(Mode, "Q") && Q.CanCast(targetObj) && CanKill(targetObj, Q, 0, Q.GetDamage(targetObj) + GetBonusDmg(targetObj))) W.Cast(PacketCast());
-            if (ItemBool(Mode, "Q") && Q.CanCast(targetObj) && (CanKill(targetObj, Q) || (Player.HasBuff("JaxEmpowerTwo") && CanKill(targetObj, Q, 0, Q.GetDamage(targetObj) + GetBonusDmg(targetObj))) || ((Mode == "Combo" || (Mode == "Harass" && Player.HealthPercentage() >= ItemList(Mode, "QAbove"))) && ((ItemBool(Mode, "E") && E.IsReady() && Player.HasBuff("JaxEvasion") && !E.InRange(targetObj)) || Player.Distance3D(targetObj) > 450)))) Q.CastOnUnit(targetObj, PacketCast());
+            if (ItemBool(Mode, "W") && W.IsReady() && ItemBool(Mode, "Q") && Q.CanCast(targetObj) && CanKill(targetObj, Q, Q.GetDamage(targetObj) + GetBonusDmg(targetObj))) W.Cast(PacketCast());
+            if (ItemBool(Mode, "Q") && Q.CanCast(targetObj) && (CanKill(targetObj, Q) || (Player.HasBuff("JaxEmpowerTwo") && CanKill(targetObj, Q, Q.GetDamage(targetObj) + GetBonusDmg(targetObj))) || ((Mode == "Combo" || (Mode == "Harass" && Player.HealthPercentage() >= ItemList(Mode, "QAbove"))) && ((ItemBool(Mode, "E") && E.IsReady() && Player.HasBuff("JaxEvasion") && !E.InRange(targetObj)) || Player.Distance3D(targetObj) > Orbwalk.GetAutoAttackRange(Player, targetObj) + 40)))) Q.CastOnUnit(targetObj, PacketCast());
             if (Mode == "Combo" && ItemBool(Mode, "R") && R.IsReady())
             {
                 switch (ItemList(Mode, "RMode"))
@@ -220,8 +225,8 @@ namespace MasterSeries.Champions
                     }
                     else if (E.InRange(Obj) && !ECasted) E.Cast(PacketCast());
                 }
-                if (ItemBool("Clear", "W") && W.IsReady() && ItemBool("Clear", "Q") && Q.IsReady() && CanKill(Obj, Q, 0, Q.GetDamage(Obj) + GetBonusDmg(Obj))) W.Cast(PacketCast());
-                if (ItemBool("Clear", "Q") && Q.IsReady() && (CanKill(Obj, Q) || (Player.HasBuff("JaxEmpowerTwo") && CanKill(Obj, Q, 0, Q.GetDamage(Obj) + GetBonusDmg(Obj))) || (ItemBool("Clear", "E") && E.IsReady() && Player.HasBuff("JaxEvasion") && !E.InRange(Obj)) || Player.Distance3D(Obj) > 450)) Q.CastOnUnit(Obj, PacketCast());
+                if (ItemBool("Clear", "W") && W.IsReady() && ItemBool("Clear", "Q") && Q.IsReady() && CanKill(Obj, Q, Q.GetDamage(Obj) + GetBonusDmg(Obj))) W.Cast(PacketCast());
+                if (ItemBool("Clear", "Q") && Q.IsReady() && (CanKill(Obj, Q) || (Player.HasBuff("JaxEmpowerTwo") && CanKill(Obj, Q, Q.GetDamage(Obj) + GetBonusDmg(Obj))) || (ItemBool("Clear", "E") && E.IsReady() && Player.HasBuff("JaxEvasion") && !E.InRange(Obj)) || Player.Distance3D(Obj) > Orbwalk.GetAutoAttackRange(Player, targetObj) + 40)) Q.CastOnUnit(Obj, PacketCast());
                 if (ItemBool("Clear", "Item")) UseItem(Obj, true);
             }
         }
@@ -263,7 +268,7 @@ namespace MasterSeries.Champions
         private void KillSteal()
         {
             if (!Q.IsReady()) return;
-            foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => i.IsValidTarget(Q.Range) && CanKill(i, Q, 0, Q.GetDamage(i) + (((W.IsReady() || Player.HasBuff("JaxEmpowerTwo")) && !CanKill(i, Q)) ? GetBonusDmg(i) : 0)) && i != targetObj).OrderBy(i => i.Health).OrderBy(i => i.Distance3D(Player)))
+            foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => i.IsValidTarget(Q.Range) && CanKill(i, Q, Q.GetDamage(i) + (((W.IsReady() || Player.HasBuff("JaxEmpowerTwo")) && !CanKill(i, Q)) ? GetBonusDmg(i) : 0)) && i != targetObj).OrderBy(i => i.Health).OrderBy(i => i.Distance3D(Player)))
             {
                 if (W.IsReady() && !CanKill(Obj, Q)) W.Cast(PacketCast());
                 if (Q.IsReady() && ((!CanKill(Obj, Q) && Player.HasBuff("JaxEmpowerTwo")) || CanKill(Obj, Q))) Q.CastOnUnit(Obj, PacketCast());
@@ -272,19 +277,19 @@ namespace MasterSeries.Champions
 
         private void UseItem(Obj_AI_Base Target, bool IsFarm = false)
         {
-            if (Items.CanUseItem(Bilgewater) && Player.Distance3D(Target) <= 450 && !IsFarm) Items.UseItem(Bilgewater, Target);
-            if (Items.CanUseItem(HexGun) && Player.Distance3D(Target) <= 700 && !IsFarm) Items.UseItem(HexGun, Target);
-            if (Items.CanUseItem(BladeRuined) && Player.Distance3D(Target) <= 450 && !IsFarm) Items.UseItem(BladeRuined, Target);
-            if (Items.CanUseItem(Tiamat) && IsFarm ? Player.Distance3D(Target) <= 350 : Player.CountEnemysInRange(350) >= 1) Items.UseItem(Tiamat);
-            if (Items.CanUseItem(Hydra) && IsFarm ? Player.Distance3D(Target) <= 350 : (Player.CountEnemysInRange(350) >= 2 || (Player.GetAutoAttackDamage(Target, true) < Target.Health && Player.CountEnemysInRange(350) == 1))) Items.UseItem(Hydra);
-            if (Items.CanUseItem(Randuin) && Player.CountEnemysInRange(450) >= 1 && !IsFarm) Items.UseItem(Randuin);
+            if (Bilgewater.IsReady() && !IsFarm) Bilgewater.Cast(Target);
+            if (HexGun.IsReady() && !IsFarm) HexGun.Cast(Target);
+            if (BladeRuined.IsReady() && !IsFarm) BladeRuined.Cast(Target);
+            if (Tiamat.IsReady() && IsFarm ? Player.Distance3D(Target) <= Tiamat.Range : Player.CountEnemysInRange((int)Tiamat.Range) >= 1) Tiamat.Cast();
+            if (Hydra.IsReady() && IsFarm ? Player.Distance3D(Target) <= Hydra.Range : (Player.CountEnemysInRange((int)Hydra.Range) >= 2 || (Player.GetAutoAttackDamage(Target, true) < Target.Health && Player.CountEnemysInRange((int)Hydra.Range) == 1))) Hydra.Cast();
+            if (RanduinOmen.IsReady() && Player.CountEnemysInRange((int)RanduinOmen.Range) >= 1 && !IsFarm) RanduinOmen.Cast();
         }
 
         private double GetBonusDmg(Obj_AI_Base Target)
         {
             double DmgItem = 0;
-            if (Items.HasItem(Sheen) && ((Items.CanUseItem(Sheen) && W.IsReady()) || Player.HasBuff("Sheen")) && Player.BaseAttackDamage > DmgItem) DmgItem = Player.BaseAttackDamage;
-            if (Items.HasItem(Trinity) && ((Items.CanUseItem(Trinity) && W.IsReady()) || Player.HasBuff("Sheen")) && Player.BaseAttackDamage * 2 > DmgItem) DmgItem = Player.BaseAttackDamage * 2;
+            if (Sheen.IsOwned() && ((Sheen.IsReady() && W.IsReady()) || Player.HasBuff("Sheen")) && Player.BaseAttackDamage > DmgItem) DmgItem = Player.BaseAttackDamage;
+            if (Trinity.IsOwned() && ((Trinity.IsReady() && W.IsReady()) || Player.HasBuff("Sheen")) && Player.BaseAttackDamage * 2 > DmgItem) DmgItem = Player.BaseAttackDamage * 2;
             return ((W.IsReady() || Player.HasBuff("JaxEmpowerTwo")) ? W.GetDamage(Target) : 0) + (RCount >= 2 ? R.GetDamage(Target) : 0) + Player.GetAutoAttackDamage(Target, true) + Player.CalcDamage(Target, Damage.DamageType.Physical, DmgItem);
         }
     }

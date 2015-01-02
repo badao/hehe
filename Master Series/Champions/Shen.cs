@@ -17,10 +17,10 @@ namespace MasterSeries.Champions
 
         public Shen()
         {
-            Q = new Spell(SpellSlot.Q, 475);
-            W = new Spell(SpellSlot.W, 20);
-            E = new Spell(SpellSlot.E, 620);
-            R = new Spell(SpellSlot.R, 25000);
+            Q = new Spell(SpellSlot.Q, 485);
+            W = new Spell(SpellSlot.W);
+            E = new Spell(SpellSlot.E, 625.85f);
+            R = new Spell(SpellSlot.R);
             Q.SetTargetted(0.5f, 1500);
             E.SetSkillshot(0.5f, 50, float.MaxValue, false, SkillshotType.SkillshotLine);
 
@@ -108,8 +108,8 @@ namespace MasterSeries.Champions
         private void OnDraw(EventArgs args)
         {
             if (Player.IsDead) return;
-            if (ItemBool("Draw", "Q") && Q.Level > 0) Utility.DrawCircle(Player.Position, Q.Range, Q.IsReady() ? Color.Green : Color.Red);
-            if (ItemBool("Draw", "E") && E.Level > 0) Utility.DrawCircle(Player.Position, E.Range, E.IsReady() ? Color.Green : Color.Red);
+            if (ItemBool("Draw", "Q") && Q.Level > 0) Render.Circle.DrawCircle(Player.Position, Q.Range, Q.IsReady() ? Color.Green : Color.Red, 7);
+            if (ItemBool("Draw", "E") && E.Level > 0) Render.Circle.DrawCircle(Player.Position, E.Range, E.IsReady() ? Color.Green : Color.Red, 7);
         }
 
         private void OnEnemyGapcloser(ActiveGapcloser gapcloser)
@@ -126,12 +126,12 @@ namespace MasterSeries.Champions
 
         private void NormalCombo(string Mode)
         {
-            if (targetObj == null) return;
+            if (!targetObj.IsValidTarget()) return;
             if (Mode == "Combo" && ItemBool(Mode, "Item"))
             {
-                if (Items.CanUseItem(Deathfire) && Player.Distance3D(targetObj) <= 750) Items.UseItem(Deathfire, targetObj);
-                if (Items.CanUseItem(Blackfire) && Player.Distance3D(targetObj) <= 750) Items.UseItem(Blackfire, targetObj);
-                if (Items.CanUseItem(Randuin) && Player.CountEnemysInRange(450) >= 1) Items.UseItem(Randuin);
+                if (RanduinOmen.IsReady() && Player.CountEnemysInRange((int)RanduinOmen.Range) >= 1) RanduinOmen.Cast();
+                if (Deathfire.IsReady()) Deathfire.Cast(targetObj);
+                if (Blackfire.IsReady()) Blackfire.Cast(targetObj);
             }
             if (ItemBool(Mode, "E") && E.CanCast(targetObj) && (Mode == "Combo" || (Mode == "Harass" && Player.HealthPercentage() >= ItemSlider(Mode, "EAbove")))) E.Cast(targetObj.Position.Extend(Player.Position, Player.Distance3D(targetObj) <= E.Range - 100 ? -100 : 0), PacketCast());
             if (ItemBool(Mode, "Q") && Q.CanCast(targetObj)) Q.CastOnUnit(targetObj, PacketCast());
@@ -157,7 +157,7 @@ namespace MasterSeries.Champions
         private void FlashTaunt()
         {
             CustomOrbwalk(targetObj);
-            if (targetObj == null || !E.IsReady()) return;
+            if (!targetObj.IsValidTarget() || !E.IsReady()) return;
             if (E.InRange(targetObj))
             {
                 E.Cast(targetObj.Position.Extend(Player.Position, Player.Distance3D(targetObj) <= E.Range - 100 ? -100 : 0), PacketCast());
