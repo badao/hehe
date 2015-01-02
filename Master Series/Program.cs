@@ -242,37 +242,41 @@ namespace MasterSeries
 
         public static void TrySurviveSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
         {
-            if (Player.IsDead || !sender.IsEnemy || !(sender is Obj_AI_Hero) || !args.Target.IsMe) return;
+            if (Player.IsDead || !sender.IsEnemy || !args.Target.IsMe) return;
             double Dmg = 0;
-            var Caster = (Obj_AI_Hero)sender;
-            var Slot = Caster.GetSpellSlot(args.SData.Name);
-            if ((Slot == SpellSlot.Summoner1 || Slot == SpellSlot.Summoner2) && args.SData.Name == "summonerdot")
+            if (sender is Obj_AI_Hero)
             {
-                Dmg = Caster.GetSummonerSpellDamage(Player, Damage.SummonerSpell.Ignite);
-            }
-            else if (Slot == SpellSlot.Item1 || Slot == SpellSlot.Item2 || Slot == SpellSlot.Item3 || Slot == SpellSlot.Item4 || Slot == SpellSlot.Item5 || Slot == SpellSlot.Item6)
-            {
-                switch (args.SData.Name)
+                var Caster = (Obj_AI_Hero)sender;
+                var Slot = Caster.GetSpellSlot(args.SData.Name);
+                if ((Slot == SpellSlot.Summoner1 || Slot == SpellSlot.Summoner2) && args.SData.Name == "summonerdot")
                 {
-                    case "ItemSwordOfFeastAndFamine":
-                        Dmg = Caster.GetItemDamage(Player, Damage.DamageItems.Botrk);
-                        break;
-                    case "BilgewaterCutlass":
-                        Dmg = Caster.GetItemDamage(Player, Damage.DamageItems.Bilgewater);
-                        break;
-                    case "DeathfireGrasp":
-                        Dmg = Caster.GetItemDamage(Player, Damage.DamageItems.Dfg);
-                        break;
-                    case "Hextech Gunblade":
-                        Dmg = Caster.GetItemDamage(Player, Damage.DamageItems.Hexgun);
-                        break;
+                    Dmg = Caster.GetSummonerSpellDamage(Player, Damage.SummonerSpell.Ignite);
                 }
+                else if (Slot == SpellSlot.Item1 || Slot == SpellSlot.Item2 || Slot == SpellSlot.Item3 || Slot == SpellSlot.Item4 || Slot == SpellSlot.Item5 || Slot == SpellSlot.Item6)
+                {
+                    switch (args.SData.Name)
+                    {
+                        case "ItemSwordOfFeastAndFamine":
+                            Dmg = Caster.GetItemDamage(Player, Damage.DamageItems.Botrk);
+                            break;
+                        case "BilgewaterCutlass":
+                            Dmg = Caster.GetItemDamage(Player, Damage.DamageItems.Bilgewater);
+                            break;
+                        case "DeathfireGrasp":
+                            Dmg = Caster.GetItemDamage(Player, Damage.DamageItems.Dfg);
+                            break;
+                        case "Hextech Gunblade":
+                            Dmg = Caster.GetItemDamage(Player, Damage.DamageItems.Hexgun);
+                            break;
+                    }
+                }
+                else if (Slot == SpellSlot.Q || Slot == SpellSlot.W || Slot == SpellSlot.E || Slot == SpellSlot.R)
+                {
+                    Dmg = Caster.GetSpellDamage(Player, Slot);
+                }
+                else if (args.SData.IsAutoAttack()) Dmg = Caster.GetAutoAttackDamage(Player, true);
             }
-            else if (Slot == SpellSlot.Q || Slot == SpellSlot.W || Slot == SpellSlot.E || Slot == SpellSlot.R)
-            {
-                Dmg = Caster.GetSpellDamage(Player, Slot);
-            }
-            else if (args.SData.IsAutoAttack()) Dmg = Caster.GetAutoAttackDamage(Player, true);
+            else if ((sender is Obj_AI_Minion || sender is Obj_AI_Turret) && args.SData.IsAutoAttack()) Dmg = sender.CalcDamage(Player, Damage.DamageType.Physical, sender.BaseAttackDamage + sender.FlatPhysicalDamageMod);
             if (Dmg > 0)
             {
                 SurviveHitDmg = (float)Dmg;
@@ -422,9 +426,9 @@ namespace MasterSeries
         {
             if (!SurviveHit) return;
             var HpPerAfterHit = (Player.Health - (int)SurviveHitDmg) / Player.MaxHealth * 100;
-            if ((AtHpPer == 0 && HpPerAfterHit <= 50) || (AtHpPer > 0 && HpPerAfterHit <= AtHpPer))
+            if ((AtHpPer == 0 && HpPerAfterHit <= 10) || (AtHpPer > 0 && HpPerAfterHit <= AtHpPer))
             {
-                Player.Spellbook.CastSpell(Slot);
+                Player.Spellbook.CastSpell(Slot, Player);
                 SurviveHit = false;
             }
         }
