@@ -110,7 +110,7 @@ namespace MasterSeries.Champions
         {
             if (!ItemBool("Misc", "QAntiGap") || Player.IsDead || !Q.CanCast(gapcloser.Sender) || Player.Distance3D(gapcloser.Sender) > 400) return;
             var QPred = Q.GetPrediction(gapcloser.Sender);
-            if (ItemBool("Misc", "SmiteCol") && QPred.CollisionObjects.Count == 1 && Q.MinHitChance == HitChance.High && CastSmite(QPred.CollisionObjects.First()))
+            if (ItemBool("Misc", "SmiteCol") && QPred.CollisionObjects.Count == 1 && Q.MinHitChance == HitChance.VeryHigh && CastSmite(QPred.CollisionObjects.First()))
             {
                 Q.Cast(QPred.CastPosition, PacketCast());
             }
@@ -121,11 +121,11 @@ namespace MasterSeries.Champions
         {
             if (!ItemBool("Misc", "QInterrupt") || !Q.CanCast(unit)) return;
             var QPred = Q.GetPrediction(unit);
-            if (ItemBool("Misc", "SmiteCol") && QPred.CollisionObjects.Count == 1 && Q.MinHitChance == HitChance.High && CastSmite(QPred.CollisionObjects.First()))
+            if (ItemBool("Misc", "SmiteCol") && QPred.CollisionObjects.Count == 1 && Q.MinHitChance == HitChance.VeryHigh && CastSmite(QPred.CollisionObjects.First()))
             {
                 Q.Cast(QPred.CastPosition, PacketCast());
             }
-            else Q.CastIfHitchanceEquals(unit, HitChance.High, PacketCast());
+            else Q.CastIfHitchanceEquals(unit, HitChance.VeryHigh, PacketCast());
         }
 
         private void NormalCombo(string Mode)
@@ -137,16 +137,16 @@ namespace MasterSeries.Champions
                 var nearObj = ObjectManager.Get<Obj_AI_Base>().Where(i => i.IsValidTarget(Q.Range) && !(i is Obj_AI_Turret) && i.CountEnemysInRange((int)R.Range - 20) >= ItemSlider(Mode, "RAbove") && Q.GetPrediction(i).Hitchance >= HitChance.Medium).OrderBy(i => i.CountEnemysInRange((int)R.Range));
                 if (ItemBool(Mode, "R") && R.IsReady() && ItemList(Mode, "RMode") == 1 && nearObj.Count() > 0)
                 {
-                    foreach (var Obj in nearObj) Q.CastIfHitchanceEquals(Obj, HitChance.High, PacketCast());
+                    foreach (var Obj in nearObj) Q.CastIfHitchanceEquals(Obj, HitChance.VeryHigh, PacketCast());
                 }
                 else if (Q.InRange(targetObj) && (CanKill(targetObj, Q) || !Orbwalk.InAutoAttackRange(targetObj)))
                 {
                     var QPred = Q.GetPrediction(targetObj);
-                    if (ItemBool("Misc", "SmiteCol") && QPred.CollisionObjects.Count == 1 && Q.MinHitChance == HitChance.High && CastSmite(QPred.CollisionObjects.First()))
+                    if (ItemBool("Misc", "SmiteCol") && QPred.CollisionObjects.Count == 1 && Q.MinHitChance == HitChance.VeryHigh && CastSmite(QPred.CollisionObjects.First()))
                     {
                         Q.Cast(QPred.CastPosition, PacketCast());
                     }
-                    else Q.CastIfHitchanceEquals(targetObj, HitChance.High, PacketCast());
+                    else Q.CastIfHitchanceEquals(targetObj, HitChance.VeryHigh, PacketCast());
                 }
             }
             if (ItemBool(Mode, "W") && W.IsReady())
@@ -185,13 +185,7 @@ namespace MasterSeries.Champions
             if (minionObj.Count() == 0 && ItemBool("Clear", "W") && W.IsReady() && Player.HasBuff("AuraofDespair")) W.Cast(PacketCast());
             foreach (var Obj in minionObj)
             {
-                if (SmiteReady() && Obj.Team == GameObjectTeam.Neutral)
-                {
-                    if ((ItemBool("SmiteMob", "Baron") && Obj.Name.StartsWith("SRU_Baron")) || (ItemBool("SmiteMob", "Dragon") && Obj.Name.StartsWith("SRU_Dragon")) || (!Obj.Name.Contains("Mini") && (
-                        (ItemBool("SmiteMob", "Red") && Obj.Name.StartsWith("SRU_Red")) || (ItemBool("SmiteMob", "Blue") && Obj.Name.StartsWith("SRU_Blue")) ||
-                        (ItemBool("SmiteMob", "Krug") && Obj.Name.StartsWith("SRU_Krug")) || (ItemBool("SmiteMob", "Gromp") && Obj.Name.StartsWith("SRU_Gromp")) ||
-                        (ItemBool("SmiteMob", "Raptor") && Obj.Name.StartsWith("SRU_Razorbeak")) || (ItemBool("SmiteMob", "Wolf") && Obj.Name.StartsWith("SRU_Murkwolf"))))) CastSmite(Obj);
-                }
+                if (Obj.Team == GameObjectTeam.Neutral && CanSmiteMob(Obj.Name)) CastSmite(Obj);
                 if (ItemBool("Clear", "E") && E.CanCast(Obj)) E.Cast(PacketCast());
                 if (ItemBool("Clear", "W") && W.IsReady())
                 {

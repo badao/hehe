@@ -92,7 +92,7 @@ namespace MasterSeries.Champions
             AntiGapcloser.OnEnemyGapcloser += OnEnemyGapcloser;
             Interrupter.OnPossibleToInterrupt += OnPossibleToInterrupt;
             Obj_AI_Base.OnProcessSpellCast += OnProcessSpellCast;
-            Orbwalk.OnAttack += OnAttack;
+            Orbwalk.BeforeAttack += BeforeAttack;
             Orbwalk.AfterAttack += AfterAttack;
         }
 
@@ -150,9 +150,13 @@ namespace MasterSeries.Champions
             if (args.SData.Name == "jaxrelentlessattack") RCount = 0;
         }
 
-        private void OnAttack(AttackableUnit Target)
+        private void BeforeAttack(Orbwalk.BeforeAttackEventArgs Args)
         {
-            if (Target.IsValidTarget(Orbwalk.GetAutoAttackRange(Player, Target) + 20) && ItemBool("Misc", "WLastHit") && W.IsReady() && Orbwalk.CurrentMode == Orbwalk.Mode.LastHit && CanKill((Obj_AI_Minion)Target, W, GetBonusDmg((Obj_AI_Minion)Target)) && Target is Obj_AI_Minion) W.Cast(PacketCast());
+            if (Args.Target.IsValidTarget(Orbwalk.GetAutoAttackRange(Player, Args.Target) + 20) && ItemBool("Misc", "WLastHit") && W.IsReady() && Orbwalk.CurrentMode == Orbwalk.Mode.LastHit && CanKill((Obj_AI_Minion)Args.Target, W, GetBonusDmg((Obj_AI_Minion)Args.Target)) && Args.Target is Obj_AI_Minion)
+            {
+                Args.Process = false;
+                W.Cast(PacketCast());
+            }
         }
 
         private void AfterAttack(AttackableUnit Target)
@@ -194,10 +198,10 @@ namespace MasterSeries.Champions
                 switch (ItemList(Mode, "RMode"))
                 {
                     case 0:
-                        if (Player.HealthPercentage() <= ItemSlider(Mode, "RUnder") && Q.InRange(targetObj)) R.Cast(PacketCast());
+                        if (Player.HealthPercentage() <= ItemSlider(Mode, "RUnder") && Player.CountEnemysInRange((int)Q.Range + 200) >= 1) R.Cast(PacketCast());
                         break;
                     case 1:
-                        if (Player.CountEnemysInRange((int)Q.Range) >= ItemSlider(Mode, "RCount")) R.Cast(PacketCast());
+                        if (Player.CountEnemysInRange((int)Q.Range + 200) >= ItemSlider(Mode, "RCount")) R.Cast(PacketCast());
                         break;
                 }
             }
@@ -210,13 +214,7 @@ namespace MasterSeries.Champions
             var minionObj = MinionManager.GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
             foreach (var Obj in minionObj)
             {
-                if (SmiteReady() && Obj.Team == GameObjectTeam.Neutral)
-                {
-                    if ((ItemBool("SmiteMob", "Baron") && Obj.Name.StartsWith("SRU_Baron")) || (ItemBool("SmiteMob", "Dragon") && Obj.Name.StartsWith("SRU_Dragon")) || (!Obj.Name.Contains("Mini") && (
-                        (ItemBool("SmiteMob", "Red") && Obj.Name.StartsWith("SRU_Red")) || (ItemBool("SmiteMob", "Blue") && Obj.Name.StartsWith("SRU_Blue")) ||
-                        (ItemBool("SmiteMob", "Krug") && Obj.Name.StartsWith("SRU_Krug")) || (ItemBool("SmiteMob", "Gromp") && Obj.Name.StartsWith("SRU_Gromp")) ||
-                        (ItemBool("SmiteMob", "Raptor") && Obj.Name.StartsWith("SRU_Razorbeak")) || (ItemBool("SmiteMob", "Wolf") && Obj.Name.StartsWith("SRU_Murkwolf"))))) CastSmite(Obj);
-                }
+                if (Obj.Team == GameObjectTeam.Neutral && CanSmiteMob(Obj.Name)) CastSmite(Obj);
                 if (ItemBool("Clear", "E") && E.IsReady() && (Obj.MaxHealth >= 1200 || minionObj.Count(i => i.Distance3D(Obj) <= E.Range) >= 2))
                 {
                     if (!Player.HasBuff("JaxEvasion"))
@@ -243,17 +241,17 @@ namespace MasterSeries.Champions
             }
         }
 
-        private void WardJump(Vector3 Pos)
+        private bool WardJump(Vector3 Pos)
         {
-            if (!Q.IsReady()) return;
+            if (!Q.IsReady()) return false;
             bool Casted = false;
             var JumpPos = Pos;
-            if (GetWardSlot() != null && !WardCasted && Player.Distance(JumpPos) > GetWardRange()) JumpPos = Player.Position.Extend(JumpPos, GetWardRange());
+            if (GetWardSlot() != null && !WardCasted && Player.Distance(Pos) > GetWardRange()) JumpPos = Player.Position.Extend(Pos, GetWardRange());
             foreach (var Obj in ObjectManager.Get<Obj_AI_Base>().Where(i => i.IsValidTarget(Q.Range + i.BoundingRadius, false) && !i.IsMe && !(i is Obj_AI_Turret) && i.Distance(WardCasted ? WardPlacePos : JumpPos) < 200).OrderBy(i => i.Distance(WardCasted ? WardPlacePos : JumpPos)))
             {
                 Q.CastOnUnit(Obj, PacketCast());
                 Casted = true;
-                return;
+                return true;
             }
             if (!Casted && GetWardSlot() != null && !WardCasted)
             {
@@ -263,6 +261,7 @@ namespace MasterSeries.Champions
                 WardCasted = true;
                 Utility.DelayAction.Add(800, () => WardCasted = false);
             }
+            return false;
         }
 
         private void KillSteal()

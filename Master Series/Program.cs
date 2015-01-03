@@ -448,5 +448,19 @@ namespace MasterSeries
             }
             return BestPos;
         }
+
+        public static bool CanSmiteMob(string Name)
+        {
+            if (!SmiteReady() || Name.Contains("Mini")) return false;
+            if (ItemBool("SmiteMob", "Baron") && Name.StartsWith("SRU_Baron")) return true;
+            if (ItemBool("SmiteMob", "Dragon") && Name.StartsWith("SRU_Dragon")) return true;
+            if (ItemBool("SmiteMob", "Red") && Name.StartsWith("SRU_Red")) return true;
+            if (ItemBool("SmiteMob", "Blue") && Name.StartsWith("SRU_Blue")) return true;
+            if (ItemBool("SmiteMob", "Krug") && Name.StartsWith("SRU_Krug")) return true;
+            if (ItemBool("SmiteMob", "Gromp") && Name.StartsWith("SRU_Gromp")) return true;
+            if (ItemBool("SmiteMob", "Raptor") && Name.StartsWith("SRU_Razorbeak")) return true;
+            if (ItemBool("SmiteMob", "Wolf") && Name.StartsWith("SRU_Murkwolf")) return true;
+            return false;
+        }
     }
 }

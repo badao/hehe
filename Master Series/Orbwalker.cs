@@ -159,7 +159,7 @@ namespace MasterSeries.Common
             if (Config.Item("OW_Draw_HoldZone").GetValue<Circle>().Active) Render.Circle.DrawCircle(Player.Position, Config.Item("OW_Misc_HoldZone").GetValue<Slider>().Value, Config.Item("OW_Draw_HoldZone").GetValue<Circle>().Color, 7);
             if (Config.Item("OW_Draw_LastHit").GetValue<Circle>().Active || Config.Item("OW_Draw_NearKill").GetValue<Circle>().Active)
             {
-                foreach (var Obj in MinionManager.GetMinions(GetAutoAttackRange() + 500, MinionTypes.All, MinionTeam.All, MinionOrderTypes.MaxHealth))
+                foreach (var Obj in MinionManager.GetMinions(GetAutoAttackRange() + 500, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth))
                 {
                     if (Config.Item("OW_Draw_LastHit").GetValue<Circle>().Active && Obj.Health <= Player.GetAutoAttackDamage(Obj, true))
                     {
@@ -241,7 +241,7 @@ namespace MasterSeries.Common
             else MoveTo(Pos);
         }
 
-        private static void ResetAutoAttack()
+        public static void ResetAutoAttack()
         {
             LastAttack = 0;
         }
@@ -367,7 +367,7 @@ namespace MasterSeries.Common
             }
             if (CurrentMode == Mode.Harass || CurrentMode == Mode.LaneClear || CurrentMode == Mode.LastHit)
             {
-                foreach (var Obj in ObjectManager.Get<Obj_AI_Minion>().Where(i => i.IsValidTarget() && i.Name != "Beacon" && InAutoAttackRange(i) && i.Team != GameObjectTeam.Neutral && i.Health < 2 * (Player.BaseAttackDamage + Player.FlatPhysicalDamageMod)))
+                foreach (var Obj in ObjectManager.Get<Obj_AI_Minion>().Where(i => i.IsValidTarget() && i.Name != "Beacon" && InAutoAttackRange(i) && i.Team != GameObjectTeam.Neutral))
                 {
                     var Time = (int)(Player.AttackCastDelay * 1000) - 100 + Game.Ping / 2 + 1000 * (int)(Player.Distance(Obj.ServerPosition) / Orbwalking.GetMyProjectileSpeed());
                     var predHp = HealthPrediction.GetHealthPrediction(Obj, Time, GetCurrentFarmDelay());

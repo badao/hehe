@@ -129,11 +129,11 @@ namespace MasterSeries.Champions
             if (ItemBool(Mode, "Q") && Q.CanCast(targetObj))
             {
                 var QPred = Q.GetPrediction(targetObj);
-                if (ItemBool("Misc", "SmiteCol") && QPred.CollisionObjects.Count == 1 && Q.MinHitChance == HitChance.High && CastSmite(QPred.CollisionObjects.First()))
+                if (ItemBool("Misc", "SmiteCol") && QPred.CollisionObjects.Count == 1 && Q.MinHitChance == HitChance.VeryHigh && CastSmite(QPred.CollisionObjects.First()))
                 {
                     Q.Cast(QPred.CastPosition, PacketCast());
                 }
-                else Q.CastIfHitchanceEquals(targetObj, HitChance.High, PacketCast());
+                else Q.CastIfHitchanceEquals(targetObj, HitChance.VeryHigh, PacketCast());
             }
             if (ItemBool(Mode, "E") && E.IsReady() && Orbwalk.InAutoAttackRange(targetObj)) E.Cast(PacketCast());
             if (Mode == "Combo" && ItemBool(Mode, "Item") && RanduinOmen.IsReady() && Player.CountEnemysInRange((int)RanduinOmen.Range) >= 1) RanduinOmen.Cast();
@@ -146,13 +146,7 @@ namespace MasterSeries.Champions
             if (minionObj.Count() == 0 && ItemBool("Clear", "W") && W.IsReady() && Player.HasBuff("BurningAgony")) W.Cast(PacketCast());
             foreach (var Obj in minionObj)
             {
-                if (SmiteReady() && Obj.Team == GameObjectTeam.Neutral)
-                {
-                    if ((ItemBool("SmiteMob", "Baron") && Obj.Name.StartsWith("SRU_Baron")) || (ItemBool("SmiteMob", "Dragon") && Obj.Name.StartsWith("SRU_Dragon")) || (!Obj.Name.Contains("Mini") && (
-                        (ItemBool("SmiteMob", "Red") && Obj.Name.StartsWith("SRU_Red")) || (ItemBool("SmiteMob", "Blue") && Obj.Name.StartsWith("SRU_Blue")) ||
-                        (ItemBool("SmiteMob", "Krug") && Obj.Name.StartsWith("SRU_Krug")) || (ItemBool("SmiteMob", "Gromp") && Obj.Name.StartsWith("SRU_Gromp")) ||
-                        (ItemBool("SmiteMob", "Raptor") && Obj.Name.StartsWith("SRU_Razorbeak")) || (ItemBool("SmiteMob", "Wolf") && Obj.Name.StartsWith("SRU_Murkwolf"))))) CastSmite(Obj);
-                }
+                if (Obj.Team == GameObjectTeam.Neutral && CanSmiteMob(Obj.Name)) CastSmite(Obj);
                 if (ItemBool("Clear", "E") && E.IsReady() && Orbwalk.InAutoAttackRange(Obj)) E.Cast(PacketCast());
                 if (ItemBool("Clear", "W") && W.IsReady())
                 {
@@ -173,7 +167,7 @@ namespace MasterSeries.Champions
         private void LastHit()
         {
             if (!ItemBool("Misc", "QLastHit") || !Q.IsReady()) return;
-            foreach (var Obj in MinionManager.GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly).Where(i => CanKill(i, Q)).OrderByDescending(i => i.Distance3D(Player))) Q.CastIfHitchanceEquals(Obj, HitChance.High, PacketCast());
+            foreach (var Obj in MinionManager.GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly).Where(i => CanKill(i, Q)).OrderByDescending(i => i.Distance3D(Player))) Q.CastIfHitchanceEquals(Obj, HitChance.VeryHigh, PacketCast());
         }
 
         private void KillSteal()
@@ -182,11 +176,11 @@ namespace MasterSeries.Champions
             foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => i.IsValidTarget(Q.Range) && CanKill(i, Q) && i != targetObj).OrderBy(i => i.Health).OrderBy(i => i.Distance3D(Player)))
             {
                 var QPred = Q.GetPrediction(Obj);
-                if (ItemBool("Misc", "SmiteCol") && QPred.CollisionObjects.Count == 1 && Q.MinHitChance == HitChance.High && CastSmite(QPred.CollisionObjects.First()))
+                if (ItemBool("Misc", "SmiteCol") && QPred.CollisionObjects.Count == 1 && Q.MinHitChance == HitChance.VeryHigh && CastSmite(QPred.CollisionObjects.First()))
                 {
                     Q.Cast(QPred.CastPosition, PacketCast());
                 }
-                else Q.CastIfHitchanceEquals(Obj, HitChance.High, PacketCast());
+                else Q.CastIfHitchanceEquals(Obj, HitChance.VeryHigh, PacketCast());
             }
         }
     }

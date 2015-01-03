@@ -279,11 +279,11 @@ namespace MasterSeries.Champions
                 if (Q.Instance.Name == "BlindMonkQOne" && Q.InRange(targetObj))
                 {
                     var QPred = Q.GetPrediction(targetObj);
-                    if (ItemBool("Misc", "SmiteCol") && QPred.CollisionObjects.Count == 1 && Q.MinHitChance == HitChance.High && CastSmite(QPred.CollisionObjects.First()))
+                    if (ItemBool("Misc", "SmiteCol") && QPred.CollisionObjects.Count == 1 && Q.MinHitChance == HitChance.VeryHigh && CastSmite(QPred.CollisionObjects.First()))
                     {
                         Q.Cast(QPred.CastPosition, PacketCast());
                     }
-                    else Q.CastIfHitchanceEquals(targetObj, HitChance.High, PacketCast());
+                    else Q.CastIfHitchanceEquals(targetObj, HitChance.VeryHigh, PacketCast());
                 }
                 else if (targetObj.HasBuff("BlindMonkSonicWave") && Q2.InRange(targetObj) && (Player.Distance3D(targetObj) > Orbwalk.GetAutoAttackRange(Player, targetObj) + 50 || CanKill(targetObj, Q2, 1) || (targetObj.HasBuff("BlindMonkTempest") && E.InRange(targetObj) && !Orbwalk.InAutoAttackRange(targetObj)) || !QCasted)) Q.Cast(PacketCast());
             }
@@ -326,11 +326,11 @@ namespace MasterSeries.Champions
                         if (Q.Instance.Name == "BlindMonkQOne" && Q.InRange(targetObj))
                         {
                             var QPred = Q.GetPrediction(targetObj);
-                            if (ItemBool("Misc", "SmiteCol") && QPred.CollisionObjects.Count == 1 && Q.MinHitChance == HitChance.High && CastSmite(QPred.CollisionObjects.First()))
+                            if (ItemBool("Misc", "SmiteCol") && QPred.CollisionObjects.Count == 1 && Q.MinHitChance == HitChance.VeryHigh && CastSmite(QPred.CollisionObjects.First()))
                             {
                                 Q.Cast(QPred.CastPosition, PacketCast());
                             }
-                            else Q.CastIfHitchanceEquals(targetObj, HitChance.High, PacketCast());
+                            else Q.CastIfHitchanceEquals(targetObj, HitChance.VeryHigh, PacketCast());
                         }
                         else if (targetObj.HasBuff("BlindMonkSonicWave") && Q2.InRange(targetObj) && (CanKill(targetObj, Q2, 1) || (W.IsReady() && W.Instance.Name == "BlindMonkWOne" && Player.Mana >= W.Instance.ManaCost + (ItemBool("Harass", "E") && E.IsReady() && E.Instance.Name == "BlindMonkEOne" ? Q.Instance.ManaCost + E.Instance.ManaCost : Q.Instance.ManaCost) && Player.HealthPercentage() >= ItemSlider("Harass", "Q2Above"))))
                         {
@@ -372,13 +372,7 @@ namespace MasterSeries.Champions
             var minionObj = MinionManager.GetMinions(Q2.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
             foreach (var Obj in minionObj)
             {
-                if (SmiteReady() && Obj.Team == GameObjectTeam.Neutral)
-                {
-                    if ((ItemBool("SmiteMob", "Baron") && Obj.Name.StartsWith("SRU_Baron")) || (ItemBool("SmiteMob", "Dragon") && Obj.Name.StartsWith("SRU_Dragon")) || (!Obj.Name.Contains("Mini") && (
-                        (ItemBool("SmiteMob", "Red") && Obj.Name.StartsWith("SRU_Red")) || (ItemBool("SmiteMob", "Blue") && Obj.Name.StartsWith("SRU_Blue")) ||
-                        (ItemBool("SmiteMob", "Krug") && Obj.Name.StartsWith("SRU_Krug")) || (ItemBool("SmiteMob", "Gromp") && Obj.Name.StartsWith("SRU_Gromp")) ||
-                        (ItemBool("SmiteMob", "Raptor") && Obj.Name.StartsWith("SRU_Razorbeak")) || (ItemBool("SmiteMob", "Wolf") && Obj.Name.StartsWith("SRU_Murkwolf"))))) CastSmite(Obj);
-                }
+                if (Obj.Team == GameObjectTeam.Neutral && CanSmiteMob(Obj.Name)) CastSmite(Obj);
                 var Passive = Player.HasBuff("BlindMonkFlurry");
                 if (ItemBool("Clear", "Q") && Q.IsReady())
                 {
@@ -418,7 +412,7 @@ namespace MasterSeries.Champions
         private void LastHit()
         {
             if (!ItemBool("Misc", "QLastHit") || !Q.IsReady() || Q.Instance.Name != "BlindMonkQOne") return;
-            foreach (var Obj in MinionManager.GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly).Where(i => CanKill(i, Q)).OrderByDescending(i => i.Distance3D(Player))) Q.CastIfHitchanceEquals(Obj, HitChance.High, PacketCast());
+            foreach (var Obj in MinionManager.GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly).Where(i => CanKill(i, Q)).OrderByDescending(i => i.Distance3D(Player))) Q.CastIfHitchanceEquals(Obj, HitChance.VeryHigh, PacketCast());
         }
 
         private bool WardJump(Vector3 Pos)
@@ -426,7 +420,7 @@ namespace MasterSeries.Champions
             if (!W.IsReady() || W.Instance.Name != "BlindMonkWOne" || JumpCasted) return false;
             bool Casted = false;
             var JumpPos = Pos;
-            if (GetWardSlot() != null && !WardCasted && Player.Distance(Pos) > GetWardRange()) JumpPos = Player.Position.Extend(JumpPos, GetWardRange());
+            if (GetWardSlot() != null && !WardCasted && Player.Distance(Pos) > GetWardRange()) JumpPos = Player.Position.Extend(Pos, GetWardRange());
             foreach (var Obj in ObjectManager.Get<Obj_AI_Base>().Where(i => i.IsValidTarget(W.Range + i.BoundingRadius, false) && i.IsAlly && !i.IsMe && !(i is Obj_AI_Turret) && i.Distance(WardCasted ? WardPlacePos : JumpPos) < 200 && (!ItemActive("InsecCombo") || (ItemActive("InsecCombo") && i.Name.EndsWith("Ward") && i is Obj_AI_Minion))).OrderBy(i => i.Distance(WardCasted ? WardPlacePos : JumpPos)))
             {
                 W.CastOnUnit(Obj, PacketCast());
@@ -454,11 +448,11 @@ namespace MasterSeries.Champions
                 if (Q.Instance.Name == "BlindMonkQOne" && Q.InRange(targetObj))
                 {
                     var QPred = Q.GetPrediction(targetObj);
-                    if (ItemBool("Misc", "SmiteCol") && QPred.CollisionObjects.Count == 1 && Q.MinHitChance == HitChance.High && CastSmite(QPred.CollisionObjects.First()))
+                    if (ItemBool("Misc", "SmiteCol") && QPred.CollisionObjects.Count == 1 && Q.MinHitChance == HitChance.VeryHigh && CastSmite(QPred.CollisionObjects.First()))
                     {
                         Q.Cast(QPred.CastPosition, PacketCast());
                     }
-                    else Q.CastIfHitchanceEquals(targetObj, HitChance.High, PacketCast());
+                    else Q.CastIfHitchanceEquals(targetObj, HitChance.VeryHigh, PacketCast());
                 }
                 else if (targetObj.HasBuff("BlindMonkSonicWave") && Q2.InRange(targetObj) && (CanKill(targetObj, Q2, 1) || (!R.IsReady() && !RCasted && KickCasted) || (!R.IsReady() && !RCasted && !KickCasted && (Player.Distance3D(targetObj) > Orbwalk.GetAutoAttackRange(Player, targetObj) + 100 || !QCasted)))) Q.Cast(PacketCast());
             }
@@ -475,7 +469,7 @@ namespace MasterSeries.Champions
                 else if (E.InRange(targetObj) && !Player.HasBuff("BlindMonkSafeguard") && !WCasted) W.Cast(PacketCast());
             }
             if (R.CanCast(targetObj) && Q.IsReady() && targetObj.HasBuff("BlindMonkSonicWave")) R.CastOnUnit(targetObj, PacketCast());
-            if (E.IsReady() && !R.IsReady())
+            if (E.IsReady())
             {
                 if (E.Instance.Name == "BlindMonkEOne" && E.InRange(targetObj))
                 {
@@ -512,18 +506,18 @@ namespace MasterSeries.Champions
             {
                 if (Q.Instance.Name == "BlindMonkQOne")
                 {
-                    if (Q.InRange(targetObj) && Q.GetPrediction(targetObj).Hitchance >= HitChance.High)
+                    if (Q.InRange(targetObj) && Q.GetPrediction(targetObj).Hitchance >= HitChance.VeryHigh)
                     {
                         var QPred = Q.GetPrediction(targetObj);
-                        if (ItemBool("Misc", "SmiteCol") && QPred.CollisionObjects.Count == 1 && Q.MinHitChance == HitChance.High && CastSmite(QPred.CollisionObjects.First()))
+                        if (ItemBool("Misc", "SmiteCol") && QPred.CollisionObjects.Count == 1 && Q.MinHitChance == HitChance.VeryHigh && CastSmite(QPred.CollisionObjects.First()))
                         {
                             Q.Cast(QPred.CastPosition, PacketCast());
                         }
-                        else Q.CastIfHitchanceEquals(targetObj, HitChance.High, PacketCast());
+                        else Q.CastIfHitchanceEquals(targetObj, HitChance.VeryHigh, PacketCast());
                     }
                     else if (GetInsecPos() != default(Vector3) && Q.GetPrediction(targetObj).Hitchance == HitChance.Collision)
                     {
-                        foreach (var Obj in Q.GetPrediction(targetObj, true).CollisionObjects.Where(i => i.Position.Distance(GetInsecPos()) < ((ItemBool("Insec", "Flash") && FlashReady() && !InsecJumpCasted && (!W.IsReady() || W.Instance.Name != "BlindMonkWOne" || GetWardSlot() == null || !WardCasted)) ? 400 : GetWardRange()) && !CanKill(i, Q)).OrderBy(i => i.Position.Distance(GetInsecPos()))) Q.CastIfHitchanceEquals(Obj, HitChance.High, PacketCast());
+                        foreach (var Obj in Q.GetPrediction(targetObj, true).CollisionObjects.Where(i => i.Position.Distance(GetInsecPos()) < ((ItemBool("Insec", "Flash") && FlashReady() && !InsecJumpCasted && (!W.IsReady() || W.Instance.Name != "BlindMonkWOne" || GetWardSlot() == null || !WardCasted)) ? 400 : GetWardRange()) && !CanKill(i, Q)).OrderBy(i => i.Position.Distance(GetInsecPos()))) Q.CastIfHitchanceEquals(Obj, HitChance.VeryHigh, PacketCast());
                     }
                 }
                 else if (targetObj.HasBuff("BlindMonkSonicWave") && Q2.InRange(targetObj) && (CanKill(targetObj, Q2, 1) || (!R.IsReady() && !RCasted && KickCasted) || (!R.IsReady() && !RCasted && !KickCasted && (Player.Distance3D(targetObj) > Orbwalk.GetAutoAttackRange(Player, targetObj) + 100 || !QCasted)) || (GetInsecPos() != default(Vector3) && Player.Position.Distance(GetInsecPos()) > ((ItemBool("Insec", "Flash") && FlashReady() && !InsecJumpCasted && (!W.IsReady() || W.Instance.Name != "BlindMonkWOne" || GetWardSlot() == null || !WardCasted)) ? 400 : GetWardRange()))))
@@ -544,13 +538,13 @@ namespace MasterSeries.Champions
             {
                 if (Q.Instance.Name == "BlindMonkQOne")
                 {
-                    if (Q.InRange(Mob) && CanKill(Mob, Q, Q.GetDamage(Mob) + (SmiteReady() ? Player.GetSummonerSpellDamage(Mob, Damage.SummonerSpell.Smite) : 0), GetQ2Dmg(Mob, Q.GetDamage(Mob) + (SmiteReady() ? Player.GetSummonerSpellDamage(Mob, Damage.SummonerSpell.Smite) : 0))) && Q.GetPrediction(Mob).Hitchance >= HitChance.High)
+                    if (Q.InRange(Mob) && CanKill(Mob, Q, Q.GetDamage(Mob) + (SmiteReady() ? Player.GetSummonerSpellDamage(Mob, Damage.SummonerSpell.Smite) : 0), GetQ2Dmg(Mob, Q.GetDamage(Mob) + (SmiteReady() ? Player.GetSummonerSpellDamage(Mob, Damage.SummonerSpell.Smite) : 0))) && Q.GetPrediction(Mob).Hitchance >= HitChance.VeryHigh)
                     {
-                        Q.CastIfHitchanceEquals(Mob, HitChance.High, PacketCast());
+                        Q.CastIfHitchanceEquals(Mob, HitChance.VeryHigh, PacketCast());
                     }
                     else if (SmiteReady() && CanKill(Mob, Q2, Player.GetSummonerSpellDamage(Mob, Damage.SummonerSpell.Smite)) && Q.GetPrediction(Mob).Hitchance <= HitChance.OutOfRange)
                     {
-                        foreach (var Obj in Q.GetPrediction(Mob, true).CollisionObjects.Where(i => i.Distance3D(Mob) <= 760 && !CanKill(i, Q)).OrderBy(i => i.Distance3D(Mob))) Q.CastIfHitchanceEquals(Obj, HitChance.High, PacketCast());
+                        foreach (var Obj in Q.GetPrediction(Mob, true).CollisionObjects.Where(i => i.Distance3D(Mob) <= 760 && !CanKill(i, Q)).OrderBy(i => i.Distance3D(Mob))) Q.CastIfHitchanceEquals(Obj, HitChance.VeryHigh, PacketCast());
                     }
                 }
                 else if (Mob.HasBuff("BlindMonkSonicWave") && CanKill(Mob, Q2, SmiteReady() ? Player.GetSummonerSpellDamage(Mob, Damage.SummonerSpell.Smite) : 0, GetQ2Dmg(Mob, SmiteReady() ? Player.GetSummonerSpellDamage(Mob, Damage.SummonerSpell.Smite) : 0)))
