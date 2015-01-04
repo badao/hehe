@@ -128,12 +128,7 @@ namespace MasterSeries.Champions
             }
             if (ItemBool(Mode, "Q") && Q.CanCast(targetObj))
             {
-                var QPred = Q.GetPrediction(targetObj);
-                if (ItemBool("Misc", "SmiteCol") && QPred.CollisionObjects.Count == 1 && Q.MinHitChance == HitChance.VeryHigh && CastSmite(QPred.CollisionObjects.First()))
-                {
-                    Q.Cast(QPred.CastPosition, PacketCast());
-                }
-                else Q.CastIfHitchanceEquals(targetObj, HitChance.VeryHigh, PacketCast());
+                CastSkillShotSmite(Q, targetObj);
             }
             if (ItemBool(Mode, "E") && E.IsReady() && Orbwalk.InAutoAttackRange(targetObj)) E.Cast(PacketCast());
             if (Mode == "Combo" && ItemBool(Mode, "Item") && RanduinOmen.IsReady() && Player.CountEnemysInRange((int)RanduinOmen.Range) >= 1) RanduinOmen.Cast();
@@ -173,15 +168,7 @@ namespace MasterSeries.Champions
         private void KillSteal()
         {
             if (!Q.IsReady()) return;
-            foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => i.IsValidTarget(Q.Range) && CanKill(i, Q) && i != targetObj).OrderBy(i => i.Health).OrderBy(i => i.Distance3D(Player)))
-            {
-                var QPred = Q.GetPrediction(Obj);
-                if (ItemBool("Misc", "SmiteCol") && QPred.CollisionObjects.Count == 1 && Q.MinHitChance == HitChance.VeryHigh && CastSmite(QPred.CollisionObjects.First()))
-                {
-                    Q.Cast(QPred.CastPosition, PacketCast());
-                }
-                else Q.CastIfHitchanceEquals(Obj, HitChance.VeryHigh, PacketCast());
-            }
+            foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => i.IsValidTarget(Q.Range) && CanKill(i, Q) && i != targetObj).OrderBy(i => i.Health).OrderBy(i => i.Distance3D(Player))) CastSkillShotSmite(Q, Obj);
         }
     }
 }

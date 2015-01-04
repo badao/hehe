@@ -462,5 +462,15 @@ namespace MasterSeries
             if (ItemBool("SmiteMob", "Wolf") && Name.StartsWith("SRU_Murkwolf")) return true;
             return false;
         }
+
+        public static void CastSkillShotSmite(Spell Skill, Obj_AI_Hero Target)
+        {
+            var Pred = Skill.GetPrediction(Target);
+            if (ItemBool("Misc", "SmiteCol") && Pred.CollisionObjects.Count == 1 && Q.MinHitChance == HitChance.High && CastSmite(Pred.CollisionObjects.First()))
+            {
+                Q.Cast(Pred.CastPosition, PacketCast());
+            }
+            else Q.CastIfHitchanceEquals(Target, HitChance.VeryHigh, PacketCast());
+        }
     }
 }

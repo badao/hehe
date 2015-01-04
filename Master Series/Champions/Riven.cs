@@ -35,13 +35,6 @@ namespace MasterSeries.Champion
             if (Orbwalk.CurrentMode == Orbwalk.Mode.Combo)
             {
                 AACount += 1;
-                if (Q.IsReady())
-                {
-                    int QState = 1;
-                    if (Player.HasBuff("riventricleavesoundone", true)) QState = 2;
-                    if (Player.HasBuff("riventricleavesoundtwo", true)) QState = 3;
-                    if (QState == 1 || QState == 2 || (!R.IsReady() && QState == 3)) Q.Cast(targetObj.Position.Extend(Player.Position, -20), PacketCast());
-                }
             }
         }
 

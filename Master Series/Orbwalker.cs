@@ -79,12 +79,12 @@ namespace MasterSeries.Common
                 }
                 var MiscMenu = new Menu("Misc", "Misc");
                 {
-                    MiscMenu.AddItem(new MenuItem("OW_Misc_HoldZone", "Hold Zone").SetValue(new Slider(50, 100, 0)));
-                    MiscMenu.AddItem(new MenuItem("OW_Misc_FarmDelay", "Farm Delay").SetValue(new Slider(0, 200, 0)));
-                    MiscMenu.AddItem(new MenuItem("OW_Misc_ExtraWindUp", "Extra WindUp Time").SetValue(new Slider(80, 200, 0)));
+                    MiscMenu.AddItem(new MenuItem("OW_Misc_HoldZone", "Hold Zone").SetValue(new Slider(50, 0, 150)));
+                    MiscMenu.AddItem(new MenuItem("OW_Misc_FarmDelay", "Farm Delay").SetValue(new Slider(0, 0, 200)));
+                    MiscMenu.AddItem(new MenuItem("OW_Misc_MoveDelay", "Movement Delay").SetValue(new Slider(80, 0, 150)));
+                    MiscMenu.AddItem(new MenuItem("OW_Misc_ExtraWindUp", "Extra WindUp Time").SetValue(new Slider(80, 0, 200)));
                     MiscMenu.AddItem(new MenuItem("OW_Misc_AutoWindUp", "Auto WindUp").SetValue(true));
                     MiscMenu.AddItem(new MenuItem("OW_Misc_PriorityUnit", "Priority Unit").SetValue(new StringList(new[] { "Minion", "Hero" })));
-                    MiscMenu.AddItem(new MenuItem("OW_Misc_Humanizer", "Humanizer Delay").SetValue(new Slider(80, 50, 500)));
                     MiscMenu.AddItem(new MenuItem("OW_Misc_MeleePrediction", "Melee Movement Prediction").SetValue(false));
                     MiscMenu.AddItem(new MenuItem("OW_Misc_AllMovementDisabled", "Disable All Movement").SetValue(false));
                     MiscMenu.AddItem(new MenuItem("OW_Misc_AllAttackDisabled", "Disable All Attack").SetValue(false));
@@ -207,7 +207,7 @@ namespace MasterSeries.Common
         private static readonly Random RandomPos = new Random(DateTime.Now.Millisecond);
         private static void MoveTo(Vector3 Pos)
         {
-            if (Environment.TickCount - LastMove < Config.Item("OW_Misc_Humanizer").GetValue<Slider>().Value) return;
+            if (Environment.TickCount - LastMove < Config.Item("OW_Misc_MoveDelay").GetValue<Slider>().Value) return;
             LastMove = Environment.TickCount;
             if (Player.Distance(Pos) < Config.Item("OW_Misc_HoldZone").GetValue<Slider>().Value)
             {
@@ -283,7 +283,7 @@ namespace MasterSeries.Common
             else if (Game.Ping <= 40) additional = 20;
             var windUp = Game.Ping + additional;
             if (windUp < 40) windUp = 40;
-            Config.Item("OW_Misc_ExtraWindUp").SetValue(windUp < 200 ? new Slider(windUp, 200, 0) : new Slider(200, 200, 0));
+            Config.Item("OW_Misc_ExtraWindUp").SetValue(windUp < 200 ? new Slider(windUp, 0, 200) : new Slider(200, 0, 200));
             WindUp = windUp;
         }
 

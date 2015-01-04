@@ -236,19 +236,19 @@ namespace MasterSeries.Champions
             if (args.SData.Name == "BlindMonkQOne")
             {
                 QCasted = true;
-                Utility.DelayAction.Add(Orbwalk.CurrentMode == Orbwalk.Mode.LaneClear ? 2800 : 2000, () => QCasted = false);
+                Utility.DelayAction.Add(Orbwalk.CurrentMode == Orbwalk.Mode.LaneClear ? 2900 : 2000, () => QCasted = false);
             }
             if (args.SData.Name == "BlindMonkWOne")
             {
                 WCasted = true;
-                Utility.DelayAction.Add(Orbwalk.CurrentMode == Orbwalk.Mode.LaneClear ? 2800 : 1000, () => WCasted = false);
+                Utility.DelayAction.Add(Orbwalk.CurrentMode == Orbwalk.Mode.LaneClear ? 2900 : 1000, () => WCasted = false);
                 JumpCasted = true;
                 Utility.DelayAction.Add(1000, () => JumpCasted = false);
             }
             if (args.SData.Name == "BlindMonkEOne")
             {
                 ECasted = true;
-                Utility.DelayAction.Add(Orbwalk.CurrentMode == Orbwalk.Mode.LaneClear ? 2800 : 2000, () => ECasted = false);
+                Utility.DelayAction.Add(Orbwalk.CurrentMode == Orbwalk.Mode.LaneClear ? 2900 : 2000, () => ECasted = false);
             }
             if (args.SData.Name == "BlindMonkRKick")
             {
@@ -278,12 +278,7 @@ namespace MasterSeries.Champions
             {
                 if (Q.Instance.Name == "BlindMonkQOne" && Q.InRange(targetObj))
                 {
-                    var QPred = Q.GetPrediction(targetObj);
-                    if (ItemBool("Misc", "SmiteCol") && QPred.CollisionObjects.Count == 1 && Q.MinHitChance == HitChance.VeryHigh && CastSmite(QPred.CollisionObjects.First()))
-                    {
-                        Q.Cast(QPred.CastPosition, PacketCast());
-                    }
-                    else Q.CastIfHitchanceEquals(targetObj, HitChance.VeryHigh, PacketCast());
+                    CastSkillShotSmite(Q, targetObj);
                 }
                 else if (targetObj.HasBuff("BlindMonkSonicWave") && Q2.InRange(targetObj) && (Player.Distance3D(targetObj) > Orbwalk.GetAutoAttackRange(Player, targetObj) + 50 || CanKill(targetObj, Q2, 1) || (targetObj.HasBuff("BlindMonkTempest") && E.InRange(targetObj) && !Orbwalk.InAutoAttackRange(targetObj)) || !QCasted)) Q.Cast(PacketCast());
             }
@@ -325,12 +320,7 @@ namespace MasterSeries.Champions
                     {
                         if (Q.Instance.Name == "BlindMonkQOne" && Q.InRange(targetObj))
                         {
-                            var QPred = Q.GetPrediction(targetObj);
-                            if (ItemBool("Misc", "SmiteCol") && QPred.CollisionObjects.Count == 1 && Q.MinHitChance == HitChance.VeryHigh && CastSmite(QPred.CollisionObjects.First()))
-                            {
-                                Q.Cast(QPred.CastPosition, PacketCast());
-                            }
-                            else Q.CastIfHitchanceEquals(targetObj, HitChance.VeryHigh, PacketCast());
+                            CastSkillShotSmite(Q, targetObj);
                         }
                         else if (targetObj.HasBuff("BlindMonkSonicWave") && Q2.InRange(targetObj) && (CanKill(targetObj, Q2, 1) || (W.IsReady() && W.Instance.Name == "BlindMonkWOne" && Player.Mana >= W.Instance.ManaCost + (ItemBool("Harass", "E") && E.IsReady() && E.Instance.Name == "BlindMonkEOne" ? Q.Instance.ManaCost + E.Instance.ManaCost : Q.Instance.ManaCost) && Player.HealthPercentage() >= ItemSlider("Harass", "Q2Above"))))
                         {
@@ -447,12 +437,7 @@ namespace MasterSeries.Champions
             {
                 if (Q.Instance.Name == "BlindMonkQOne" && Q.InRange(targetObj))
                 {
-                    var QPred = Q.GetPrediction(targetObj);
-                    if (ItemBool("Misc", "SmiteCol") && QPred.CollisionObjects.Count == 1 && Q.MinHitChance == HitChance.VeryHigh && CastSmite(QPred.CollisionObjects.First()))
-                    {
-                        Q.Cast(QPred.CastPosition, PacketCast());
-                    }
-                    else Q.CastIfHitchanceEquals(targetObj, HitChance.VeryHigh, PacketCast());
+                    CastSkillShotSmite(Q, targetObj);
                 }
                 else if (targetObj.HasBuff("BlindMonkSonicWave") && Q2.InRange(targetObj) && (CanKill(targetObj, Q2, 1) || (!R.IsReady() && !RCasted && KickCasted) || (!R.IsReady() && !RCasted && !KickCasted && (Player.Distance3D(targetObj) > Orbwalk.GetAutoAttackRange(Player, targetObj) + 100 || !QCasted)))) Q.Cast(PacketCast());
             }
@@ -506,14 +491,9 @@ namespace MasterSeries.Champions
             {
                 if (Q.Instance.Name == "BlindMonkQOne")
                 {
-                    if (Q.InRange(targetObj) && Q.GetPrediction(targetObj).Hitchance >= HitChance.VeryHigh)
+                    if (Q.InRange(targetObj) && Q.GetPrediction(targetObj).Hitchance >= HitChance.Low)
                     {
-                        var QPred = Q.GetPrediction(targetObj);
-                        if (ItemBool("Misc", "SmiteCol") && QPred.CollisionObjects.Count == 1 && Q.MinHitChance == HitChance.VeryHigh && CastSmite(QPred.CollisionObjects.First()))
-                        {
-                            Q.Cast(QPred.CastPosition, PacketCast());
-                        }
-                        else Q.CastIfHitchanceEquals(targetObj, HitChance.VeryHigh, PacketCast());
+                        CastSkillShotSmite(Q, targetObj);
                     }
                     else if (GetInsecPos() != default(Vector3) && Q.GetPrediction(targetObj).Hitchance == HitChance.Collision)
                     {

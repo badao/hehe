@@ -109,23 +109,13 @@ namespace MasterSeries.Champions
         private void OnEnemyGapcloser(ActiveGapcloser gapcloser)
         {
             if (!ItemBool("Misc", "QAntiGap") || Player.IsDead || !Q.CanCast(gapcloser.Sender) || Player.Distance3D(gapcloser.Sender) > 400) return;
-            var QPred = Q.GetPrediction(gapcloser.Sender);
-            if (ItemBool("Misc", "SmiteCol") && QPred.CollisionObjects.Count == 1 && Q.MinHitChance == HitChance.VeryHigh && CastSmite(QPred.CollisionObjects.First()))
-            {
-                Q.Cast(QPred.CastPosition, PacketCast());
-            }
-            else Q.Cast(gapcloser.Sender.Position, PacketCast());
+            CastSkillShotSmite(Q, (Obj_AI_Hero)gapcloser.Sender);
         }
 
         private void OnPossibleToInterrupt(Obj_AI_Base unit, InterruptableSpell spell)
         {
             if (!ItemBool("Misc", "QInterrupt") || !Q.CanCast(unit)) return;
-            var QPred = Q.GetPrediction(unit);
-            if (ItemBool("Misc", "SmiteCol") && QPred.CollisionObjects.Count == 1 && Q.MinHitChance == HitChance.VeryHigh && CastSmite(QPred.CollisionObjects.First()))
-            {
-                Q.Cast(QPred.CastPosition, PacketCast());
-            }
-            else Q.CastIfHitchanceEquals(unit, HitChance.VeryHigh, PacketCast());
+            CastSkillShotSmite(Q, (Obj_AI_Hero)unit);
         }
 
         private void NormalCombo(string Mode)
@@ -139,15 +129,7 @@ namespace MasterSeries.Champions
                 {
                     foreach (var Obj in nearObj) Q.CastIfHitchanceEquals(Obj, HitChance.VeryHigh, PacketCast());
                 }
-                else if (Q.InRange(targetObj) && (CanKill(targetObj, Q) || !Orbwalk.InAutoAttackRange(targetObj)))
-                {
-                    var QPred = Q.GetPrediction(targetObj);
-                    if (ItemBool("Misc", "SmiteCol") && QPred.CollisionObjects.Count == 1 && Q.MinHitChance == HitChance.VeryHigh && CastSmite(QPred.CollisionObjects.First()))
-                    {
-                        Q.Cast(QPred.CastPosition, PacketCast());
-                    }
-                    else Q.CastIfHitchanceEquals(targetObj, HitChance.VeryHigh, PacketCast());
-                }
+                else if (Q.InRange(targetObj) && (CanKill(targetObj, Q) || !Orbwalk.InAutoAttackRange(targetObj))) CastSkillShotSmite(Q, targetObj);
             }
             if (ItemBool(Mode, "W") && W.IsReady())
             {
