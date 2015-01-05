@@ -8,7 +8,7 @@ using SharpDX;
 
 using Orbwalk = MasterSeries.Common.M_Orbwalker;
 
-namespace MasterSeries.Champion
+namespace MasterSeries.Champions
 {
     class Riven : Program
     {
