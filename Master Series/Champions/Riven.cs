@@ -32,7 +32,7 @@ namespace MasterSeries.Champion
 
         private void AfterAttack(AttackableUnit Target)
         {
-            if (Orbwalk.CurrentMode == Orbwalk.Mode.Combo)
+            if (Orbwalk.CurrentMode == Orbwalk.Mode.Combo && !Player.IsDashing())
             {
                 AACount += 1;
             }
