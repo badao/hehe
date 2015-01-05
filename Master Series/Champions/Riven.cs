@@ -42,10 +42,10 @@ namespace MasterSeries.Champions
         {
             if (!sender.IsMe || Orbwalk.CurrentMode != Orbwalk.Mode.Combo) return;
             var Slot = Player.GetSpellSlot(args.SData.Name);
-            if (Slot == SpellSlot.Q || Slot == SpellSlot.W)
+            if (Slot == SpellSlot.Q )
             {
                 AACount = 0;
-                if (Slot == SpellSlot.Q) Orbwalk.ResetAutoAttack();
+                if (Slot == SpellSlot.Q) {Orbwalk.ResetAutoAttack();Game.PrintChat("reset")};
                 if (Tiamat.IsReady() && Player.CountEnemysInRange((int)Tiamat.Range) >= 1) Tiamat.Cast();
                 if (Hydra.IsReady() && (Player.CountEnemysInRange((int)Hydra.Range) >= 2 || (Player.GetAutoAttackDamage(targetObj, true) < targetObj.Health && Player.CountEnemysInRange((int)Hydra.Range) == 1))) Hydra.Cast();
             }
