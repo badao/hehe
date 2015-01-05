@@ -45,7 +45,7 @@ namespace MasterSeries.Champions
             if (Slot == SpellSlot.Q )
             {
                 AACount = 0;
-                if (Slot == SpellSlot.Q) {Orbwalk.ResetAutoAttack();Game.PrintChat("reset")};
+                Orbwalk.ResetAutoAttack(); Game.PrintChat("reset");
                 if (Tiamat.IsReady() && Player.CountEnemysInRange((int)Tiamat.Range) >= 1) Tiamat.Cast();
                 if (Hydra.IsReady() && (Player.CountEnemysInRange((int)Hydra.Range) >= 2 || (Player.GetAutoAttackDamage(targetObj, true) < targetObj.Health && Player.CountEnemysInRange((int)Hydra.Range) == 1))) Hydra.Cast();
             }
