@@ -44,8 +44,9 @@ namespace MasterSeries.Champions
             var Slot = Player.GetSpellSlot(args.SData.Name);
             if (Slot == SpellSlot.Q )
             {
-                AACount = 0;
-                Orbwalk.ResetAutoAttack(); Game.PrintChat("reset");
+                if (!Player.IsDashing())
+                {AACount = 0;
+                Orbwalk.ResetAutoAttack(); Game.PrintChat("reset");}
                 if (Tiamat.IsReady() && Player.CountEnemysInRange((int)Tiamat.Range) >= 1) Tiamat.Cast();
                 if (Hydra.IsReady() && (Player.CountEnemysInRange((int)Hydra.Range) >= 2 || (Player.GetAutoAttackDamage(targetObj, true) < targetObj.Health && Player.CountEnemysInRange((int)Hydra.Range) == 1))) Hydra.Cast();
             }
